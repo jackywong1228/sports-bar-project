@@ -1,0 +1,249 @@
+.container {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: 180rpx;
+}
+
+/* 教练信息 */
+.coach-card {
+  display: flex;
+  padding: 30rpx;
+  background: #fff;
+  margin-bottom: 20rpx;
+}
+
+.coach-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.coach-info {
+  flex: 1;
+  margin-left: 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.coach-name {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.coach-type {
+  font-size: 26rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+.coach-price {
+  margin-top: 8rpx;
+}
+
+.price-value {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #FF6B35;
+}
+
+.price-unit {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 4rpx;
+}
+
+/* 板块 */
+.section {
+  background: #fff;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 24rpx;
+}
+
+/* 场馆选择 */
+.venue-scroll {
+  display: flex;
+  white-space: nowrap;
+}
+
+.venue-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 32rpx;
+  margin-right: 20rpx;
+  border-radius: 30rpx;
+  background: #f5f5f5;
+}
+
+.venue-item.active {
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+}
+
+.venue-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.venue-item.active .venue-name {
+  color: #fff;
+}
+
+/* 日期选择 */
+.date-scroll {
+  display: flex;
+  white-space: nowrap;
+}
+
+.date-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100rpx;
+  height: 120rpx;
+  margin-right: 20rpx;
+  border-radius: 12rpx;
+  background: #f5f5f5;
+}
+
+.date-item.active {
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+}
+
+.date-week {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+}
+
+.date-day {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.date-item.active .date-week,
+.date-item.active .date-day {
+  color: #fff;
+}
+
+/* 时间选择 */
+.time-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.time-item {
+  width: calc(50% - 8rpx);
+  padding: 20rpx;
+  border-radius: 12rpx;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.time-item.selected {
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+}
+
+.time-item.disabled {
+  opacity: 0.5;
+}
+
+.time-text {
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.time-status {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.time-item.selected .time-text,
+.time-item.selected .time-status {
+  color: #fff;
+}
+
+/* 底部操作栏 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.booking-summary {
+  flex: 1;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4rpx;
+}
+
+.summary-label {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.summary-value {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.summary-time {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 8rpx;
+}
+
+.summary-price {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #FF6B35;
+}
+
+.btn-submit {
+  width: 240rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  color: #fff;
+  font-size: 32rpx;
+  border-radius: 40rpx;
+  border: none;
+}
+
+.btn-submit::after {
+  border: none;
+}
+
+.btn-submit[disabled] {
+  opacity: 0.5;
+}
+
+.bottom-placeholder {
+  height: 180rpx;
+}

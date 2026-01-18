@@ -1,0 +1,160 @@
+<view class="container">
+  <!-- 分类标签 -->
+  <scroll-view class="category-tabs" scroll-x enable-flex>
+    <view
+      class="tab-item {{currentCategory === item.key ? 'active' : ''}}"
+      wx:for="{{categories}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="switchCategory"
+    >
+      {{item.name}}
+    </view>
+  </scroll-view>
+
+  <!-- 组队列表 -->
+  <view class="team-list">
+    <view class="team-item" wx:for="{{teams}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+      <view class="team-header">
+        <view class="sport-badge {{item.sport_type}}">{{item.sport_type_name}}</view>
+        <view class="team-status {{item.status}}">
+          <text wx:if="{{item.status === 'recruiting'}}">招募中</text>
+          <text wx:elif="{{item.status === 'full'}}">已满员</text>
+          <text wx:elif="{{item.status === 'completed'}}">已完成</text>
+          <text wx:else>已取消</text>
+        </view>
+      </view>
+      <view class="team-title">{{item.title}}</view>
+      <view class="team-meta">
+        <view class="meta-item">
+          <text class="meta-icon">📅</text>
+          <text>{{item.activity_date}} {{item.activity_time}}</text>
+        </view>
+        <view class="meta-item" wx:if="{{item.location}}">
+          <text class="meta-icon">📍</text>
+          <text>{{item.location}}</text>
+        </view>
+      </view>
+      <view class="team-footer">
+        <view class="team-members">
+          <text class="members-count">{{item.current_members}}/{{item.max_members}}</text>
+          <text class="members-label">人</text>
+        </view>
+        <view class="team-fee">
+          <text wx:if="{{item.fee_type === 'free'}}">免费</text>
+          <text wx:elif="{{item.fee_type === 'AA'}}">AA均摊</text>
+          <text wx:else>{{item.fee_amount}}金币/人</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && teams.length === 0}}">
+    <text class="empty-text">暂无组队，快来发起一个吧</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 发起组队按钮 -->
+  <button class="btn-create" bindtap="createTeam">发起组队</button>
+
+  <!-- 发起组队弹窗 -->
+  <view class="modal-mask" wx:if="{{showCreateModal}}" bindtap="closeModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">发起组队</text>
+        <view class="modal-close" bindtap="closeModal">×</view>
+      </view>
+
+      <scroll-view class="modal-body" scroll-y>
+        <!-- 运动类型 -->
+        <view class="form-item">
+          <view class="form-label">运动类型</view>
+          <picker mode="selector" range="{{sportTypeOptions}}" range-key="name" value="{{sportTypeIndex}}" bindchange="onSportTypeChange">
+            <view class="form-picker">
+              {{sportTypeOptions[sportTypeIndex].name}}
+              <text class="picker-arrow">></text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 组队标题 -->
+        <view class="form-item">
+          <view class="form-label">组队标题 <text class="required">*</text></view>
+          <input class="form-input" placeholder="如：周末约球" value="{{formData.title}}" bindinput="onTitleInput" maxlength="50" />
+        </view>
+
+        <!-- 活动日期 -->
+        <view class="form-item">
+          <view class="form-label">活动日期 <text class="required">*</text></view>
+          <picker mode="date" start="{{minDate}}" value="{{formData.activity_date}}" bindchange="onDateChange">
+            <view class="form-picker {{formData.activity_date ? '' : 'placeholder'}}">
+              {{formData.activity_date || '请选择日期'}}
+              <text class="picker-arrow">></text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 活动时间 -->
+        <view class="form-item">
+          <view class="form-label">活动时间 <text class="required">*</text></view>
+          <picker mode="time" value="{{formData.activity_time}}" bindchange="onTimeChange">
+            <view class="form-picker {{formData.activity_time ? '' : 'placeholder'}}">
+              {{formData.activity_time || '请选择时间'}}
+              <text class="picker-arrow">></text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 活动地点 -->
+        <view class="form-item">
+          <view class="form-label">活动地点</view>
+          <input class="form-input" placeholder="如：XX运动中心" value="{{formData.location}}" bindinput="onLocationInput" maxlength="100" />
+        </view>
+
+        <!-- 最大人数 -->
+        <view class="form-item">
+          <view class="form-label">最大人数</view>
+          <picker mode="selector" range="{{maxMembersOptions}}" value="{{maxMembersIndex}}" bindchange="onMaxMembersChange">
+            <view class="form-picker">
+              {{maxMembersOptions[maxMembersIndex]}}人
+              <text class="picker-arrow">></text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 费用类型 -->
+        <view class="form-item">
+          <view class="form-label">费用说明</view>
+          <picker mode="selector" range="{{feeTypeOptions}}" range-key="name" value="{{feeTypeIndex}}" bindchange="onFeeTypeChange">
+            <view class="form-picker">
+              {{feeTypeOptions[feeTypeIndex].name}}
+              <text class="picker-arrow">></text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 费用金额（固定费用时显示） -->
+        <view class="form-item" wx:if="{{formData.fee_type === 'fixed'}}">
+          <view class="form-label">费用金额（金币/人）</view>
+          <input class="form-input" type="number" placeholder="请输入" value="{{formData.fee_amount}}" bindinput="onFeeInput" />
+        </view>
+
+        <!-- 组队描述 -->
+        <view class="form-item">
+          <view class="form-label">组队描述</view>
+          <textarea class="form-textarea" placeholder="说明一下活动详情、要求等" value="{{formData.description}}" bindinput="onDescInput" maxlength="500"></textarea>
+        </view>
+      </scroll-view>
+
+      <view class="modal-footer">
+        <button class="btn-cancel" bindtap="closeModal">取消</button>
+        <button class="btn-submit" bindtap="submitCreate" loading="{{submitting}}" disabled="{{submitting}}">发起</button>
+      </view>
+    </view>
+  </view>
+</view>

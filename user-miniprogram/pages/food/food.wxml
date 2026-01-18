@@ -1,0 +1,41 @@
+<view class="container">
+  <scroll-view class="category-scroll" scroll-y>
+    <view
+      class="category-item {{currentCategory === item.id ? 'active' : ''}}"
+      wx:for="{{categories}}"
+      wx:key="id"
+      bindtap="switchCategory"
+      data-id="{{item.id}}"
+    >
+      {{item.name}}
+    </view>
+  </scroll-view>
+
+  <scroll-view class="food-scroll" scroll-y>
+    <view class="food-list">
+      <view class="food-item" wx:for="{{foods}}" wx:key="id">
+        <image class="food-image" src="{{item.image || '/assets/images/food-default.jpg'}}" mode="aspectFill"></image>
+        <view class="food-info">
+          <text class="food-name">{{item.name}}</text>
+          <text class="food-desc">{{item.description}}</text>
+          <view class="food-bottom">
+            <text class="food-price">¥{{item.price}}</text>
+            <view class="add-btn" catchtap="addToCart" data-id="{{item.id}}">+</view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!loading && foods.length === 0}}">
+      <text>暂无菜品</text>
+    </view>
+  </scroll-view>
+
+  <view class="cart-bar" wx:if="{{cart.length > 0}}" bindtap="goToCart">
+    <view class="cart-info">
+      <view class="cart-badge">{{cart.length}}</view>
+      <text class="cart-text">购物车</text>
+    </view>
+    <view class="cart-total">¥{{cartTotal}}</view>
+    <view class="cart-btn">去结算</view>
+  </view>
+</view>

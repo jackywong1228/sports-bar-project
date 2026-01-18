@@ -1,0 +1,66 @@
+<view class="container">
+  <!-- 类型筛选 -->
+  <scroll-view class="type-scroll" scroll-x enable-flex>
+    <view
+      class="type-item {{currentType === item.id ? 'active' : ''}}"
+      wx:for="{{venueTypes}}"
+      wx:key="id"
+      bindtap="switchType"
+      data-type="{{item.id}}"
+    >
+      {{item.name}}
+    </view>
+  </scroll-view>
+
+  <!-- 场馆列表 -->
+  <view class="venue-list">
+    <view
+      class="venue-card"
+      wx:for="{{venues}}"
+      wx:key="id"
+    >
+      <view class="venue-main" bindtap="goToDetail" data-id="{{item.id}}">
+        <image class="venue-image" src="{{item.image || '/assets/images/venue-default.jpg'}}" mode="aspectFill"></image>
+        <view class="venue-info">
+          <text class="venue-name">{{item.name}}</text>
+          <view class="venue-tags">
+            <text class="tag" wx:if="{{item.type_name}}">{{item.type_name}}</text>
+            <text class="tag tag-hot" wx:if="{{item.is_hot}}">热门</text>
+          </view>
+          <view class="venue-meta">
+            <text class="venue-address">{{item.address || '暂无地址'}}</text>
+          </view>
+          <view class="venue-bottom">
+            <view class="venue-price">
+              <text class="price-symbol">¥</text>
+              <text class="price-value">{{item.price || 0}}</text>
+              <text class="price-unit">/小时</text>
+            </view>
+            <view class="venue-status {{item.status === 1 ? 'available' : 'unavailable'}}">
+              {{item.status === 1 ? '可预约' : '已满'}}
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="venue-action">
+        <button class="btn-book" catchtap="goToBooking" data-id="{{item.id}}">立即预约</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && venues.length === 0}}">
+    <image class="empty-icon" src="/assets/images/empty.png" mode="aspectFit"></image>
+    <text class="empty-text">暂无场馆数据</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && venues.length > 0}}">
+    <text>- 没有更多了 -</text>
+  </view>
+</view>

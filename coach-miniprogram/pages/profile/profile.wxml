@@ -1,0 +1,125 @@
+<!-- 我的页面 -->
+<view class="page-container">
+  <!-- 用户信息卡片 -->
+  <view class="profile-card card">
+    <view class="profile-header flex">
+      <image class="avatar" src="{{coachInfo.avatar || '/assets/icons/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="profile-info flex-1">
+        <view class="profile-name">{{coachInfo.name || '教练'}}</view>
+        <view class="profile-type">{{coachInfo.type_name || '专业教练'}}</view>
+        <view class="profile-id">教练编号：{{coachInfo.coach_no || '-'}}</view>
+      </view>
+      <view class="profile-rating">
+        <view class="rating-value">{{coachInfo.rating || '5.0'}}</view>
+        <view class="rating-label">评分</view>
+      </view>
+    </view>
+    <view class="profile-tags" wx:if="{{coachInfo.tags && coachInfo.tags.length > 0}}">
+      <view class="tag" wx:for="{{coachInfo.tags}}" wx:key="*this">{{item}}</view>
+    </view>
+  </view>
+
+  <!-- 资产信息 -->
+  <view class="asset-card card">
+    <view class="asset-grid">
+      <view class="asset-item" bindtap="goToWallet" data-type="coin">
+        <view class="asset-value">{{coachInfo.coin_balance || 0}}</view>
+        <view class="asset-label">金币</view>
+      </view>
+      <view class="asset-item" bindtap="goToWallet" data-type="point">
+        <view class="asset-value">{{coachInfo.point_balance || 0}}</view>
+        <view class="asset-label">积分</view>
+      </view>
+      <view class="asset-item" bindtap="goToIncome">
+        <view class="asset-value">{{coachInfo.pending_income || 0}}</view>
+        <view class="asset-label">待结算</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 功能菜单 -->
+  <view class="menu-card card">
+    <view class="menu-group">
+      <view class="menu-item" bindtap="goToIncome">
+        <view class="menu-icon">💰</view>
+        <view class="menu-text">课程收入</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+      <view class="menu-item" bindtap="goToOrders">
+        <view class="menu-icon">📋</view>
+        <view class="menu-text">我的订单</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+      <view class="menu-item" bindtap="goToWallet">
+        <view class="menu-icon">👛</view>
+        <view class="menu-text">我的钱包</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 推广功能 -->
+  <view class="menu-card card">
+    <view class="menu-title">推广中心</view>
+    <view class="menu-group">
+      <view class="menu-item" bindtap="goToPromote" data-type="coach">
+        <view class="menu-icon">👨‍🏫</view>
+        <view class="menu-text">教练推广</view>
+        <view class="menu-desc">邀请新教练获奖励</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+      <view class="menu-item" bindtap="goToPromote" data-type="user">
+        <view class="menu-icon">👥</view>
+        <view class="menu-text">客户推广</view>
+        <view class="menu-desc">邀请新客户获奖励</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 其他功能 -->
+  <view class="menu-card card">
+    <view class="menu-group">
+      <view class="menu-item" bindtap="goToAppCenter">
+        <view class="menu-icon">🏠</view>
+        <view class="menu-text">应用中心</view>
+        <view class="menu-desc">使用用户端功能</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+      <view class="menu-item" bindtap="switchToUser">
+        <view class="menu-icon">🔄</view>
+        <view class="menu-text">切换用户端</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 设置 -->
+  <view class="menu-card card">
+    <view class="menu-group">
+      <view class="menu-item" bindtap="editProfile">
+        <view class="menu-icon">✏️</view>
+        <view class="menu-text">编辑资料</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+      <view class="menu-item" bindtap="contactService">
+        <view class="menu-icon">📞</view>
+        <view class="menu-text">联系客服</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+      <view class="menu-item" bindtap="feedback">
+        <view class="menu-icon">📝</view>
+        <view class="menu-text">意见反馈</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+      <view class="menu-item" bindtap="about">
+        <view class="menu-icon">ℹ️</view>
+        <view class="menu-text">关于我们</view>
+        <view class="menu-arrow">▶</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 退出登录 -->
+  <view class="logout-btn" bindtap="logout">退出登录</view>
+</view>

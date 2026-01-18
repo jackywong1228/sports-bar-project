@@ -1,0 +1,227 @@
+.container {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: 140rpx;
+}
+
+/* 教练头部 */
+.coach-header {
+  display: flex;
+  padding: 40rpx 30rpx;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+}
+
+.coach-avatar {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  border: 6rpx solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.coach-info {
+  flex: 1;
+  margin-left: 30rpx;
+  color: #fff;
+}
+
+.coach-name-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.coach-name {
+  font-size: 40rpx;
+  font-weight: bold;
+  margin-right: 16rpx;
+}
+
+.coach-level {
+  display: flex;
+}
+
+.level-star {
+  color: #FFD700;
+  font-size: 28rpx;
+}
+
+.coach-type {
+  font-size: 28rpx;
+  opacity: 0.9;
+  margin-bottom: 20rpx;
+}
+
+.coach-stats {
+  display: flex;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 50rpx;
+}
+
+.stat-value {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  opacity: 0.8;
+  margin-top: 4rpx;
+}
+
+/* 板块 */
+.section {
+  background: #fff;
+  padding: 30rpx;
+  margin-top: 20rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 24rpx;
+  padding-left: 16rpx;
+  border-left: 6rpx solid #FF6B35;
+}
+
+/* 技能标签 */
+.skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.skill-tag {
+  padding: 12rpx 24rpx;
+  background: rgba(255, 107, 53, 0.1);
+  border-radius: 30rpx;
+  font-size: 26rpx;
+  color: #FF6B35;
+}
+
+/* 介绍内容 */
+.intro-content {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.8;
+}
+
+/* 证书列表 */
+.cert-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.cert-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+}
+
+.cert-icon {
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 40rpx;
+  text-align: center;
+  background: #07c160;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 24rpx;
+  margin-right: 16rpx;
+}
+
+.cert-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+/* 相册 */
+.photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.photo-item {
+  width: calc(33.33% - 11rpx);
+  height: 200rpx;
+  border-radius: 12rpx;
+}
+
+/* 底部操作栏 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.bar-price {
+  flex: 1;
+}
+
+.price-label {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.price-row {
+  display: flex;
+  align-items: baseline;
+}
+
+.price-value {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #FF6B35;
+}
+
+.price-unit {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 8rpx;
+}
+
+.btn-book {
+  width: 280rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  color: #fff;
+  font-size: 32rpx;
+  border-radius: 40rpx;
+  border: none;
+}
+
+.btn-book::after {
+  border: none;
+}
+
+.bottom-placeholder {
+  height: 140rpx;
+}
+
+/* 加载中 */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #999;
+}

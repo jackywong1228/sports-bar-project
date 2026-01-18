@@ -1,0 +1,1603 @@
+"""会员端小程序API"""
+import json
+from datetime import date, datetime, timedelta
+from typing import List, Optional
+from pydantic import BaseModel
+import httpx
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import and_, func
+
+from app.core.database import get_db
+from app.core.security import create_access_token
+from app.core.config import settings
+from app.core.wechat import user_wechat_service, WeChatAPIError
+from app.models import Member, Venue, VenueType, Coach, Reservation, CoinRecord, PointRecord
+from app.models.activity import Activity
+from app.models.message import Banner
+from app.models.food import FoodCategory, FoodItem, FoodOrder, FoodOrderItem
+from app.models.mall import ProductCategory, Product
+from app.models.member import MemberCard, MemberLevel
+from app.models.coupon import MemberCoupon, CouponTemplate
+from app.schemas.common import ResponseModel
+from app.api.deps import get_current_member
+
+router = APIRouter()
+
+
+# ==================== 认证相关 ====================
+
+class MemberLoginRequest(BaseModel):
+    phone: str
+    code: Optional[str] = None
+
+
+class WxLoginRequest(BaseModel):
+    code: str
+    nickname: Optional[str] = None
+    avatar: Optional[str] = None
+
+
+class PhoneCodeRequest(BaseModel):
+    code: str
+
+
+@router.post("/auth/login", response_model=ResponseModel)
+def member_login(
+    data: MemberLoginRequest,
+    db: Session = Depends(get_db)
+):
+    """会员登录（手机号）"""
+    member = db.query(Member).filter(
+        Member.phone == data.phone,
+        Member.is_deleted == False
+    ).first()
+
+    if not member:
+        # 自动注册
+        member = Member(
+            phone=data.phone,
+            nickname=f"用户{data.phone[-4:]}",
+            status=True
+        )
+        db.add(member)
+        db.commit()
+        db.refresh(member)
+
+    if not member.status:
+        raise HTTPException(status_code=403, detail="账号已被禁用")
+
+    access_token = create_access_token(
+        data={"member_id": member.id, "phone": member.phone},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    return ResponseModel(data={
+        "access_token": access_token,
+        "token_type": "bearer",
+        "member_info": {
+            "id": member.id,
+            "nickname": member.nickname,
+            "avatar": member.avatar,
+            "phone": member.phone,
+            "coin_balance": float(member.coin_balance or 0),
+            "point_balance": member.point_balance or 0
+        }
+    })
+
+
+@router.post("/auth/wx-login", response_model=ResponseModel)
+async def member_wx_login(
+    data: WxLoginRequest,
+    db: Session = Depends(get_db)
+):
+    """微信登录（code换取openid）"""
+    try:
+        # 调用微信API获取openid和session_key
+        wx_result = await user_wechat_service.code2session(data.code)
+        openid = wx_result.get("openid")
+        unionid = wx_result.get("unionid")
+        session_key = wx_result.get("session_key")
+    except WeChatAPIError as e:
+        raise HTTPException(status_code=400, detail=f"微信登录失败: {e.errmsg}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail=f"网络请求失败: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"登录处理异常: {str(e)}")
+
+    if not openid:
+        raise HTTPException(status_code=400, detail="获取用户信息失败")
+
+    # 查找或创建会员
+    member = db.query(Member).filter(
+        Member.openid == openid,
+        Member.is_deleted == False
+    ).first()
+
+    is_new_user = False
+    if not member:
+        is_new_user = True
+        member = Member(
+            openid=openid,
+            unionid=unionid,
+            nickname=data.nickname or "微信用户",
+            avatar=data.avatar,
+            status=True
+        )
+        db.add(member)
+        db.commit()
+        db.refresh(member)
+    else:
+        # 更新用户信息
+        if data.nickname:
+            member.nickname = data.nickname
+        if data.avatar:
+            member.avatar = data.avatar
+        if unionid:
+            member.unionid = unionid
+        db.commit()
+
+    if not member.status:
+        raise HTTPException(status_code=403, detail="账号已被禁用")
+
+    access_token = create_access_token(
+        data={"member_id": member.id, "openid": openid},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    # 存储session_key（用于后续解密手机号等）
+    member.session_key = session_key
+    db.commit()
+
+    return ResponseModel(data={
+        "access_token": access_token,
+        "token_type": "bearer",
+        "is_new_user": is_new_user,
+        "member_info": {
+            "id": member.id,
+            "nickname": member.nickname,
+            "avatar": member.avatar,
+            "phone": member.phone,
+            "coin_balance": float(member.coin_balance or 0),
+            "point_balance": member.point_balance or 0
+        }
+    })
+
+
+@router.post("/auth/phone", response_model=ResponseModel)
+async def get_member_phone(
+    data: PhoneCodeRequest,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取用户手机号（通过button的getPhoneNumber获取的code）"""
+    try:
+        phone_info = await user_wechat_service.get_phone_number(data.code)
+        phone = phone_info.get("purePhoneNumber") or phone_info.get("phoneNumber")
+    except WeChatAPIError as e:
+        raise HTTPException(status_code=400, detail=f"获取手机号失败: {e.errmsg}")
+
+    if not phone:
+        raise HTTPException(status_code=400, detail="获取手机号失败")
+
+    # 检查手机号是否已被其他用户绑定
+    existing = db.query(Member).filter(
+        Member.phone == phone,
+        Member.id != current_member.id,
+        Member.is_deleted == False
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="该手机号已被其他账号绑定")
+
+    # 绑定手机号
+    current_member.phone = phone
+    db.commit()
+
+    return ResponseModel(message="绑定成功", data={"phone": phone})
+
+
+# ==================== 会员信息 ====================
+
+@router.get("/profile", response_model=ResponseModel)
+def get_member_profile(
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取会员信息"""
+    level_name = None
+    if current_member.level:
+        level_name = current_member.level.name
+
+    return ResponseModel(data={
+        "id": current_member.id,
+        "nickname": current_member.nickname,
+        "avatar": current_member.avatar,
+        "phone": current_member.phone,
+        "real_name": current_member.real_name,
+        "gender": current_member.gender,
+        "level_name": level_name,
+        "member_expire_time": str(current_member.member_expire_time) if current_member.member_expire_time else None,
+        "coin_balance": float(current_member.coin_balance or 0),
+        "point_balance": current_member.point_balance or 0
+    })
+
+
+# ==================== 首页数据 ====================
+
+@router.get("/banners", response_model=ResponseModel)
+def get_banners(db: Session = Depends(get_db)):
+    """获取轮播图"""
+    banners = db.query(Banner).filter(
+        Banner.is_active == True,
+        Banner.is_deleted == False
+    ).order_by(Banner.sort_order.asc()).all()
+
+    result = []
+    for b in banners:
+        result.append({
+            "id": b.id,
+            "image": b.image,
+            "url": b.link_value or "",
+            "title": b.title
+        })
+
+    # 如果没有数据，返回默认轮播图
+    if not result:
+        result = [
+            {"id": 1, "image": "/assets/images/banner1.jpg", "url": "", "title": "欢迎来到运动社交"},
+            {"id": 2, "image": "/assets/images/banner2.jpg", "url": "", "title": "专业的体育场馆服务"}
+        ]
+
+    return ResponseModel(data=result)
+
+
+@router.get("/activities", response_model=ResponseModel)
+def get_activities(
+    page: int = 1,
+    limit: int = 10,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """获取活动列表"""
+    query = db.query(Activity).filter(Activity.is_deleted == False)
+
+    if status:
+        query = query.filter(Activity.status == status)
+    else:
+        # 默认显示已发布和进行中的活动
+        query = query.filter(Activity.status.in_(["published", "ongoing"]))
+
+    activities = query.order_by(Activity.start_time.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for a in activities:
+        result.append({
+            "id": a.id,
+            "title": a.title,
+            "image": a.cover_image,
+            "description": a.description,
+            "start_date": str(a.start_time.date()) if a.start_time else None,
+            "start_time": str(a.start_time.time()) if a.start_time else None,
+            "end_date": str(a.end_time.date()) if a.end_time else None,
+            "location": a.location,
+            "price": float(a.price or 0),
+            "max_participants": a.max_participants,
+            "enrolled": a.current_participants or 0,
+            "status": a.status
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/activities/{activity_id}", response_model=ResponseModel)
+def get_activity_detail(activity_id: int, db: Session = Depends(get_db)):
+    """获取活动详情"""
+    activity = db.query(Activity).filter(
+        Activity.id == activity_id,
+        Activity.is_deleted == False
+    ).first()
+
+    if not activity:
+        raise HTTPException(status_code=404, detail="活动不存在")
+
+    return ResponseModel(data={
+        "id": activity.id,
+        "title": activity.title,
+        "image": activity.cover_image,
+        "description": activity.description,
+        "content": activity.content,
+        "start_date": str(activity.start_time.date()) if activity.start_time else None,
+        "start_time": str(activity.start_time.time()) if activity.start_time else None,
+        "end_date": str(activity.end_time.date()) if activity.end_time else None,
+        "end_time": str(activity.end_time.time()) if activity.end_time else None,
+        "location": activity.location,
+        "price": float(activity.price or 0),
+        "max_participants": activity.max_participants,
+        "enrolled": activity.current_participants or 0,
+        "status": activity.status
+    })
+
+
+# ==================== 场馆相关 ====================
+
+@router.get("/venue-types", response_model=ResponseModel)
+def get_venue_types(db: Session = Depends(get_db)):
+    """获取场馆类型"""
+    types = db.query(VenueType).filter(VenueType.status == True).all()
+    return ResponseModel(data=[{"id": t.id, "name": t.name} for t in types])
+
+
+@router.get("/venues", response_model=ResponseModel)
+def get_venues(
+    type_id: Optional[int] = None,
+    page: int = 1,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """获取场馆列表"""
+    query = db.query(Venue).filter(Venue.is_deleted == False, Venue.status == 1)
+
+    if type_id:
+        query = query.filter(Venue.type_id == type_id)
+
+    venues = query.offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for v in venues:
+        # images 是 JSON 字符串，需要解析获取第一张图片
+        images_list = []
+        if v.images:
+            try:
+                images_list = json.loads(v.images)
+            except:
+                pass
+        first_image = images_list[0] if images_list else None
+
+        result.append({
+            "id": v.id,
+            "name": v.name,
+            "image": first_image,
+            "type_name": v.venue_type.name if v.venue_type else None,
+            "location": v.location,
+            "price": float(v.price or 0),
+            "status": v.status
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/venues/{venue_id}", response_model=ResponseModel)
+def get_venue_detail(venue_id: int, db: Session = Depends(get_db)):
+    """获取场馆详情"""
+    venue = db.query(Venue).filter(
+        Venue.id == venue_id,
+        Venue.is_deleted == False
+    ).first()
+
+    if not venue:
+        raise HTTPException(status_code=404, detail="场馆不存在")
+
+    # 解析图片JSON
+    images_list = []
+    if venue.images:
+        try:
+            images_list = json.loads(venue.images)
+        except:
+            pass
+
+    # 解析设施JSON
+    facilities_list = []
+    if venue.facilities:
+        try:
+            facilities_list = json.loads(venue.facilities)
+        except:
+            pass
+
+    return ResponseModel(data={
+        "id": venue.id,
+        "name": venue.name,
+        "image": images_list[0] if images_list else None,
+        "images": images_list,
+        "type_name": venue.venue_type.name if venue.venue_type else None,
+        "location": venue.location,
+        "price": float(venue.price or 0),
+        "description": venue.description,
+        "facilities": facilities_list,
+        "capacity": venue.capacity,
+        "status": venue.status
+    })
+
+
+@router.get("/venues/{venue_id}/slots", response_model=ResponseModel)
+def get_venue_slots(
+    venue_id: int,
+    date: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    """获取场馆时间段"""
+    # 获取已预约的时间段
+    reservations = db.query(Reservation).filter(
+        Reservation.venue_id == venue_id,
+        Reservation.reservation_date == date,
+        Reservation.status.in_(["pending", "confirmed", "in_progress"]),
+        Reservation.is_deleted == False
+    ).all()
+
+    reserved_hours = set()
+    for r in reservations:
+        start_hour = r.start_time.hour
+        end_hour = r.end_time.hour
+        for h in range(start_hour, end_hour):
+            reserved_hours.add(h)
+
+    # 生成时间段列表（06:00-24:00）
+    slots = []
+    for hour in range(6, 24):
+        status = "reserved" if hour in reserved_hours else "available"
+        slots.append({
+            "time": f"{hour:02d}:00",
+            "label": f"{hour:02d}:00 - {hour+1:02d}:00",
+            "status": status
+        })
+
+    return ResponseModel(data=slots)
+
+
+@router.get("/venue-types", response_model=ResponseModel)
+def get_venue_types(db: Session = Depends(get_db)):
+    """获取场馆类型列表（包含场馆数量）"""
+    types = db.query(VenueType).filter(VenueType.status == True).order_by(VenueType.sort).all()
+
+    result = []
+    for t in types:
+        venue_count = db.query(Venue).filter(
+            Venue.type_id == t.id,
+            Venue.is_deleted == False,
+            Venue.status == 1
+        ).count()
+        result.append({
+            "id": t.id,
+            "name": t.name,
+            "icon": t.icon,
+            "venue_count": venue_count
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/venue-calendar", response_model=ResponseModel)
+def get_venue_calendar(
+    type_id: int = Query(..., description="场馆类型ID"),
+    date: str = Query(..., description="日期 YYYY-MM-DD"),
+    db: Session = Depends(get_db)
+):
+    """获取场馆日历视图（用于预约日历）
+    返回指定类型所有场馆的时间段状态
+    """
+    # 获取该类型下所有场馆
+    venues = db.query(Venue).filter(
+        Venue.type_id == type_id,
+        Venue.is_deleted == False,
+        Venue.status == 1
+    ).order_by(Venue.sort, Venue.id).all()
+
+    if not venues:
+        return ResponseModel(data={"venues": [], "time_slots": []})
+
+    venue_ids = [v.id for v in venues]
+
+    # 获取这些场馆在指定日期的所有预约
+    reservations = db.query(Reservation).filter(
+        Reservation.venue_id.in_(venue_ids),
+        Reservation.reservation_date == date,
+        Reservation.status.in_(["pending", "confirmed", "in_progress"]),
+        Reservation.is_deleted == False
+    ).all()
+
+    # 构建预约映射 {venue_id: {hour: reservation_info}}
+    reservation_map = {}
+    for r in reservations:
+        if r.venue_id not in reservation_map:
+            reservation_map[r.venue_id] = {}
+        start_hour = r.start_time.hour
+        end_hour = r.end_time.hour
+        for h in range(start_hour, end_hour):
+            reservation_map[r.venue_id][h] = {
+                "reservation_id": r.id,
+                "member_nickname": r.member.nickname if r.member else None
+            }
+
+    # 生成时间段列表（06:00-24:00）
+    time_slots = []
+    for hour in range(6, 24):
+        time_slots.append({
+            "hour": hour,
+            "time": f"{hour:02d}:00",
+            "label": f"{hour:02d}:00"
+        })
+
+    # 构建场馆数据
+    venue_data = []
+    for v in venues:
+        slots = []
+        venue_reservations = reservation_map.get(v.id, {})
+        for hour in range(6, 24):
+            if hour in venue_reservations:
+                status = "reserved"
+            else:
+                status = "available"
+            slots.append({
+                "hour": hour,
+                "status": status
+            })
+
+        venue_data.append({
+            "id": v.id,
+            "name": v.name,
+            "price": float(v.price or 0),
+            "slots": slots
+        })
+
+    return ResponseModel(data={
+        "venues": venue_data,
+        "time_slots": time_slots
+    })
+
+
+# ==================== 教练相关 ====================
+
+@router.get("/coaches", response_model=ResponseModel)
+def get_coaches(
+    type: Optional[str] = None,
+    page: int = 1,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """获取教练列表"""
+    query = db.query(Coach).filter(Coach.is_deleted == False, Coach.status == 1)
+
+    if type:
+        query = query.filter(Coach.type == type)
+
+    coaches = query.offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for c in coaches:
+        skills = []
+        if c.skills:
+            try:
+                import json
+                skills = json.loads(c.skills)
+            except:
+                skills = c.skills.split(",") if c.skills else []
+
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "avatar": c.avatar,
+            "type": c.type,
+            "type_name": c.type_name,
+            "level": c.level,
+            "rating": c.rating,
+            "price": float(c.price or 0),
+            "introduction": c.introduction,
+            "skills": skills,
+            "total_courses": c.total_courses or 0
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/coaches/{coach_id}", response_model=ResponseModel)
+def get_coach_detail(coach_id: int, db: Session = Depends(get_db)):
+    """获取教练详情"""
+    coach = db.query(Coach).filter(
+        Coach.id == coach_id,
+        Coach.is_deleted == False
+    ).first()
+
+    if not coach:
+        raise HTTPException(status_code=404, detail="教练不存在")
+
+    skills = []
+    certificates = []
+    photos = []
+
+    try:
+        import json
+        if coach.skills:
+            skills = json.loads(coach.skills)
+        if coach.certificates:
+            certificates = json.loads(coach.certificates)
+        if coach.photos:
+            photos = json.loads(coach.photos)
+    except:
+        pass
+
+    return ResponseModel(data={
+        "id": coach.id,
+        "name": coach.name,
+        "avatar": coach.avatar,
+        "type": coach.type,
+        "type_name": coach.type_name,
+        "level": coach.level,
+        "rating": coach.rating,
+        "price": float(coach.price or 0),
+        "introduction": coach.introduction,
+        "skills": skills,
+        "certificates": certificates,
+        "photos": photos,
+        "total_courses": coach.total_courses or 0
+    })
+
+
+@router.get("/coaches/{coach_id}/schedule", response_model=ResponseModel)
+def get_coach_schedule(
+    coach_id: int,
+    date: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    """获取教练排期"""
+    from app.models import CoachSchedule
+
+    schedules = db.query(CoachSchedule).filter(
+        CoachSchedule.coach_id == coach_id,
+        CoachSchedule.date == date
+    ).all()
+
+    schedule_map = {s.time_slot: s.status for s in schedules}
+
+    # 获取已预约的时间段
+    reservations = db.query(Reservation).filter(
+        Reservation.coach_id == coach_id,
+        Reservation.reservation_date == date,
+        Reservation.status.in_(["pending", "confirmed", "in_progress"]),
+        Reservation.is_deleted == False
+    ).all()
+
+    reserved_hours = set()
+    for r in reservations:
+        start_hour = r.start_time.hour
+        end_hour = r.end_time.hour
+        for h in range(start_hour, end_hour):
+            reserved_hours.add(h)
+
+    slots = []
+    for hour in range(8, 22):
+        time_slot = f"{hour:02d}:00"
+        if hour in reserved_hours:
+            status = "reserved"
+        elif time_slot in schedule_map:
+            status = schedule_map[time_slot]
+        else:
+            status = "available"
+
+        slots.append({
+            "time": time_slot,
+            "label": f"{hour:02d}:00 - {hour+1:02d}:00",
+            "status": status
+        })
+
+    return ResponseModel(data=slots)
+
+
+# ==================== 预约相关 ====================
+
+@router.post("/reservations", response_model=ResponseModel)
+def create_reservation(
+    data: dict,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """创建预约"""
+    venue_id = data.get("venue_id")
+    coach_id = data.get("coach_id")
+    reservation_date = data.get("reservation_date")
+    start_time = data.get("start_time")
+    end_time = data.get("end_time")
+    duration = data.get("duration", 60)
+
+    # 计算费用
+    venue_price = 0
+    coach_price = 0
+
+    if venue_id:
+        venue = db.query(Venue).filter(Venue.id == venue_id).first()
+        if venue:
+            hours = duration / 60
+            venue_price = float(venue.price or 0) * hours
+
+    if coach_id:
+        coach = db.query(Coach).filter(Coach.id == coach_id).first()
+        if coach:
+            hours = duration / 60
+            coach_price = float(coach.price or 0) * hours
+
+    total_price = venue_price + coach_price
+
+    # 检查余额
+    if total_price > float(current_member.coin_balance or 0):
+        raise HTTPException(status_code=400, detail="金币余额不足")
+
+    # 生成预约编号
+    import uuid
+    reservation_no = f"R{datetime.now().strftime('%Y%m%d%H%M%S')}{str(uuid.uuid4())[:4].upper()}"
+
+    reservation = Reservation(
+        reservation_no=reservation_no,
+        member_id=current_member.id,
+        venue_id=venue_id,
+        coach_id=coach_id,
+        reservation_date=reservation_date,
+        start_time=start_time,
+        end_time=end_time,
+        duration=duration,
+        venue_price=venue_price,
+        coach_price=coach_price,
+        total_price=total_price,
+        status="pending"
+    )
+
+    db.add(reservation)
+
+    # 扣除金币
+    if total_price > 0:
+        current_member.coin_balance = float(current_member.coin_balance or 0) - total_price
+
+        coin_record = CoinRecord(
+            member_id=current_member.id,
+            type="expense",
+            amount=total_price,
+            balance=current_member.coin_balance,
+            source="预约消费",
+            remark=f"预约编号: {reservation_no}"
+        )
+        db.add(coin_record)
+
+    db.commit()
+
+    return ResponseModel(message="预约成功", data={"reservation_no": reservation_no})
+
+
+@router.get("/reservations", response_model=ResponseModel)
+def get_member_reservations(
+    status: Optional[str] = None,
+    page: int = 1,
+    limit: int = 10,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取会员预约列表"""
+    query = db.query(Reservation).filter(
+        Reservation.member_id == current_member.id,
+        Reservation.is_deleted == False
+    )
+
+    if status:
+        query = query.filter(Reservation.status == status)
+
+    reservations = query.order_by(Reservation.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for r in reservations:
+        result.append({
+            "id": r.id,
+            "reservation_no": r.reservation_no,
+            "venue_name": r.venue.name if r.venue else None,
+            "coach_name": r.coach.name if r.coach else None,
+            "reservation_date": str(r.reservation_date),
+            "start_time": str(r.start_time),
+            "end_time": str(r.end_time),
+            "total_price": float(r.total_price or 0),
+            "status": r.status
+        })
+
+    return ResponseModel(data=result)
+
+
+# ==================== 金币/积分记录 ====================
+
+@router.get("/coin-records", response_model=ResponseModel)
+def get_coin_records(
+    page: int = 1,
+    limit: int = 20,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取金币记录"""
+    records = db.query(CoinRecord).filter(
+        CoinRecord.member_id == current_member.id
+    ).order_by(CoinRecord.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for r in records:
+        result.append({
+            "id": r.id,
+            "type": r.type,
+            "amount": float(r.amount),
+            "balance": float(r.balance),
+            "source": r.source,
+            "remark": r.remark,
+            "created_at": str(r.created_at) if r.created_at else None
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/point-records", response_model=ResponseModel)
+def get_point_records(
+    page: int = 1,
+    limit: int = 20,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取积分记录"""
+    records = db.query(PointRecord).filter(
+        PointRecord.member_id == current_member.id
+    ).order_by(PointRecord.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for r in records:
+        result.append({
+            "id": r.id,
+            "type": r.type,
+            "amount": r.amount,
+            "balance": r.balance,
+            "source": r.source,
+            "remark": r.remark,
+            "created_at": str(r.created_at) if r.created_at else None
+        })
+
+    return ResponseModel(data=result)
+
+
+# ==================== 充值 ====================
+
+@router.post("/recharge", response_model=ResponseModel)
+def recharge(
+    data: dict,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """充值金币"""
+    amount = data.get("amount", 0)
+    package_id = data.get("package_id")
+
+    # 计算金币数量（1元=10金币）
+    coins = amount * 10
+    bonus = 0
+
+    # 套餐赠送
+    packages = {
+        1: (100, 0),
+        2: (500, 20),
+        3: (1000, 50),
+        4: (2000, 120),
+        5: (5000, 350),
+        6: (10000, 800)
+    }
+
+    if package_id and package_id in packages:
+        coins, bonus = packages[package_id]
+
+    total_coins = coins + bonus
+
+    # 更新余额
+    current_member.coin_balance = float(current_member.coin_balance or 0) + total_coins
+
+    # 记录
+    coin_record = CoinRecord(
+        member_id=current_member.id,
+        type="income",
+        amount=total_coins,
+        balance=current_member.coin_balance,
+        source="充值",
+        remark=f"充值{coins}金币" + (f"，赠送{bonus}金币" if bonus else "")
+    )
+    db.add(coin_record)
+    db.commit()
+
+    return ResponseModel(message="充值成功", data={
+        "coins": total_coins,
+        "balance": float(current_member.coin_balance)
+    })
+
+
+# ==================== 微信登录别名 ====================
+
+@router.post("/wx-login", response_model=ResponseModel)
+async def wx_login_alias(
+    data: WxLoginRequest,
+    db: Session = Depends(get_db)
+):
+    """微信登录（别名路由）"""
+    return await member_wx_login(data, db)
+
+
+# ==================== 点餐相关 ====================
+
+@router.get("/food-categories", response_model=ResponseModel)
+def get_food_categories(db: Session = Depends(get_db)):
+    """获取餐品分类"""
+    categories = db.query(FoodCategory).filter(
+        FoodCategory.is_active == True,
+        FoodCategory.is_deleted == False
+    ).order_by(FoodCategory.sort_order.asc()).all()
+
+    result = []
+    for c in categories:
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "icon": c.icon
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/foods", response_model=ResponseModel)
+def get_foods(
+    category_id: Optional[int] = None,
+    page: int = 1,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """获取餐品列表"""
+    query = db.query(FoodItem).filter(
+        FoodItem.is_active == True,
+        FoodItem.is_deleted == False
+    )
+
+    if category_id:
+        query = query.filter(FoodItem.category_id == category_id)
+
+    foods = query.order_by(FoodItem.sort_order.asc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for f in foods:
+        result.append({
+            "id": f.id,
+            "name": f.name,
+            "image": f.image,
+            "price": float(f.price or 0),
+            "original_price": float(f.original_price or 0) if f.original_price else float(f.price or 0),
+            "description": f.description,
+            "category_id": f.category_id,
+            "sales": f.sales or 0
+        })
+
+    return ResponseModel(data=result)
+
+
+# ==================== 餐饮订单相关 ====================
+
+class FoodOrderItemCreate(BaseModel):
+    """订单商品项"""
+    id: int
+    name: str
+    image: Optional[str] = None
+    price: float
+    quantity: int
+
+class FoodOrderCreate(BaseModel):
+    """创建餐饮订单请求"""
+    items: List[FoodOrderItemCreate]
+    remark: Optional[str] = None
+    table_no: Optional[str] = None
+    order_type: str = "immediate"  # immediate立即取餐/scheduled预约取餐
+    scheduled_date: Optional[str] = None  # 预约日期 YYYY-MM-DD
+    scheduled_time: Optional[str] = None  # 预约时间 HH:MM
+
+@router.post("/food-orders", response_model=ResponseModel)
+def create_food_order(
+    data: FoodOrderCreate,
+    db: Session = Depends(get_db),
+    current_member: Member = Depends(get_current_member)
+):
+    """创建餐饮订单（支持预约取餐）"""
+    if not data.items:
+        raise HTTPException(status_code=400, detail="购物车为空")
+
+    # 验证预约时间
+    if data.order_type == "scheduled":
+        if not data.scheduled_date or not data.scheduled_time:
+            raise HTTPException(status_code=400, detail="请选择预约取餐时间")
+
+    # 计算总金额
+    total_amount = sum(item.price * item.quantity for item in data.items)
+
+    # 生成订单号
+    import uuid
+    order_no = datetime.now().strftime("%Y%m%d%H%M%S") + str(uuid.uuid4().hex[:8]).upper()
+
+    # 创建订单
+    order = FoodOrder(
+        order_no=order_no,
+        member_id=current_member.id,
+        total_amount=total_amount,
+        pay_amount=total_amount,
+        status="paid",  # 金币支付，直接已支付状态
+        remark=data.remark,
+        table_no=data.table_no,
+        order_type=data.order_type,
+        scheduled_date=data.scheduled_date,
+        scheduled_time=data.scheduled_time,
+        pay_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+    db.add(order)
+    db.flush()
+
+    # 创建订单明细
+    for item in data.items:
+        order_item = FoodOrderItem(
+            order_id=order.id,
+            food_id=item.id,
+            food_name=item.name,
+            food_image=item.image,
+            price=item.price,
+            quantity=item.quantity,
+            subtotal=item.price * item.quantity
+        )
+        db.add(order_item)
+
+        # 更新商品销量
+        db.query(FoodItem).filter(FoodItem.id == item.id).update({
+            FoodItem.sales: FoodItem.sales + item.quantity
+        })
+
+    # 扣除金币
+    if current_member.coin_balance < total_amount:
+        raise HTTPException(status_code=400, detail="金币余额不足")
+
+    current_member.coin_balance -= int(total_amount)
+
+    # 记录金币消费
+    coin_record = CoinRecord(
+        member_id=current_member.id,
+        type="consume",
+        amount=-int(total_amount),
+        balance=current_member.coin_balance,
+        description=f"餐饮消费-订单{order_no}",
+        related_order_no=order_no
+    )
+    db.add(coin_record)
+
+    db.commit()
+
+    # 返回订单信息
+    scheduled_info = ""
+    if data.order_type == "scheduled":
+        scheduled_info = f"{data.scheduled_date} {data.scheduled_time}"
+
+    return ResponseModel(
+        message="下单成功",
+        data={
+            "order_id": order.id,
+            "order_no": order_no,
+            "total_amount": float(total_amount),
+            "order_type": data.order_type,
+            "scheduled_time": scheduled_info
+        }
+    )
+
+
+@router.get("/food-orders", response_model=ResponseModel)
+def get_food_orders(
+    page: int = 1,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_member: Member = Depends(get_current_member)
+):
+    """获取我的餐饮订单列表"""
+    query = db.query(FoodOrder).filter(FoodOrder.member_id == current_member.id)
+    orders = query.order_by(FoodOrder.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for o in orders:
+        # 获取订单商品
+        items = db.query(FoodOrderItem).filter(FoodOrderItem.order_id == o.id).all()
+        result.append({
+            "id": o.id,
+            "order_no": o.order_no,
+            "total_amount": float(o.total_amount),
+            "status": o.status,
+            "order_type": o.order_type or "immediate",
+            "scheduled_date": o.scheduled_date,
+            "scheduled_time": o.scheduled_time,
+            "created_at": str(o.created_at) if o.created_at else None,
+            "items": [{
+                "name": i.food_name,
+                "image": i.food_image,
+                "price": float(i.price),
+                "quantity": i.quantity
+            } for i in items]
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/food-orders/{order_id}", response_model=ResponseModel)
+def get_food_order_detail(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_member: Member = Depends(get_current_member)
+):
+    """获取餐饮订单详情"""
+    order = db.query(FoodOrder).filter(
+        FoodOrder.id == order_id,
+        FoodOrder.member_id == current_member.id
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+
+    items = db.query(FoodOrderItem).filter(FoodOrderItem.order_id == order.id).all()
+
+    return ResponseModel(data={
+        "id": order.id,
+        "order_no": order.order_no,
+        "total_amount": float(order.total_amount),
+        "pay_amount": float(order.pay_amount),
+        "status": order.status,
+        "remark": order.remark,
+        "table_no": order.table_no,
+        "order_type": order.order_type or "immediate",
+        "scheduled_date": order.scheduled_date,
+        "scheduled_time": order.scheduled_time,
+        "pay_time": order.pay_time,
+        "complete_time": order.complete_time,
+        "created_at": str(order.created_at) if order.created_at else None,
+        "items": [{
+            "id": i.id,
+            "food_id": i.food_id,
+            "name": i.food_name,
+            "image": i.food_image,
+            "price": float(i.price),
+            "quantity": i.quantity,
+            "subtotal": float(i.subtotal)
+        } for i in items]
+    })
+
+
+# ==================== 商城相关 ====================
+
+@router.get("/mall/categories", response_model=ResponseModel)
+def get_mall_categories(db: Session = Depends(get_db)):
+    """获取商城分类"""
+    categories = db.query(ProductCategory).filter(
+        ProductCategory.is_active == True,
+        ProductCategory.is_deleted == False
+    ).order_by(ProductCategory.sort_order.asc()).all()
+
+    result = []
+    for c in categories:
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "icon": c.icon
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/mall/goods", response_model=ResponseModel)
+def get_mall_goods(
+    category_id: Optional[int] = None,
+    page: int = 1,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """获取商城商品列表"""
+    query = db.query(Product).filter(
+        Product.is_active == True,
+        Product.is_deleted == False
+    )
+
+    if category_id:
+        query = query.filter(Product.category_id == category_id)
+
+    products = query.order_by(Product.sort_order.asc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for p in products:
+        result.append({
+            "id": p.id,
+            "name": p.name,
+            "image": p.image,
+            "price": p.points or 0,  # 积分商城用积分
+            "original_price": float(p.market_price or 0) if p.market_price else 0,
+            "description": p.description,
+            "category_id": p.category_id,
+            "stock": p.stock or 0,
+            "sales": p.sales or 0
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/mall/goods/{product_id}", response_model=ResponseModel)
+def get_mall_goods_detail(product_id: int, db: Session = Depends(get_db)):
+    """获取商品详情"""
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.is_deleted == False
+    ).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="商品不存在")
+
+    return ResponseModel(data={
+        "id": product.id,
+        "name": product.name,
+        "image": product.image,
+        "images": product.images.split(",") if hasattr(product, 'images') and product.images else [],
+        "price": product.points if hasattr(product, 'points') else 0,
+        "original_price": float(product.price or 0) if hasattr(product, 'price') else 0,
+        "description": product.description if hasattr(product, 'description') else None,
+        "content": product.content if hasattr(product, 'content') else None,
+        "stock": product.stock if hasattr(product, 'stock') else 0,
+        "sales": product.sales if hasattr(product, 'sales') else 0
+    })
+
+
+# ==================== 组队相关 ====================
+
+# 运动类型常量
+SPORT_TYPES = {
+    "golf": "高尔夫",
+    "pickleball": "匹克球",
+    "tennis": "网球",
+    "squash": "壁球"
+}
+
+@router.get("/team-categories", response_model=ResponseModel)
+def get_team_categories():
+    """获取组队分类列表"""
+    categories = [
+        {"value": "all", "label": "全部"},
+        {"value": "golf", "label": "高尔夫"},
+        {"value": "pickleball", "label": "匹克球"},
+        {"value": "tennis", "label": "网球"},
+        {"value": "squash", "label": "壁球"}
+    ]
+    return ResponseModel(data=categories)
+
+
+@router.get("/teams", response_model=ResponseModel)
+def get_teams(
+    sport_type: Optional[str] = None,
+    status: Optional[str] = "recruiting",
+    page: int = 1,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """获取组队列表"""
+    from app.models.team import Team, TeamMember
+
+    query = db.query(Team).filter(Team.is_deleted == False)
+
+    # 按运动类型筛选
+    if sport_type and sport_type != "all":
+        query = query.filter(Team.sport_type == sport_type)
+
+    # 按状态筛选
+    if status:
+        query = query.filter(Team.status == status)
+
+    # 按时间排序，最新的在前
+    teams = query.order_by(Team.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for t in teams:
+        # 获取发起人信息
+        creator_name = "匿名用户"
+        creator_avatar = None
+        if t.creator:
+            creator_name = t.creator.nickname or t.creator.phone or "匿名用户"
+            creator_avatar = t.creator.avatar
+
+        result.append({
+            "id": t.id,
+            "title": t.title,
+            "sport_type": t.sport_type,
+            "sport_type_name": SPORT_TYPES.get(t.sport_type, t.sport_type),
+            "description": t.description,
+            "activity_date": t.activity_date,
+            "activity_time": t.activity_time,
+            "location": t.location,
+            "max_members": t.max_members,
+            "current_members": t.current_members,
+            "fee_type": t.fee_type,
+            "fee_amount": t.fee_amount,
+            "status": t.status,
+            "creator_id": t.creator_id,
+            "creator_name": creator_name,
+            "creator_avatar": creator_avatar,
+            "created_at": str(t.created_at) if t.created_at else None
+        })
+
+    return ResponseModel(data=result)
+
+
+class TeamCreate(BaseModel):
+    """创建组队请求"""
+    title: str
+    sport_type: str
+    description: Optional[str] = None
+    activity_date: str
+    activity_time: str
+    location: Optional[str] = None
+    max_members: int = 4
+    fee_type: str = "AA"
+    fee_amount: int = 0
+
+
+@router.post("/teams", response_model=ResponseModel)
+def create_team(
+    data: TeamCreate,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """创建组队"""
+    from app.models.team import Team, TeamMember
+
+    # 验证运动类型
+    if data.sport_type not in SPORT_TYPES:
+        raise HTTPException(status_code=400, detail="无效的运动类型")
+
+    # 创建组队
+    team = Team(
+        creator_id=current_member.id,
+        title=data.title,
+        sport_type=data.sport_type,
+        description=data.description,
+        activity_date=data.activity_date,
+        activity_time=data.activity_time,
+        location=data.location,
+        max_members=data.max_members,
+        current_members=1,
+        fee_type=data.fee_type,
+        fee_amount=data.fee_amount,
+        status="recruiting"
+    )
+    db.add(team)
+    db.flush()
+
+    # 创建者自动加入
+    team_member = TeamMember(
+        team_id=team.id,
+        member_id=current_member.id,
+        status="joined"
+    )
+    db.add(team_member)
+    db.commit()
+
+    return ResponseModel(
+        message="创建成功",
+        data={"id": team.id}
+    )
+
+
+@router.get("/teams/{team_id}", response_model=ResponseModel)
+def get_team_detail(
+    team_id: int,
+    db: Session = Depends(get_db)
+):
+    """获取组队详情"""
+    from app.models.team import Team, TeamMember
+
+    team = db.query(Team).filter(
+        Team.id == team_id,
+        Team.is_deleted == False
+    ).first()
+
+    if not team:
+        raise HTTPException(status_code=404, detail="组队不存在")
+
+    # 获取发起人信息
+    creator_name = "匿名用户"
+    creator_avatar = None
+    if team.creator:
+        creator_name = team.creator.nickname or team.creator.phone or "匿名用户"
+        creator_avatar = team.creator.avatar
+
+    # 获取成员列表
+    members = db.query(TeamMember).filter(
+        TeamMember.team_id == team_id,
+        TeamMember.status == "joined"
+    ).all()
+
+    member_list = []
+    for m in members:
+        if m.member:
+            member_list.append({
+                "id": m.member.id,
+                "nickname": m.member.nickname or m.member.phone or "匿名用户",
+                "avatar": m.member.avatar,
+                "is_creator": m.member_id == team.creator_id
+            })
+
+    return ResponseModel(data={
+        "id": team.id,
+        "title": team.title,
+        "sport_type": team.sport_type,
+        "sport_type_name": SPORT_TYPES.get(team.sport_type, team.sport_type),
+        "description": team.description,
+        "activity_date": team.activity_date,
+        "activity_time": team.activity_time,
+        "location": team.location,
+        "max_members": team.max_members,
+        "current_members": team.current_members,
+        "fee_type": team.fee_type,
+        "fee_amount": team.fee_amount,
+        "status": team.status,
+        "creator_id": team.creator_id,
+        "creator_name": creator_name,
+        "creator_avatar": creator_avatar,
+        "members": member_list,
+        "created_at": str(team.created_at) if team.created_at else None
+    })
+
+
+@router.post("/teams/{team_id}/join", response_model=ResponseModel)
+def join_team(
+    team_id: int,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """加入组队"""
+    from app.models.team import Team, TeamMember
+
+    team = db.query(Team).filter(
+        Team.id == team_id,
+        Team.is_deleted == False
+    ).first()
+
+    if not team:
+        raise HTTPException(status_code=404, detail="组队不存在")
+
+    if team.status != "recruiting":
+        raise HTTPException(status_code=400, detail="该组队已停止招募")
+
+    if team.current_members >= team.max_members:
+        raise HTTPException(status_code=400, detail="该组队已满员")
+
+    # 检查是否已加入
+    existing = db.query(TeamMember).filter(
+        TeamMember.team_id == team_id,
+        TeamMember.member_id == current_member.id,
+        TeamMember.status == "joined"
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="您已加入该组队")
+
+    # 加入组队
+    team_member = TeamMember(
+        team_id=team_id,
+        member_id=current_member.id,
+        status="joined"
+    )
+    db.add(team_member)
+
+    # 更新人数
+    team.current_members += 1
+    if team.current_members >= team.max_members:
+        team.status = "full"
+
+    db.commit()
+
+    return ResponseModel(message="加入成功")
+
+
+@router.post("/teams/{team_id}/quit", response_model=ResponseModel)
+def quit_team(
+    team_id: int,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """退出组队"""
+    from app.models.team import Team, TeamMember
+
+    team = db.query(Team).filter(
+        Team.id == team_id,
+        Team.is_deleted == False
+    ).first()
+
+    if not team:
+        raise HTTPException(status_code=404, detail="组队不存在")
+
+    if team.creator_id == current_member.id:
+        raise HTTPException(status_code=400, detail="发起人不能退出，请解散组队")
+
+    # 查找成员记录
+    team_member = db.query(TeamMember).filter(
+        TeamMember.team_id == team_id,
+        TeamMember.member_id == current_member.id,
+        TeamMember.status == "joined"
+    ).first()
+
+    if not team_member:
+        raise HTTPException(status_code=400, detail="您未加入该组队")
+
+    # 退出
+    team_member.status = "quit"
+    team.current_members -= 1
+    if team.status == "full":
+        team.status = "recruiting"
+
+    db.commit()
+
+    return ResponseModel(message="退出成功")
+
+
+# ==================== 会员卡相关 ====================
+
+@router.get("/cards", response_model=ResponseModel)
+def get_member_cards(db: Session = Depends(get_db)):
+    """获取会员卡套餐列表"""
+    cards = db.query(MemberCard).filter(
+        MemberCard.is_active == True,
+        MemberCard.is_deleted == False
+    ).order_by(MemberCard.sort_order.asc()).all()
+
+    result = []
+    for card in cards:
+        # 获取会员等级信息
+        level_name = ""
+        if card.level:
+            level_name = card.level.name
+
+        result.append({
+            "id": card.id,
+            "name": card.name,
+            "level_name": level_name,
+            "original_price": float(card.original_price or 0),
+            "price": float(card.price or 0),
+            "duration_days": card.duration_days,
+            "bonus_coins": float(card.bonus_coins or 0),
+            "bonus_points": card.bonus_points or 0,
+            "cover_image": card.cover_image,
+            "description": card.description,
+            "is_recommended": card.is_recommended
+        })
+
+    return ResponseModel(data=result)
+
+
+# ==================== 优惠券相关 ====================
+
+@router.get("/coupons", response_model=ResponseModel)
+def get_member_coupons(
+    status: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取用户优惠券列表"""
+    query = db.query(MemberCoupon).filter(
+        MemberCoupon.member_id == current_member.id
+    )
+
+    if status:
+        query = query.filter(MemberCoupon.status == status)
+
+    coupons = query.order_by(MemberCoupon.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for coupon in coupons:
+        result.append({
+            "id": coupon.id,
+            "name": coupon.name,
+            "type": coupon.type,
+            "discount_value": float(coupon.discount_value or 0),
+            "min_amount": float(coupon.min_amount or 0),
+            "start_time": coupon.start_time.strftime("%Y-%m-%d %H:%M:%S") if coupon.start_time else None,
+            "end_time": coupon.end_time.strftime("%Y-%m-%d %H:%M:%S") if coupon.end_time else None,
+            "status": coupon.status
+        })
+
+    return ResponseModel(data=result)

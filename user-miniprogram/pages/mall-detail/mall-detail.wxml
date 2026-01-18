@@ -1,0 +1,6 @@
+<view class="container">
+  <image class="image" src="{{goods.image}}" mode="aspectFill"></image>
+  <view class="info"><text class="name">{{goods.name}}</text><text class="price">{{goods.points}}积分</text></view>
+  <view class="desc"><text>{{goods.description}}</text></view>
+  <button class="btn" bindtap="exchange">立即兑换</button>
+</view>

@@ -1,0 +1,104 @@
+<!-- 推广页面 -->
+<view class="page-container">
+  <!-- 推广类型切换 -->
+  <view class="tab-bar card">
+    <view class="tab-item {{currentTab === 'coach' ? 'active' : ''}}" bindtap="switchTab" data-tab="coach">
+      教练推广
+    </view>
+    <view class="tab-item {{currentTab === 'user' ? 'active' : ''}}" bindtap="switchTab" data-tab="user">
+      客户推广
+    </view>
+  </view>
+
+  <!-- 推广码 -->
+  <view class="qrcode-card card">
+    <view class="qrcode-title">{{currentTab === 'coach' ? '教练推广码' : '客户推广码'}}</view>
+    <view class="qrcode-wrapper">
+      <canvas canvas-id="promoteQrcode" class="qrcode-canvas"></canvas>
+    </view>
+    <view class="qrcode-actions">
+      <button class="action-btn" bindtap="saveQrcode">保存图片</button>
+      <button class="action-btn primary" bindtap="shareQrcode">分享推广</button>
+    </view>
+  </view>
+
+  <!-- 推广规则 -->
+  <view class="rules-card card">
+    <view class="rules-title">推广奖励规则</view>
+    <view class="rules-content" wx:if="{{currentTab === 'coach'}}">
+      <view class="rule-item">
+        <view class="rule-icon">🎁</view>
+        <view class="rule-text">
+          <view class="rule-name">邀请新教练注册</view>
+          <view class="rule-desc">成功邀请新教练加入，双方各获得 <text class="highlight">50金币</text></view>
+        </view>
+      </view>
+      <view class="rule-item">
+        <view class="rule-icon">💰</view>
+        <view class="rule-text">
+          <view class="rule-name">新教练产生收入</view>
+          <view class="rule-desc">新教练首次产生收入时，您额外获得 <text class="highlight">20积分</text></view>
+        </view>
+      </view>
+    </view>
+    <view class="rules-content" wx:else>
+      <view class="rule-item">
+        <view class="rule-icon">🎁</view>
+        <view class="rule-text">
+          <view class="rule-name">邀请新用户注册</view>
+          <view class="rule-desc">成功邀请新用户加入，双方各获得 <text class="highlight">30金币</text></view>
+        </view>
+      </view>
+      <view class="rule-item">
+        <view class="rule-icon">💰</view>
+        <view class="rule-text">
+          <view class="rule-name">新用户消费</view>
+          <view class="rule-desc">新用户首次消费时，您额外获得 <text class="highlight">10积分</text></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 推广统计 -->
+  <view class="stats-card card">
+    <view class="stats-title">推广统计</view>
+    <view class="stats-grid">
+      <view class="stats-item">
+        <view class="stats-value">{{promoteStats.invite_count || 0}}</view>
+        <view class="stats-label">邀请人数</view>
+      </view>
+      <view class="stats-item">
+        <view class="stats-value">{{promoteStats.success_count || 0}}</view>
+        <view class="stats-label">成功注册</view>
+      </view>
+      <view class="stats-item">
+        <view class="stats-value">{{promoteStats.reward_coin || 0}}</view>
+        <view class="stats-label">获得金币</view>
+      </view>
+      <view class="stats-item">
+        <view class="stats-value">{{promoteStats.reward_point || 0}}</view>
+        <view class="stats-label">获得积分</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 推广记录 -->
+  <view class="record-card card">
+    <view class="record-title">推广记录</view>
+    <view class="record-list" wx:if="{{promoteRecords.length > 0}}">
+      <view class="record-item" wx:for="{{promoteRecords}}" wx:key="id">
+        <view class="record-info">
+          <view class="record-name">{{item.invitee_name}}</view>
+          <view class="record-time">{{item.created_at}}</view>
+        </view>
+        <view class="record-status {{item.status}}">
+          {{item.status === 'registered' ? '已注册' : '已消费'}}
+        </view>
+        <view class="record-reward">+{{item.reward}}</view>
+      </view>
+    </view>
+    <view class="empty-tip" wx:else>
+      <text>暂无推广记录</text>
+    </view>
+  </view>
+</view>

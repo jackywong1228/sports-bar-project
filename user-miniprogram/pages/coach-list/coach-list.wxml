@@ -1,0 +1,68 @@
+<view class="container">
+  <!-- 类型筛选 -->
+  <view class="type-bar">
+    <view
+      class="type-item {{currentType === item.id ? 'active' : ''}}"
+      wx:for="{{coachTypes}}"
+      wx:key="id"
+      bindtap="switchType"
+      data-type="{{item.id}}"
+    >
+      {{item.name}}
+    </view>
+  </view>
+
+  <!-- 教练列表 -->
+  <view class="coach-list">
+    <view
+      class="coach-card"
+      wx:for="{{coaches}}"
+      wx:key="id"
+      bindtap="goToDetail"
+      data-id="{{item.id}}"
+    >
+      <image class="coach-avatar" src="{{item.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
+      <view class="coach-info">
+        <view class="coach-header">
+          <text class="coach-name">{{item.name}}</text>
+          <view class="coach-level">
+            <text class="level-star" wx:for="{{item.level || 5}}" wx:key="*this" wx:for-item="star">★</text>
+          </view>
+        </view>
+        <view class="coach-tags">
+          <text class="tag">{{item.type_name || '教练'}}</text>
+          <text class="tag" wx:for="{{item.skills}}" wx:key="*this" wx:for-item="skill">{{skill}}</text>
+        </view>
+        <view class="coach-intro" wx:if="{{item.introduction}}">
+          {{item.introduction}}
+        </view>
+        <view class="coach-bottom">
+          <view class="coach-stats">
+            <text class="stat-item">课程 {{item.total_courses || 0}}</text>
+            <text class="stat-item">评分 {{item.rating || 5.0}}</text>
+          </view>
+          <view class="coach-price">
+            <text class="price-value">{{item.price || 0}}</text>
+            <text class="price-unit">金币/时</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && coaches.length === 0}}">
+    <image class="empty-icon" src="/assets/images/empty.png" mode="aspectFit"></image>
+    <text class="empty-text">暂无教练数据</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && coaches.length > 0}}">
+    <text>- 没有更多了 -</text>
+  </view>
+</view>

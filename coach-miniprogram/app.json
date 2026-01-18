@@ -1,0 +1,63 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/schedule/schedule",
+    "pages/code/code",
+    "pages/profile/profile",
+    "pages/login/login",
+    "pages/reservation-detail/reservation-detail",
+    "pages/income/income",
+    "pages/wallet/wallet",
+    "pages/orders/orders",
+    "pages/promote/promote"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#1890ff",
+    "navigationBarTitleText": "教练端",
+    "navigationBarTextStyle": "white"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1890ff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "预约",
+        "iconPath": "assets/icons/calendar.png",
+        "selectedIconPath": "assets/icons/calendar-active.png"
+      },
+      {
+        "pagePath": "pages/schedule/schedule",
+        "text": "排期",
+        "iconPath": "assets/icons/schedule.png",
+        "selectedIconPath": "assets/icons/schedule-active.png"
+      },
+      {
+        "pagePath": "pages/code/code",
+        "text": "教练码",
+        "iconPath": "assets/icons/qrcode.png",
+        "selectedIconPath": "assets/icons/qrcode-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/icons/user.png",
+        "selectedIconPath": "assets/icons/user-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "requiredPrivateInfos": [
+    "chooseLocation",
+    "getLocation"
+  ],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于获取您的位置，提供场馆导航服务"
+    }
+  }
+}

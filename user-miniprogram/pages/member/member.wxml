@@ -1,0 +1,10 @@
+<view class="container">
+  <view class="header"><text class="level">{{memberInfo.level_name || '普通会员'}}</text><text class="expire">{{memberInfo.member_expire_time || '永久有效'}}</text></view>
+  <view class="section"><view class="title">会员卡套餐</view>
+    <view class="card" wx:for="{{cards}}" wx:key="id" bindtap="buyCard" data-id="{{item.id}}">
+      <text class="card-name">{{item.name}}</text>
+      <text class="card-price">¥{{item.price}}</text>
+    </view>
+    <view class="empty" wx:if="{{cards.length === 0}}"><text>暂无套餐</text></view>
+  </view>
+</view>

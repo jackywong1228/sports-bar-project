@@ -1,0 +1,79 @@
+<view class="container">
+  <!-- 订单详情 -->
+  <view class="section">
+    <view class="title">订单详情</view>
+    <view class="item" wx:for="{{cart}}" wx:key="id">
+      <text class="item-name">{{item.name}} x{{item.quantity}}</text>
+      <text class="item-price">{{item.price * item.quantity}}金币</text>
+    </view>
+  </view>
+
+  <!-- 取餐方式 -->
+  <view class="section">
+    <view class="title">取餐方式</view>
+    <radio-group class="order-type-group" bindchange="onOrderTypeChange">
+      <label class="order-type-item {{orderType === 'immediate' ? 'active' : ''}}">
+        <radio value="immediate" checked="{{orderType === 'immediate'}}" color="#FF6B35" />
+        <view class="type-content">
+          <text class="type-name">立即取餐</text>
+          <text class="type-desc">下单后尽快制作</text>
+        </view>
+      </label>
+      <label class="order-type-item {{orderType === 'scheduled' ? 'active' : ''}}">
+        <radio value="scheduled" checked="{{orderType === 'scheduled'}}" color="#FF6B35" />
+        <view class="type-content">
+          <text class="type-name">预约取餐</text>
+          <text class="type-desc">提前点餐，到店即取</text>
+        </view>
+      </label>
+    </radio-group>
+  </view>
+
+  <!-- 预约时间选择（仅预约取餐时显示） -->
+  <view class="section" wx:if="{{orderType === 'scheduled'}}">
+    <view class="title">预约取餐时间</view>
+    <view class="schedule-picker">
+      <view class="picker-row">
+        <text class="picker-label">取餐日期</text>
+        <picker mode="selector" range="{{dateOptions}}" range-key="label" value="{{selectedDateIndex}}" bindchange="onDateChange">
+          <view class="picker-value">
+            {{dateOptions[selectedDateIndex].label}}
+            <text class="arrow">></text>
+          </view>
+        </picker>
+      </view>
+      <view class="picker-row">
+        <text class="picker-label">取餐时间</text>
+        <picker mode="selector" range="{{timeOptions}}" range-key="label" value="{{selectedTimeIndex}}" bindchange="onTimeChange">
+          <view class="picker-value">
+            {{timeOptions[selectedTimeIndex].label}}
+            <text class="arrow">></text>
+          </view>
+        </picker>
+      </view>
+    </view>
+    <view class="schedule-tips">
+      <text class="tips-icon">!</text>
+      <text class="tips-text">请在预约时间前10分钟到店取餐</text>
+    </view>
+  </view>
+
+  <!-- 备注 -->
+  <view class="section">
+    <view class="title">备注</view>
+    <textarea class="remark" placeholder="口味偏好、过敏信息等（选填）" bindinput="onRemarkInput" value="{{remark}}"></textarea>
+  </view>
+
+  <!-- 底部结算栏 -->
+  <view class="bottom-bar">
+    <view class="total-info">
+      <view class="total">合计: <text class="price">{{total}}金币</text></view>
+      <view class="schedule-time" wx:if="{{orderType === 'scheduled'}}">
+        {{dateOptions[selectedDateIndex].label}} {{timeOptions[selectedTimeIndex].label}} 取餐
+      </view>
+    </view>
+    <button class="btn" bindtap="submitOrder" loading="{{submitting}}" disabled="{{submitting}}">
+      {{orderType === 'scheduled' ? '预约下单' : '立即下单'}}
+    </button>
+  </view>
+</view>

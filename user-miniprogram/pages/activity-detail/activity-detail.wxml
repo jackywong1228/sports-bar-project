@@ -1,0 +1,82 @@
+<view class="container" wx:if="{{!loading}}">
+  <!-- 活动图片 -->
+  <image class="activity-image" src="{{activity.image || '/assets/images/activity-default.jpg'}}" mode="aspectFill"></image>
+
+  <!-- 基本信息 -->
+  <view class="info-card">
+    <view class="activity-status {{activity.statusInfo.class}}">{{activity.statusInfo.text}}</view>
+    <text class="activity-title">{{activity.title}}</text>
+
+    <view class="activity-price">
+      <text class="price" wx:if="{{activity.price > 0}}">¥{{activity.price}}</text>
+      <text class="free" wx:else>免费报名</text>
+    </view>
+
+    <view class="info-list">
+      <view class="info-item">
+        <text class="info-icon">📅</text>
+        <text class="info-label">活动时间</text>
+        <text class="info-value">{{activity.start_date}} {{activity.start_time}}</text>
+      </view>
+      <view class="info-item" wx:if="{{activity.location}}">
+        <text class="info-icon">📍</text>
+        <text class="info-label">活动地点</text>
+        <text class="info-value">{{activity.location}}</text>
+      </view>
+      <view class="info-item">
+        <text class="info-icon">👥</text>
+        <text class="info-label">报名人数</text>
+        <text class="info-value">{{activity.enrolled || 0}}/{{activity.max_participants || '不限'}}</text>
+      </view>
+      <view class="info-item" wx:if="{{activity.organizer}}">
+        <text class="info-icon">🏢</text>
+        <text class="info-label">主办方</text>
+        <text class="info-value">{{activity.organizer}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 活动详情 -->
+  <view class="detail-card">
+    <view class="card-title">活动详情</view>
+    <view class="detail-content">
+      <text>{{activity.description || '暂无详情'}}</text>
+    </view>
+  </view>
+
+  <!-- 报名须知 -->
+  <view class="detail-card" wx:if="{{activity.notice}}">
+    <view class="card-title">报名须知</view>
+    <view class="notice-content">
+      <text>{{activity.notice}}</text>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="bar-info">
+      <view class="progress-info">
+        <view class="progress-bar">
+          <view class="progress-fill" style="width: {{activity.max_participants ? (activity.enrolled / activity.max_participants * 100) : 0}}%"></view>
+        </view>
+        <text class="progress-text">已报名 {{activity.enrolled || 0}} 人</text>
+      </view>
+    </view>
+    <button
+      class="btn-enroll {{isEnrolled ? 'enrolled' : ''}}"
+      bindtap="{{isEnrolled ? 'cancelEnroll' : 'enrollActivity'}}"
+      loading="{{submitting}}"
+      disabled="{{submitting || (!isEnrolled && !activity.statusInfo.canEnroll)}}"
+    >
+      {{isEnrolled ? '取消报名' : (activity.statusInfo.canEnroll ? '立即报名' : '活动已结束')}}
+    </button>
+  </view>
+
+  <!-- 底部占位 -->
+  <view class="bottom-placeholder"></view>
+</view>
+
+<!-- 加载中 -->
+<view class="loading-container" wx:if="{{loading}}">
+  <text class="loading-text">加载中...</text>
+</view>

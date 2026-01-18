@@ -1,0 +1,12 @@
+<view class="container">
+  <view class="goods-grid">
+    <view class="goods-item" wx:for="{{goods}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+      <image class="goods-image" src="{{item.image}}" mode="aspectFill"></image>
+      <view class="goods-info">
+        <text class="goods-name">{{item.name}}</text>
+        <text class="goods-price">{{item.points}}积分</text>
+      </view>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{!loading && goods.length === 0}}"><text>暂无商品</text></view>
+</view>

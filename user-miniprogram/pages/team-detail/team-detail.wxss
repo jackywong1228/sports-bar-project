@@ -1,0 +1,266 @@
+.container {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: 140rpx;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400rpx;
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* 运动类型头部 */
+.sport-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 40rpx 30rpx;
+  color: #fff;
+}
+
+.sport-header.golf {
+  background: linear-gradient(135deg, #43cea2, #185a9d);
+}
+
+.sport-header.pickleball {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+}
+
+.sport-header.tennis {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+.sport-header.squash {
+  background: linear-gradient(135deg, #fa709a, #fee140);
+}
+
+.sport-name {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.team-status-badge {
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 信息卡片 */
+.info-card {
+  background: #fff;
+  margin: 20rpx;
+  border-radius: 16rpx;
+  padding: 30rpx;
+}
+
+.team-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 30rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  font-size: 28rpx;
+}
+
+.info-icon {
+  margin-right: 12rpx;
+}
+
+.info-label {
+  color: #999;
+  width: 140rpx;
+}
+
+.info-value {
+  color: #333;
+  flex: 1;
+}
+
+.info-value.highlight {
+  color: #FF6B35;
+  font-weight: 500;
+}
+
+/* 描述卡片 */
+.desc-card {
+  background: #fff;
+  margin: 0 20rpx 20rpx;
+  border-radius: 16rpx;
+  padding: 30rpx;
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.desc-content {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.8;
+}
+
+/* 发起人卡片 */
+.creator-card {
+  background: #fff;
+  margin: 0 20rpx 20rpx;
+  border-radius: 16rpx;
+  padding: 30rpx;
+}
+
+.creator-info {
+  display: flex;
+  align-items: center;
+}
+
+.creator-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #f5f5f5;
+}
+
+.creator-detail {
+  flex: 1;
+  margin-left: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.creator-name {
+  font-size: 30rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.creator-tag {
+  font-size: 22rpx;
+  color: #FF6B35;
+  background: #FFF5F0;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.contact-btn {
+  padding: 12rpx 24rpx;
+  background: #FF6B35;
+  color: #fff;
+  font-size: 26rpx;
+  border-radius: 30rpx;
+}
+
+/* 成员卡片 */
+.members-card {
+  background: #fff;
+  margin: 0 20rpx 20rpx;
+  border-radius: 16rpx;
+  padding: 30rpx;
+}
+
+.members-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30rpx;
+}
+
+.member-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.member-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #f5f5f5;
+}
+
+.member-name {
+  font-size: 24rpx;
+  color: #666;
+  max-width: 100rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 底部操作栏 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  padding: 20rpx 30rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.05);
+  gap: 20rpx;
+}
+
+.btn-share {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #f5f5f5;
+  color: #666;
+  font-size: 30rpx;
+  border-radius: 44rpx;
+  border: none;
+}
+
+.btn-join {
+  flex: 1.5;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: linear-gradient(135deg, #FF6B35, #ff8f65);
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 500;
+  border-radius: 44rpx;
+  border: none;
+}
+
+.btn-quit {
+  flex: 1.5;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #fff;
+  color: #ff4d4f;
+  font-size: 30rpx;
+  border: 2rpx solid #ff4d4f;
+  border-radius: 44rpx;
+}
+
+.btn-disabled {
+  flex: 1.5;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #ccc;
+  color: #fff;
+  font-size: 30rpx;
+  border-radius: 44rpx;
+  border: none;
+}

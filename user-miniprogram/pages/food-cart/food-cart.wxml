@@ -1,0 +1,21 @@
+<view class="container">
+  <view class="cart-list">
+    <view class="cart-item" wx:for="{{cart}}" wx:key="id">
+      <image class="item-image" src="{{item.image}}" mode="aspectFill"></image>
+      <view class="item-info">
+        <text class="item-name">{{item.name}}</text>
+        <text class="item-price">¥{{item.price}}</text>
+      </view>
+      <view class="item-quantity">
+        <view class="qty-btn" catchtap="updateQuantity" data-id="{{item.id}}" data-action="minus">-</view>
+        <text class="qty-num">{{item.quantity}}</text>
+        <view class="qty-btn" catchtap="updateQuantity" data-id="{{item.id}}" data-action="add">+</view>
+      </view>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{cart.length === 0}}"><text>购物车是空的</text></view>
+  <view class="bottom-bar" wx:if="{{cart.length > 0}}">
+    <view class="total">合计: <text class="price">¥{{total}}</text></view>
+    <button class="btn-submit" bindtap="submitOrder">提交订单</button>
+  </view>
+</view>

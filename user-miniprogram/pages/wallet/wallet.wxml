@@ -1,0 +1,58 @@
+<view class="container">
+  <!-- 余额卡片 -->
+  <view class="balance-card">
+    <view class="balance-tabs">
+      <view class="tab {{currentTab === 'coin' ? 'active' : ''}}" bindtap="switchTab" data-tab="coin">
+        金币
+      </view>
+      <view class="tab {{currentTab === 'point' ? 'active' : ''}}" bindtap="switchTab" data-tab="point">
+        积分
+      </view>
+    </view>
+    <view class="balance-content">
+      <view class="balance-row" wx:if="{{currentTab === 'coin'}}">
+        <text class="balance-value">{{memberInfo.coin_balance || 0}}</text>
+        <text class="balance-unit">金币</text>
+      </view>
+      <view class="balance-row" wx:else>
+        <text class="balance-value">{{memberInfo.point_balance || 0}}</text>
+        <text class="balance-unit">积分</text>
+      </view>
+      <button class="btn-recharge" bindtap="goToRecharge" wx:if="{{currentTab === 'coin'}}">充值</button>
+    </view>
+  </view>
+
+  <!-- 记录标题 -->
+  <view class="section-header">
+    <text class="section-title">{{currentTab === 'coin' ? '金币' : '积分'}}明细</text>
+  </view>
+
+  <!-- 记录列表 -->
+  <view class="record-list">
+    <view class="record-item" wx:for="{{records}}" wx:key="id">
+      <view class="record-info">
+        <text class="record-source">{{item.source}}</text>
+        <text class="record-time">{{item.created_at}}</text>
+      </view>
+      <view class="record-amount {{item.type === 'income' ? 'income' : 'expense'}}">
+        {{item.type === 'income' ? '+' : '-'}}{{item.amount}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && records.length === 0}}">
+    <image class="empty-icon" src="/assets/images/empty.png" mode="aspectFit"></image>
+    <text class="empty-text">暂无记录</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && records.length > 0}}">
+    <text>- 没有更多了 -</text>
+  </view>
+</view>

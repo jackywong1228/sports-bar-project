@@ -1,0 +1,61 @@
+<view class="container">
+  <!-- 标签栏 -->
+  <view class="tab-bar">
+    <view
+      class="tab-item {{currentTab === item.id ? 'active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="id"
+      bindtap="switchTab"
+      data-tab="{{item.id}}"
+    >
+      {{item.name}}
+    </view>
+  </view>
+
+  <!-- 订单列表 -->
+  <view class="order-list">
+    <view class="order-card" wx:for="{{orders}}" wx:key="id">
+      <view class="order-header">
+        <text class="order-no">订单号: {{item.order_no}}</text>
+        <text class="order-status {{item.statusInfo.class}}">{{item.statusInfo.text}}</text>
+      </view>
+
+      <view class="order-content" bindtap="goToDetail" data-id="{{item.id}}">
+        <image class="order-image" src="{{item.image || '/assets/images/order-default.png'}}" mode="aspectFill"></image>
+        <view class="order-info">
+          <text class="order-title">{{item.title}}</text>
+          <text class="order-desc">{{item.description}}</text>
+          <view class="order-price">
+            <text class="price-symbol">¥</text>
+            <text class="price-value">{{item.total_price}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="order-footer">
+        <text class="order-time">{{item.created_at}}</text>
+        <view class="order-actions">
+          <button class="btn-action" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">取消</button>
+          <button class="btn-action primary" wx:if="{{item.status === 'pending'}}" catchtap="payOrder" data-id="{{item.id}}">支付</button>
+          <button class="btn-action" wx:if="{{item.status === 'completed'}}" catchtap="goToDetail" data-id="{{item.id}}">评价</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && orders.length === 0}}">
+    <image class="empty-icon" src="/assets/images/empty.png" mode="aspectFit"></image>
+    <text class="empty-text">暂无订单</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && orders.length > 0}}">
+    <text>- 没有更多了 -</text>
+  </view>
+</view>

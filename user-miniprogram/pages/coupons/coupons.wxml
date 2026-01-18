@@ -1,0 +1,7 @@
+<view class="container">
+  <view class="coupon" wx:for="{{coupons}}" wx:key="id">
+    <view class="coupon-left"><text class="value">¥{{item.value}}</text><text class="condition">满{{item.min_amount}}可用</text></view>
+    <view class="coupon-right"><text class="name">{{item.name}}</text><text class="expire">{{item.expire_time}}到期</text></view>
+  </view>
+  <view class="empty" wx:if="{{!loading && coupons.length === 0}}"><text>暂无优惠券</text></view>
+</view>

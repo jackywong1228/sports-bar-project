@@ -1,0 +1,37 @@
+<view class="container">
+  <view class="section">
+    <view class="section-title">选择充值套餐</view>
+    <view class="package-grid">
+      <view
+        class="package-item {{selectedPackage === item.id ? 'active' : ''}}"
+        wx:for="{{packages}}"
+        wx:key="id"
+        bindtap="selectPackage"
+        data-id="{{item.id}}"
+      >
+        <view class="package-coins">{{item.coins}} 金币</view>
+        <view class="package-bonus" wx:if="{{item.bonus > 0}}">+{{item.bonus}} 赠送</view>
+        <view class="package-price">¥{{item.amount}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="notice">
+    <view class="notice-title">充值说明</view>
+    <view class="notice-item">1. 金币充值后不可退款</view>
+    <view class="notice-item">2. 金币可用于场馆预约、教练预约、在线点餐等消费</view>
+    <view class="notice-item">3. 充值套餐金额越大，赠送金币越多</view>
+    <view class="notice-item">4. 如有问题，请联系客服</view>
+  </view>
+
+  <view class="bottom-bar">
+    <button
+      class="btn-recharge"
+      bindtap="confirmRecharge"
+      loading="{{loading}}"
+      disabled="{{loading || !selectedPackage}}"
+    >
+      {{selectedPackage ? '确认充值' : '请选择套餐'}}
+    </button>
+  </view>
+</view>

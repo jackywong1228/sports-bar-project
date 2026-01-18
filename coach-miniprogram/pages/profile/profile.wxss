@@ -1,0 +1,192 @@
+/* 页面容器 */
+.page-container {
+  min-height: 100vh;
+  padding: 20rpx;
+  padding-bottom: 40rpx;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #1890ff 0%, #096dd9 240rpx, #f5f5f5 240rpx);
+}
+
+/* 用户信息卡片 */
+.profile-card {
+  margin-bottom: 20rpx;
+}
+
+.profile-header {
+  padding: 10rpx 0;
+}
+
+.profile-header .avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+  border: 4rpx solid #fff;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.profile-info {
+  justify-content: center;
+}
+
+.profile-name {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.profile-type {
+  font-size: 26rpx;
+  color: #1890ff;
+  margin-bottom: 4rpx;
+}
+
+.profile-id {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.profile-rating {
+  text-align: center;
+  padding: 16rpx 24rpx;
+  background: linear-gradient(135deg, #fff7e6, #ffe7ba);
+  border-radius: 12rpx;
+}
+
+.rating-value {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #fa8c16;
+}
+
+.rating-label {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.profile-tags {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.profile-tags .tag {
+  padding: 8rpx 20rpx;
+  background: #e6f7ff;
+  color: #1890ff;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  margin-right: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+/* 资产卡片 */
+.asset-card {
+  margin-bottom: 20rpx;
+}
+
+.asset-grid {
+  display: flex;
+}
+
+.asset-item {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  position: relative;
+}
+
+.asset-item::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rpx;
+  height: 60rpx;
+  background: #f0f0f0;
+}
+
+.asset-item:last-child::after {
+  display: none;
+}
+
+.asset-value {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.asset-label {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 菜单卡片 */
+.menu-card {
+  margin-bottom: 20rpx;
+}
+
+.menu-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #999;
+  margin-bottom: 12rpx;
+}
+
+.menu-group {
+  margin: 0 -24rpx;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 24rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-icon {
+  width: 48rpx;
+  font-size: 36rpx;
+  margin-right: 20rpx;
+}
+
+.menu-text {
+  flex: 1;
+  font-size: 30rpx;
+  color: #333;
+}
+
+.menu-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-right: 16rpx;
+}
+
+.menu-arrow {
+  color: #ccc;
+  font-size: 24rpx;
+}
+
+/* 退出登录 */
+.logout-btn {
+  margin: 40rpx 20rpx;
+  padding: 28rpx 0;
+  text-align: center;
+  background: #fff;
+  border-radius: 16rpx;
+  color: #f5222d;
+  font-size: 30rpx;
+}
+
+.logout-btn:active {
+  background: #fff1f0;
+}

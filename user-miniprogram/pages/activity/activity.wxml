@@ -1,0 +1,69 @@
+<view class="container">
+  <!-- 标签栏 -->
+  <view class="tab-bar">
+    <view
+      class="tab-item {{currentTab === item.id ? 'active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="id"
+      bindtap="switchTab"
+      data-tab="{{item.id}}"
+    >
+      {{item.name}}
+    </view>
+  </view>
+
+  <!-- 活动列表 -->
+  <view class="activity-list">
+    <view
+      class="activity-card"
+      wx:for="{{activities}}"
+      wx:key="id"
+      bindtap="goToDetail"
+      data-id="{{item.id}}"
+    >
+      <image class="activity-image" src="{{item.image || '/assets/images/activity-default.jpg'}}" mode="aspectFill"></image>
+      <view class="activity-status {{item.statusInfo.class}}">{{item.statusInfo.text}}</view>
+      <view class="activity-content">
+        <text class="activity-title">{{item.title}}</text>
+        <view class="activity-info">
+          <view class="info-item">
+            <text class="info-icon">📅</text>
+            <text>{{item.start_date}} {{item.start_time}}</text>
+          </view>
+          <view class="info-item" wx:if="{{item.location}}">
+            <text class="info-icon">📍</text>
+            <text>{{item.location}}</text>
+          </view>
+        </view>
+        <view class="activity-bottom">
+          <view class="activity-price">
+            <text class="price" wx:if="{{item.price > 0}}">¥{{item.price}}</text>
+            <text class="free" wx:else>免费</text>
+          </view>
+          <view class="activity-progress">
+            <view class="progress-bar">
+              <view class="progress-fill" style="width: {{item.max_participants ? (item.enrolled / item.max_participants * 100) : 0}}%"></view>
+            </view>
+            <text class="progress-text">{{item.enrolled || 0}}/{{item.max_participants || '不限'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && activities.length === 0}}">
+    <image class="empty-icon" src="/assets/images/empty.png" mode="aspectFit"></image>
+    <text class="empty-text">暂无活动</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && activities.length > 0}}">
+    <text>- 没有更多了 -</text>
+  </view>
+</view>

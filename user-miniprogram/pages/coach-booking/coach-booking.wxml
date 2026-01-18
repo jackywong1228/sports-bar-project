@@ -1,0 +1,90 @@
+<view class="container">
+  <!-- 教练信息 -->
+  <view class="coach-card">
+    <image class="coach-avatar" src="{{coach.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
+    <view class="coach-info">
+      <text class="coach-name">{{coach.name}}</text>
+      <text class="coach-type">{{coach.type_name || '专业教练'}}</text>
+      <view class="coach-price">
+        <text class="price-value">{{coach.price || 0}}</text>
+        <text class="price-unit">金币/小时</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 选择场馆 -->
+  <view class="section">
+    <view class="section-title">选择场馆</view>
+    <scroll-view class="venue-scroll" scroll-x enable-flex>
+      <view
+        class="venue-item {{selectedVenue === item.id ? 'active' : ''}}"
+        wx:for="{{venues}}"
+        wx:key="id"
+        bindtap="selectVenue"
+        data-id="{{item.id}}"
+      >
+        <text class="venue-name">{{item.name}}</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 日期选择 -->
+  <view class="section">
+    <view class="section-title">选择日期</view>
+    <scroll-view class="date-scroll" scroll-x enable-flex>
+      <view
+        class="date-item {{selectedDate === item.date ? 'active' : ''}}"
+        wx:for="{{dates}}"
+        wx:key="date"
+        bindtap="selectDate"
+        data-date="{{item.date}}"
+      >
+        <text class="date-week">{{item.weekDay}}</text>
+        <text class="date-day">{{item.day}}</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 时间选择 -->
+  <view class="section">
+    <view class="section-title">选择时间段（可多选）</view>
+    <view class="time-grid">
+      <view
+        class="time-item {{item.status !== 'available' ? 'disabled' : ''}} {{selectedSlots.indexOf(item.time) > -1 ? 'selected' : ''}}"
+        wx:for="{{timeSlots}}"
+        wx:key="time"
+        bindtap="selectSlot"
+        data-time="{{item.time}}"
+      >
+        <text class="time-text">{{item.label}}</text>
+        <text class="time-status">{{item.statusText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="booking-summary">
+      <view class="summary-row">
+        <text class="summary-label">已选：</text>
+        <text class="summary-value">{{getDuration()}}小时</text>
+        <text class="summary-time" wx:if="{{selectedSlots.length > 0}}">（{{getTimeRange()}}）</text>
+      </view>
+      <view class="summary-row">
+        <text class="summary-label">合计：</text>
+        <text class="summary-price">{{getTotalPrice()}} 金币</text>
+      </view>
+    </view>
+    <button
+      class="btn-submit"
+      bindtap="submitBooking"
+      loading="{{submitting}}"
+      disabled="{{submitting || selectedSlots.length === 0}}"
+    >
+      确认预约
+    </button>
+  </view>
+
+  <!-- 底部占位 -->
+  <view class="bottom-placeholder"></view>
+</view>

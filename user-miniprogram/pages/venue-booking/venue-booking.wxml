@@ -1,0 +1,131 @@
+<wxs src="./venue-booking.wxs" module="utils" />
+<view class="container">
+  <!-- 场馆类型选择 -->
+  <scroll-view class="type-tabs" scroll-x enable-flex>
+    <view
+      class="type-tab {{currentTypeId === item.id ? 'active' : ''}}"
+      wx:for="{{venueTypes}}"
+      wx:key="id"
+      bindtap="selectType"
+      data-id="{{item.id}}"
+    >
+      <text>{{item.name}}</text>
+      <text class="venue-count" wx:if="{{item.venue_count}}">({{item.venue_count}})</text>
+    </view>
+  </scroll-view>
+
+  <!-- 日期选择 -->
+  <scroll-view class="date-scroll" scroll-x enable-flex>
+    <view
+      class="date-item {{selectedDate === item.date ? 'active' : ''}}"
+      wx:for="{{dates}}"
+      wx:key="date"
+      bindtap="selectDate"
+      data-date="{{item.date}}"
+    >
+      <text class="date-week">{{item.weekDay}}</text>
+      <text class="date-day">{{item.day}}</text>
+    </view>
+  </scroll-view>
+
+  <!-- 预约日历 -->
+  <view class="calendar-wrapper" wx:if="{{!loading && calendarData.venues.length > 0}}">
+    <!-- 表头：场馆名称 -->
+    <view class="calendar-header">
+      <view class="time-column-header">时间</view>
+      <scroll-view class="venues-header-scroll" scroll-x scroll-with-animation scroll-left="{{scrollLeft}}" bindscroll="onCalendarScroll">
+        <view class="venues-header">
+          <view class="venue-header-item" wx:for="{{calendarData.venues}}" wx:key="id">
+            <text class="venue-name">{{item.name}}</text>
+            <text class="venue-price">¥{{item.price}}/时</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 时间段和预约格子 -->
+    <scroll-view class="calendar-body" scroll-y style="height: {{calendarHeight}}px;">
+      <view class="calendar-row" wx:for="{{calendarData.time_slots}}" wx:key="hour" wx:for-item="timeSlot" wx:for-index="slotIndex">
+        <!-- 时间列 -->
+        <view class="time-column">{{timeSlot.label}}</view>
+        <!-- 场馆预约格子 -->
+        <scroll-view class="slots-scroll" scroll-x scroll-with-animation scroll-left="{{scrollLeft}}">
+          <view class="slots-row">
+            <view
+              class="slot-cell {{venue.slots[slotIndex].status}} {{utils.isSlotSelected(selectedVenueId, selectedSlots, venue.id, timeSlot.hour) ? 'selected' : ''}}"
+              wx:for="{{calendarData.venues}}"
+              wx:key="id"
+              wx:for-item="venue"
+              wx:for-index="venueIndex"
+              bindtap="selectSlot"
+              data-venue-id="{{venue.id}}"
+              data-venue-name="{{venue.name}}"
+              data-venue-price="{{venue.price}}"
+              data-hour="{{timeSlot.hour}}"
+            >
+              <text wx:if="{{venue.slots[slotIndex].status === 'reserved'}}">已约</text>
+              <text wx:else>可约</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && calendarData.venues.length === 0}}">
+    <image src="/assets/images/empty.png" mode="aspectFit"></image>
+    <text>暂无可预约场馆</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text>加载中...</text>
+  </view>
+
+  <!-- 图例说明 -->
+  <view class="legend" wx:if="{{!loading && calendarData.venues.length > 0}}">
+    <view class="legend-item">
+      <view class="legend-dot available"></view>
+      <text>可预约</text>
+    </view>
+    <view class="legend-item">
+      <view class="legend-dot reserved"></view>
+      <text>已预约</text>
+    </view>
+    <view class="legend-item">
+      <view class="legend-dot selected"></view>
+      <text>已选择</text>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar" wx:if="{{selectedSlots.length > 0}}">
+    <view class="booking-summary">
+      <view class="summary-row">
+        <text class="summary-label">已选：</text>
+        <text class="summary-value">{{selectedVenueName}} {{selectedSlots.length}}小时</text>
+      </view>
+      <view class="summary-row">
+        <text class="summary-label">时段：</text>
+        <text class="summary-time">{{utils.getTimeRange(selectedSlots)}}</text>
+      </view>
+      <view class="summary-row">
+        <text class="summary-label">合计：</text>
+        <text class="summary-price">¥{{utils.getTotalPrice(selectedVenuePrice, selectedSlots)}}</text>
+      </view>
+    </view>
+    <button
+      class="btn-submit"
+      bindtap="submitBooking"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+    >
+      确认预约
+    </button>
+  </view>
+
+  <!-- 底部占位 -->
+  <view class="bottom-placeholder" wx:if="{{selectedSlots.length > 0}}"></view>
+</view>

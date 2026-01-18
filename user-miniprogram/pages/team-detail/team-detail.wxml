@@ -1,0 +1,108 @@
+<view class="container">
+  <!-- 加载中 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <block wx:else>
+    <!-- 运动类型标签 -->
+    <view class="sport-header {{team.sport_type}}">
+      <view class="sport-name">{{team.sport_type_name}}</view>
+      <view class="team-status-badge {{team.status}}">
+        <text wx:if="{{team.status === 'recruiting'}}">招募中</text>
+        <text wx:elif="{{team.status === 'full'}}">已满员</text>
+        <text wx:elif="{{team.status === 'completed'}}">已完成</text>
+        <text wx:else>已取消</text>
+      </view>
+    </view>
+
+    <!-- 组队信息 -->
+    <view class="info-card">
+      <view class="team-title">{{team.title}}</view>
+
+      <view class="info-list">
+        <view class="info-item">
+          <text class="info-icon">📅</text>
+          <text class="info-label">活动时间</text>
+          <text class="info-value">{{team.activity_date}} {{team.activity_time}}</text>
+        </view>
+        <view class="info-item" wx:if="{{team.location}}">
+          <text class="info-icon">📍</text>
+          <text class="info-label">活动地点</text>
+          <text class="info-value">{{team.location}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-icon">👥</text>
+          <text class="info-label">人数</text>
+          <text class="info-value highlight">{{team.current_members}}/{{team.max_members}}人</text>
+        </view>
+        <view class="info-item">
+          <text class="info-icon">💰</text>
+          <text class="info-label">费用说明</text>
+          <text class="info-value" wx:if="{{team.fee_type === 'free'}}">免费参与</text>
+          <text class="info-value" wx:elif="{{team.fee_type === 'AA'}}">AA均摊</text>
+          <text class="info-value" wx:else>{{team.fee_amount}}金币/人</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 组队描述 -->
+    <view class="desc-card" wx:if="{{team.description}}">
+      <view class="card-title">组队说明</view>
+      <view class="desc-content">{{team.description}}</view>
+    </view>
+
+    <!-- 发起人信息 -->
+    <view class="creator-card">
+      <view class="card-title">发起人</view>
+      <view class="creator-info">
+        <image class="creator-avatar" src="{{team.creator.avatar || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <view class="creator-detail">
+          <text class="creator-name">{{team.creator.nickname || '匿名用户'}}</text>
+          <text class="creator-tag" wx:if="{{isCreator}}">我发起的</text>
+        </view>
+        <view class="contact-btn" bindtap="contactCreator" wx:if="{{!isCreator && team.creator.phone}}">
+          <text>联系TA</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 成员列表 -->
+    <view class="members-card" wx:if="{{team.members && team.members.length > 0}}">
+      <view class="card-title">已加入成员（{{team.current_members}}人）</view>
+      <view class="members-list">
+        <view class="member-item" wx:for="{{team.members}}" wx:key="id" wx:if="{{item.status === 'joined'}}">
+          <image class="member-avatar" src="{{item.member.avatar || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+          <text class="member-name">{{item.member.nickname || '匿名'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部操作栏 -->
+    <view class="bottom-bar">
+      <button class="btn-share" open-type="share">
+        <text>邀请好友</text>
+      </button>
+
+      <!-- 根据状态显示不同按钮 -->
+      <block wx:if="{{team.status === 'recruiting'}}">
+        <button class="btn-quit" wx:if="{{hasJoined && !isCreator}}" bindtap="quitTeam" loading="{{submitting}}" disabled="{{submitting}}">
+          退出队伍
+        </button>
+        <button class="btn-join" wx:elif="{{!hasJoined && !isCreator}}" bindtap="joinTeam" loading="{{submitting}}" disabled="{{submitting}}">
+          立即加入
+        </button>
+        <button class="btn-disabled" wx:elif="{{isCreator}}" disabled>
+          我是队长
+        </button>
+      </block>
+      <block wx:else>
+        <button class="btn-disabled" disabled>
+          <text wx:if="{{team.status === 'full'}}">已满员</text>
+          <text wx:elif="{{team.status === 'completed'}}">已结束</text>
+          <text wx:else>已取消</text>
+        </button>
+      </block>
+    </view>
+  </block>
+</view>

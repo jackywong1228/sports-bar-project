@@ -1,0 +1,4 @@
+<view class="container">
+  <view class="menu"><view class="item" bindtap="clearCache"><text>清除缓存</text><text class="arrow">></text></view></view>
+  <button class="btn-logout" bindtap="logout">退出登录</button>
+</view>

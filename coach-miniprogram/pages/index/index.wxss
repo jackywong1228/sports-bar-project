@@ -1,0 +1,180 @@
+/* 页面容器 */
+.page-container {
+  min-height: 100vh;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+
+/* 日期选择器 */
+.date-picker {
+  margin-bottom: 20rpx;
+}
+
+.date-header {
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.date-nav {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+}
+
+.date-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.date-list {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 20rpx;
+}
+
+.date-item {
+  width: 80rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx 0;
+  border-radius: 12rpx;
+  position: relative;
+}
+
+.date-item .week-day {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 8rpx;
+}
+
+.date-item .day {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.date-item.today .day {
+  color: #1890ff;
+}
+
+.date-item.active {
+  background: #1890ff;
+}
+
+.date-item.active .week-day,
+.date-item.active .day {
+  color: #fff;
+}
+
+.date-item .dot {
+  position: absolute;
+  bottom: 8rpx;
+  width: 8rpx;
+  height: 8rpx;
+  background: #f5222d;
+  border-radius: 50%;
+}
+
+.date-item.active .dot {
+  background: #fff;
+}
+
+/* 筛选栏 */
+.filter-bar {
+  display: flex;
+  padding: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.filter-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 26rpx;
+  color: #666;
+  border-radius: 8rpx;
+}
+
+.filter-item.active {
+  background: #e6f7ff;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+/* 预约列表 */
+.reservation-list {
+  padding-bottom: 20rpx;
+}
+
+.reservation-item {
+  margin-bottom: 20rpx;
+}
+
+.reservation-header {
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 16rpx;
+}
+
+.time-range .time {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.reservation-body {
+  margin-bottom: 16rpx;
+}
+
+.info-row {
+  margin-bottom: 12rpx;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-row .label {
+  width: 160rpx;
+  color: #999;
+  font-size: 26rpx;
+}
+
+.info-row .value {
+  flex: 1;
+  color: #333;
+  font-size: 26rpx;
+}
+
+.reservation-footer {
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.reservation-footer .price {
+  font-size: 32rpx;
+}
+
+.action-btn {
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+  color: #fff;
+  padding: 12rpx 24rpx;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 100rpx 40rpx;
+}
+
+.empty-state image {
+  width: 200rpx;
+  height: 200rpx;
+  opacity: 0.5;
+}
