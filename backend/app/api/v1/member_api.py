@@ -19,7 +19,8 @@ from app.models.activity import Activity
 from app.models.message import Banner
 from app.models.food import FoodCategory, FoodItem, FoodOrder, FoodOrderItem
 from app.models.mall import ProductCategory, Product
-from app.models.member import MemberCard, MemberLevel
+from app.models.member import MemberCard, MemberLevel, MemberCardOrder
+from app.core.wechat_pay import wechat_pay
 from app.models.coupon import MemberCoupon, CouponTemplate
 from app.schemas.common import ResponseModel
 from app.api.deps import get_current_member
@@ -1785,3 +1786,257 @@ def use_experience_coupon(
             "expire_time": new_expire_time.strftime("%Y-%m-%d %H:%M:%S")
         }
     )
+
+
+# ==================== 会员卡购买 ====================
+
+@router.get("/cards/{card_id}", response_model=ResponseModel)
+def get_member_card_detail(
+    card_id: int,
+    db: Session = Depends(get_db)
+):
+    """获取会员卡套餐详情"""
+    card = db.query(MemberCard).filter(
+        MemberCard.id == card_id,
+        MemberCard.is_active == True,
+        MemberCard.is_deleted == False
+    ).first()
+
+    if not card:
+        raise HTTPException(status_code=404, detail="会员卡套餐不存在")
+
+    # 解析亮点
+    highlights = []
+    if card.highlights:
+        try:
+            highlights = json.loads(card.highlights)
+        except:
+            pass
+
+    return ResponseModel(data={
+        "id": card.id,
+        "name": card.name,
+        "level_id": card.level_id,
+        "level_name": card.level.name if card.level else None,
+        "original_price": float(card.original_price),
+        "price": float(card.price),
+        "duration_days": card.duration_days,
+        "bonus_coins": float(card.bonus_coins or 0),
+        "bonus_points": card.bonus_points or 0,
+        "cover_image": card.cover_image,
+        "description": card.description,
+        "highlights": highlights,
+        "is_recommended": card.is_recommended
+    })
+
+
+@router.post("/cards/{card_id}/buy", response_model=ResponseModel)
+def buy_member_card(
+    card_id: int,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """购买会员卡（微信支付）"""
+    # 查找会员卡套餐
+    card = db.query(MemberCard).filter(
+        MemberCard.id == card_id,
+        MemberCard.is_active == True,
+        MemberCard.is_deleted == False
+    ).first()
+
+    if not card:
+        raise HTTPException(status_code=404, detail="会员卡套餐不存在或已下架")
+
+    # 检查用户是否有openid
+    if not current_member.openid:
+        raise HTTPException(status_code=400, detail="请先完成微信授权")
+
+    # 生成订单号
+    order_no = wechat_pay.generate_out_trade_no("MC")
+
+    # 创建会员卡订单
+    order = MemberCardOrder(
+        order_no=order_no,
+        member_id=current_member.id,
+        card_id=card.id,
+        original_price=card.original_price,
+        pay_amount=card.price,
+        bonus_coins=card.bonus_coins,
+        bonus_points=card.bonus_points,
+        level_id=card.level_id,
+        duration_days=card.duration_days,
+        pay_type="wechat",
+        status="pending"
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    # 调用微信支付创建预支付订单
+    total_amount = int(float(card.price) * 100)  # 转为分
+    result = wechat_pay.create_jsapi_order(
+        out_trade_no=order_no,
+        total_amount=total_amount,
+        description=f"会员卡-{card.name}",
+        openid=current_member.openid,
+        attach=json.dumps({"order_id": order.id, "type": "member_card"})
+    )
+
+    if "error" in result:
+        order.status = "failed"
+        db.commit()
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    return ResponseModel(data={
+        "order_id": order.id,
+        "order_no": order_no,
+        "pay_amount": float(card.price),
+        "pay_params": result
+    })
+
+
+@router.get("/card-orders", response_model=ResponseModel)
+def get_my_card_orders(
+    page: int = 1,
+    limit: int = 10,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取我的会员卡订单列表"""
+    query = db.query(MemberCardOrder).filter(
+        MemberCardOrder.member_id == current_member.id
+    )
+
+    orders = query.order_by(MemberCardOrder.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    result = []
+    for order in orders:
+        card = db.query(MemberCard).filter(MemberCard.id == order.card_id).first()
+        level = db.query(MemberLevel).filter(MemberLevel.id == order.level_id).first()
+
+        result.append({
+            "id": order.id,
+            "order_no": order.order_no,
+            "card_name": card.name if card else None,
+            "level_name": level.name if level else None,
+            "pay_amount": float(order.pay_amount),
+            "duration_days": order.duration_days,
+            "bonus_coins": float(order.bonus_coins or 0),
+            "bonus_points": order.bonus_points or 0,
+            "status": order.status,
+            "pay_time": order.pay_time.strftime("%Y-%m-%d %H:%M:%S") if order.pay_time else None,
+            "start_time": order.start_time.strftime("%Y-%m-%d") if order.start_time else None,
+            "expire_time": order.expire_time.strftime("%Y-%m-%d") if order.expire_time else None,
+            "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else None
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.get("/card-orders/{order_no}", response_model=ResponseModel)
+def get_card_order_detail(
+    order_no: str,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """查询会员卡订单状态"""
+    order = db.query(MemberCardOrder).filter(
+        MemberCardOrder.order_no == order_no,
+        MemberCardOrder.member_id == current_member.id
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+
+    # 如果订单未支付，查询微信支付状态
+    if order.status == "pending":
+        result = wechat_pay.query_order(order_no)
+        if result.get("trade_state") == "SUCCESS":
+            # 调用处理函数
+            _process_member_card_payment(order, result.get("transaction_id"), db)
+
+    card = db.query(MemberCard).filter(MemberCard.id == order.card_id).first()
+    level = db.query(MemberLevel).filter(MemberLevel.id == order.level_id).first()
+
+    return ResponseModel(data={
+        "id": order.id,
+        "order_no": order.order_no,
+        "card_name": card.name if card else None,
+        "level_name": level.name if level else None,
+        "pay_amount": float(order.pay_amount),
+        "duration_days": order.duration_days,
+        "bonus_coins": float(order.bonus_coins or 0),
+        "bonus_points": order.bonus_points or 0,
+        "status": order.status,
+        "pay_time": order.pay_time.strftime("%Y-%m-%d %H:%M:%S") if order.pay_time else None,
+        "start_time": order.start_time.strftime("%Y-%m-%d") if order.start_time else None,
+        "expire_time": order.expire_time.strftime("%Y-%m-%d") if order.expire_time else None
+    })
+
+
+def _process_member_card_payment(order: MemberCardOrder, transaction_id: str, db: Session):
+    """处理会员卡支付成功"""
+    if order.status == "paid":
+        return  # 已处理过
+
+    now = datetime.now()
+
+    # 更新订单状态
+    order.status = "paid"
+    order.transaction_id = transaction_id
+    order.pay_time = now
+
+    # 获取会员
+    member = db.query(Member).filter(Member.id == order.member_id).first()
+    if not member:
+        return
+
+    # 计算会员有效期
+    if member.member_expire_time and member.member_expire_time > now:
+        # 已有会员且未过期，在原有基础上延长
+        start_time = member.member_expire_time
+        expire_time = start_time + timedelta(days=order.duration_days)
+    else:
+        # 没有会员或已过期，从今天开始
+        start_time = now
+        expire_time = now + timedelta(days=order.duration_days)
+
+    order.start_time = start_time
+    order.expire_time = expire_time
+
+    # 升级会员等级
+    member.level_id = order.level_id
+    member.member_expire_time = expire_time
+
+    # 发放赠送金币
+    if order.bonus_coins and float(order.bonus_coins) > 0:
+        member.coin_balance = float(member.coin_balance or 0) + float(order.bonus_coins)
+        coin_record = CoinRecord(
+            member_id=member.id,
+            type="income",
+            amount=order.bonus_coins,
+            balance=member.coin_balance,
+            source="会员卡赠送",
+            remark=f"购买会员卡赠送金币，订单号：{order.order_no}"
+        )
+        db.add(coin_record)
+
+    # 发放赠送积分
+    if order.bonus_points and order.bonus_points > 0:
+        member.point_balance = (member.point_balance or 0) + order.bonus_points
+        point_record = PointRecord(
+            member_id=member.id,
+            type="income",
+            amount=order.bonus_points,
+            balance=member.point_balance,
+            source="会员卡赠送",
+            remark=f"购买会员卡赠送积分，订单号：{order.order_no}"
+        )
+        db.add(point_record)
+
+    # 更新会员卡销量
+    card = db.query(MemberCard).filter(MemberCard.id == order.card_id).first()
+    if card:
+        card.sales_count = (card.sales_count or 0) + 1
+
+    db.commit()

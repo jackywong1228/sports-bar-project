@@ -10,7 +10,7 @@ import json
 from app.core.database import get_db
 from app.core.wechat_pay import wechat_pay
 from app.models.finance import RechargeOrder
-from app.models.member import Member, CoinRecord
+from app.models.member import Member, CoinRecord, PointRecord, MemberCardOrder, MemberCard
 from app.schemas.response import ResponseModel
 
 router = APIRouter()
@@ -146,46 +146,126 @@ async def payment_notify(
         transaction_id = decrypted.get("transaction_id")
         trade_state = decrypted.get("trade_state")
 
-        # 查询订单
-        order = db.query(RechargeOrder).filter(
-            RechargeOrder.order_no == out_trade_no
-        ).first()
-
-        if not order:
-            return {"code": "FAIL", "message": "订单不存在"}
-
-        if order.status == "paid":
-            # 已处理过，直接返回成功
-            return {"code": "SUCCESS", "message": "成功"}
-
-        if trade_state == "SUCCESS":
-            # 支付成功，更新订单状态
-            order.status = "paid"
-            order.transaction_id = transaction_id
-            order.pay_time = datetime.now()
-
-            # 给会员加金币
-            member = db.query(Member).filter(Member.id == order.member_id).first()
-            if member:
-                total_coins = order.coins + order.bonus_coins
-                member.coin_balance = (member.coin_balance or 0) + total_coins
-
-                # 记录金币变动
-                coin_record = CoinRecord(
-                    member_id=member.id,
-                    type="recharge",
-                    amount=total_coins,
-                    balance=member.coin_balance,
-                    remark=f"充值{order.amount}元，获得{order.coins}金币，赠送{order.bonus_coins}金币"
-                )
-                db.add(coin_record)
-
-            db.commit()
-
-        return {"code": "SUCCESS", "message": "成功"}
+        # 根据订单号前缀判断订单类型
+        if out_trade_no.startswith("MC"):
+            # 会员卡订单
+            return _handle_member_card_notify(out_trade_no, transaction_id, trade_state, db)
+        else:
+            # 充值订单（默认）
+            return _handle_recharge_notify(out_trade_no, transaction_id, trade_state, db)
 
     except Exception as e:
         return {"code": "FAIL", "message": str(e)}
+
+
+def _handle_recharge_notify(out_trade_no: str, transaction_id: str, trade_state: str, db: Session):
+    """处理充值订单支付回调"""
+    order = db.query(RechargeOrder).filter(
+        RechargeOrder.order_no == out_trade_no
+    ).first()
+
+    if not order:
+        return {"code": "FAIL", "message": "订单不存在"}
+
+    if order.status == "paid":
+        return {"code": "SUCCESS", "message": "成功"}
+
+    if trade_state == "SUCCESS":
+        order.status = "paid"
+        order.transaction_id = transaction_id
+        order.pay_time = datetime.now()
+
+        member = db.query(Member).filter(Member.id == order.member_id).first()
+        if member:
+            total_coins = order.coins + order.bonus_coins
+            member.coin_balance = (member.coin_balance or 0) + total_coins
+
+            coin_record = CoinRecord(
+                member_id=member.id,
+                type="recharge",
+                amount=total_coins,
+                balance=member.coin_balance,
+                remark=f"充值{order.amount}元，获得{order.coins}金币，赠送{order.bonus_coins}金币"
+            )
+            db.add(coin_record)
+
+        db.commit()
+
+    return {"code": "SUCCESS", "message": "成功"}
+
+
+def _handle_member_card_notify(out_trade_no: str, transaction_id: str, trade_state: str, db: Session):
+    """处理会员卡订单支付回调"""
+    order = db.query(MemberCardOrder).filter(
+        MemberCardOrder.order_no == out_trade_no
+    ).first()
+
+    if not order:
+        return {"code": "FAIL", "message": "订单不存在"}
+
+    if order.status == "paid":
+        return {"code": "SUCCESS", "message": "成功"}
+
+    if trade_state == "SUCCESS":
+        now = datetime.now()
+
+        # 更新订单状态
+        order.status = "paid"
+        order.transaction_id = transaction_id
+        order.pay_time = now
+
+        # 获取会员
+        member = db.query(Member).filter(Member.id == order.member_id).first()
+        if member:
+            # 计算会员有效期
+            if member.member_expire_time and member.member_expire_time > now:
+                start_time = member.member_expire_time
+                expire_time = start_time + timedelta(days=order.duration_days)
+            else:
+                start_time = now
+                expire_time = now + timedelta(days=order.duration_days)
+
+            order.start_time = start_time
+            order.expire_time = expire_time
+
+            # 升级会员等级
+            member.level_id = order.level_id
+            member.member_expire_time = expire_time
+
+            # 发放赠送金币
+            if order.bonus_coins and float(order.bonus_coins) > 0:
+                member.coin_balance = float(member.coin_balance or 0) + float(order.bonus_coins)
+                coin_record = CoinRecord(
+                    member_id=member.id,
+                    type="income",
+                    amount=order.bonus_coins,
+                    balance=member.coin_balance,
+                    source="会员卡赠送",
+                    remark=f"购买会员卡赠送金币，订单号：{order.order_no}"
+                )
+                db.add(coin_record)
+
+            # 发放赠送积分
+            if order.bonus_points and order.bonus_points > 0:
+                member.point_balance = (member.point_balance or 0) + order.bonus_points
+                point_record = PointRecord(
+                    member_id=member.id,
+                    type="income",
+                    amount=order.bonus_points,
+                    balance=member.point_balance,
+                    source="会员卡赠送",
+                    remark=f"购买会员卡赠送积分，订单号：{order.order_no}"
+                )
+                db.add(point_record)
+
+            # 更新会员卡销量
+            card = db.query(MemberCard).filter(MemberCard.id == order.card_id).first()
+            if card:
+                card.sales_count = (card.sales_count or 0) + 1
+
+        db.commit()
+
+    return {"code": "SUCCESS", "message": "成功"}
 
 
 @router.get("/order/{order_no}", response_model=ResponseModel)

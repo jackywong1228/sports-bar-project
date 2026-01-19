@@ -292,28 +292,35 @@ const getMemberLevels = () => {
  * 获取会员卡套餐列表
  */
 const getMemberCards = (params = {}) => {
-  return get('/member-cards/cards', params)
+  return get('/member/cards', params)
 }
 
 /**
  * 获取会员卡套餐详情
  */
 const getMemberCardDetail = (id) => {
-  return get(`/member-cards/cards/${id}`)
+  return get(`/member/cards/${id}`)
 }
 
 /**
- * 购买会员卡
+ * 购买会员卡（微信支付）
  */
-const purchaseMemberCard = (cardId, payType = 'wechat') => {
-  return post('/member-cards/purchase', { card_id: cardId, pay_type: payType }, { showLoading: true })
+const purchaseMemberCard = (cardId) => {
+  return post(`/member/cards/${cardId}/buy`, {}, { showLoading: true })
 }
 
 /**
  * 获取我的会员卡订单
  */
 const getMemberCardOrders = (params = {}) => {
-  return get('/member-cards/my-orders', params)
+  return get('/member/card-orders', params)
+}
+
+/**
+ * 查询会员卡订单状态
+ */
+const queryMemberCardOrder = (orderNo) => {
+  return get(`/member/card-orders/${orderNo}`)
 }
 
 // ==================== 积分商城 ====================
@@ -541,6 +548,7 @@ module.exports = {
   getMemberCardDetail,
   purchaseMemberCard,
   getMemberCardOrders,
+  queryMemberCardOrder,
 
   // 商城
   getMallCategories,
