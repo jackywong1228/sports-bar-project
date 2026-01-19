@@ -23,23 +23,39 @@ class WechatPay:
         self.mch_id = settings.WECHAT_MCH_ID  # 商户号
         self.app_id = settings.WECHAT_APP_ID  # 小程序AppID
         self.api_key = settings.WECHAT_API_KEY  # APIv3密钥
-        self.serial_no = settings.WECHAT_SERIAL_NO  # 证书序列号
-        self.private_key_path = settings.WECHAT_PRIVATE_KEY_PATH  # 私钥路径
+        self.serial_no = settings.WECHAT_SERIAL_NO  # 商户证书序列号
+        self.private_key_path = settings.WECHAT_PRIVATE_KEY_PATH  # 商户私钥路径
         self.notify_url = settings.WECHAT_NOTIFY_URL  # 支付回调地址
+        # 微信支付公钥（用于验签）
+        self.wechat_public_key_id = settings.WECHAT_PAY_PUBLIC_KEY_ID
+        self.wechat_public_key_path = settings.WECHAT_PAY_PUBLIC_KEY_PATH
 
         self._private_key = None
+        self._wechat_public_key = None
 
     @property
     def private_key(self):
-        """加载私钥"""
+        """加载商户私钥"""
         if self._private_key is None:
             try:
                 with open(self.private_key_path, 'r') as f:
                     self._private_key = RSA.import_key(f.read())
             except Exception as e:
-                print(f"加载微信支付私钥失败: {e}")
+                print(f"加载商户私钥失败: {e}")
                 self._private_key = None
         return self._private_key
+
+    @property
+    def wechat_public_key(self):
+        """加载微信支付公钥（用于验证回调签名）"""
+        if self._wechat_public_key is None:
+            try:
+                with open(self.wechat_public_key_path, 'r') as f:
+                    self._wechat_public_key = RSA.import_key(f.read())
+            except Exception as e:
+                print(f"加载微信支付公钥失败: {e}")
+                self._wechat_public_key = None
+        return self._wechat_public_key
 
     def generate_nonce_str(self) -> str:
         """生成随机字符串"""
@@ -159,10 +175,38 @@ class WechatPay:
     def verify_signature(self, timestamp: str, nonce: str, body: str, signature: str, serial: str) -> bool:
         """
         验证微信支付回调签名
-        注意：实际使用时需要从微信获取平台证书来验证
+
+        Args:
+            timestamp: HTTP头 Wechatpay-Timestamp
+            nonce: HTTP头 Wechatpay-Nonce
+            body: 请求体原文
+            signature: HTTP头 Wechatpay-Signature
+            serial: HTTP头 Wechatpay-Serial（微信支付公钥ID）
+
+        Returns:
+            验证是否通过
         """
-        # TODO: 实现签名验证
-        return True
+        # 验证公钥ID是否匹配
+        if serial != self.wechat_public_key_id:
+            print(f"公钥ID不匹配: 收到 {serial}, 期望 {self.wechat_public_key_id}")
+            return False
+
+        if not self.wechat_public_key:
+            print("微信支付公钥未配置")
+            return False
+
+        try:
+            # 构造验签串
+            message = f"{timestamp}\n{nonce}\n{body}\n"
+
+            # 使用微信支付公钥验证签名
+            h = SHA256.new(message.encode('utf-8'))
+            signature_bytes = base64.b64decode(signature)
+            pkcs1_15.new(self.wechat_public_key).verify(h, signature_bytes)
+            return True
+        except Exception as e:
+            print(f"签名验证失败: {e}")
+            return False
 
     def decrypt_resource(self, ciphertext: str, nonce: str, associated_data: str) -> dict:
         """

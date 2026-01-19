@@ -27,9 +27,12 @@ class Settings(BaseSettings):
     # 微信支付配置
     WECHAT_MCH_ID: str = ""  # 商户号
     WECHAT_API_KEY: str = ""  # APIv3密钥
-    WECHAT_SERIAL_NO: str = ""  # 证书序列号
-    WECHAT_PRIVATE_KEY_PATH: str = "certs/apiclient_key.pem"  # 私钥路径
+    WECHAT_SERIAL_NO: str = ""  # 商户证书序列号（用于请求签名）
+    WECHAT_PRIVATE_KEY_PATH: str = "certs/apiclient_key.pem"  # 商户私钥路径
     WECHAT_NOTIFY_URL: str = ""  # 支付回调地址
+    # 微信支付公钥（用于验证微信回调签名）
+    WECHAT_PAY_PUBLIC_KEY_ID: str = ""  # 微信支付公钥ID
+    WECHAT_PAY_PUBLIC_KEY_PATH: str = "certs/wechatpay_public_key.pem"  # 微信支付公钥路径
 
     # 订阅消息模板ID
     WECHAT_TEMPLATE_RESERVATION_SUCCESS: str = ""  # 预约成功通知
