@@ -3,7 +3,7 @@ App({
     userInfo: null,
     memberInfo: null,
     token: '',
-    baseUrl: 'https://yunlifang.cloud/api/v1',
+    baseUrl: 'http://111.231.105.41/api/v1',
     cartCount: 0
   },
 
