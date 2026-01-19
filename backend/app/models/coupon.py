@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Numeric, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, Numeric, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.models.base import TimestampMixin, SoftDeleteMixin
 
@@ -9,12 +10,17 @@ class CouponTemplate(Base, TimestampMixin, SoftDeleteMixin):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False, comment="券名称")
-    type = Column(String(20), nullable=False, comment="类型：discount/cash/gift")
+    type = Column(String(20), nullable=False, comment="类型：discount/cash/gift/experience")
 
     # 优惠内容
     discount_value = Column(Numeric(10, 2), comment="优惠值（折扣率或金额）")
     min_amount = Column(Numeric(10, 2), default=0, comment="最低消费金额")
     max_discount = Column(Numeric(10, 2), comment="最大优惠金额")
+
+    # 体验券专用字段
+    experience_days = Column(Integer, comment="体验天数（体验券专用）")
+    experience_level_id = Column(Integer, ForeignKey('member_level.id'), nullable=True, comment="体验会员等级ID")
+    experience_level = relationship("MemberLevel", foreign_keys=[experience_level_id])
 
     # 适用范围
     applicable_type = Column(String(20), default="all", comment="适用类型：all/venue/food/coach")
@@ -48,6 +54,10 @@ class MemberCoupon(Base, TimestampMixin):
     type = Column(String(20), comment="类型")
     discount_value = Column(Numeric(10, 2), comment="优惠值")
     min_amount = Column(Numeric(10, 2), comment="最低消费")
+
+    # 体验券专用字段（冗余存储）
+    experience_days = Column(Integer, comment="体验天数")
+    experience_level_id = Column(Integer, comment="体验会员等级ID")
 
     # 有效期
     start_time = Column(DateTime, comment="生效时间")

@@ -1694,6 +1694,13 @@ def get_member_coupons(
 
     result = []
     for coupon in coupons:
+        # 获取体验券关联的会员等级名称
+        experience_level_name = None
+        if coupon.type == "experience" and coupon.experience_level_id:
+            level = db.query(MemberLevel).filter(MemberLevel.id == coupon.experience_level_id).first()
+            if level:
+                experience_level_name = level.name
+
         result.append({
             "id": coupon.id,
             "name": coupon.name,
@@ -1702,7 +1709,79 @@ def get_member_coupons(
             "min_amount": float(coupon.min_amount or 0),
             "start_time": coupon.start_time.strftime("%Y-%m-%d %H:%M:%S") if coupon.start_time else None,
             "end_time": coupon.end_time.strftime("%Y-%m-%d %H:%M:%S") if coupon.end_time else None,
-            "status": coupon.status
+            "status": coupon.status,
+            "experience_days": coupon.experience_days,
+            "experience_level_id": coupon.experience_level_id,
+            "experience_level_name": experience_level_name
         })
 
     return ResponseModel(data=result)
+
+
+@router.post("/coupons/{coupon_id}/use", response_model=ResponseModel)
+def use_experience_coupon(
+    coupon_id: int,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """使用体验券（升级会员）"""
+    # 查找优惠券
+    coupon = db.query(MemberCoupon).filter(
+        MemberCoupon.id == coupon_id,
+        MemberCoupon.member_id == current_member.id
+    ).first()
+
+    if not coupon:
+        raise HTTPException(status_code=404, detail="优惠券不存在")
+
+    # 验证优惠券类型
+    if coupon.type != "experience":
+        raise HTTPException(status_code=400, detail="只有体验券可以直接使用")
+
+    # 验证优惠券状态
+    if coupon.status != "unused":
+        raise HTTPException(status_code=400, detail="该优惠券已使用或已过期")
+
+    # 验证有效期
+    now = datetime.now()
+    if coupon.start_time and now < coupon.start_time:
+        raise HTTPException(status_code=400, detail="优惠券尚未生效")
+    if coupon.end_time and now > coupon.end_time:
+        coupon.status = "expired"
+        db.commit()
+        raise HTTPException(status_code=400, detail="优惠券已过期")
+
+    # 验证体验券字段
+    if not coupon.experience_days or not coupon.experience_level_id:
+        raise HTTPException(status_code=400, detail="体验券配置错误")
+
+    # 获取目标会员等级
+    target_level = db.query(MemberLevel).filter(MemberLevel.id == coupon.experience_level_id).first()
+    if not target_level:
+        raise HTTPException(status_code=400, detail="会员等级不存在")
+
+    # 计算会员到期时间
+    if current_member.member_expire_time and current_member.member_expire_time > now:
+        # 如果已有会员且未过期，在原有基础上延长
+        new_expire_time = current_member.member_expire_time + timedelta(days=coupon.experience_days)
+    else:
+        # 如果没有会员或已过期，从今天开始计算
+        new_expire_time = now + timedelta(days=coupon.experience_days)
+
+    # 升级会员等级
+    current_member.level_id = coupon.experience_level_id
+    current_member.member_expire_time = new_expire_time
+
+    # 标记优惠券为已使用
+    coupon.status = "used"
+    coupon.use_time = now
+
+    db.commit()
+
+    return ResponseModel(
+        message=f"恭喜您！已成功激活{target_level.name}会员，有效期至{new_expire_time.strftime('%Y-%m-%d')}",
+        data={
+            "level_name": target_level.name,
+            "expire_time": new_expire_time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    )

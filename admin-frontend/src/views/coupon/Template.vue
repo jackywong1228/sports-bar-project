@@ -10,6 +10,7 @@
             <el-option label="折扣券" value="discount" />
             <el-option label="代金券" value="cash" />
             <el-option label="礼品券" value="gift" />
+            <el-option label="体验券" value="experience" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -41,10 +42,11 @@
             <el-tag>{{ typeMap[row.type] }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="优惠内容" width="150">
+        <el-table-column label="优惠内容" width="180">
           <template #default="{ row }">
             <span v-if="row.type === 'discount'">{{ row.discount_value }}折</span>
             <span v-else-if="row.type === 'cash'">减{{ row.discount_value }}金币</span>
+            <span v-else-if="row.type === 'experience'">{{ row.experience_level_name || '会员' }}体验{{ row.experience_days }}天</span>
             <span v-else>礼品</span>
           </template>
         </el-table-column>
@@ -97,32 +99,54 @@
             <el-option label="折扣券" value="discount" />
             <el-option label="代金券" value="cash" />
             <el-option label="礼品券" value="gift" />
+            <el-option label="体验券" value="experience" />
           </el-select>
         </el-form-item>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="优惠值" prop="discount_value">
-              <el-input-number v-model="formData.discount_value" :min="0" :precision="2" style="width: 100%;" />
-              <div class="form-tip">折扣券填折扣(如0.8)，代金券填金额</div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="最低消费">
-              <el-input-number v-model="formData.min_amount" :min="0" :precision="2" style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="最大优惠">
-          <el-input-number v-model="formData.max_discount" :min="0" :precision="2" placeholder="折扣券时限制最大优惠金额" style="width: 100%;" />
-        </el-form-item>
-        <el-form-item label="适用类型">
-          <el-select v-model="formData.applicable_type" style="width: 100%;">
-            <el-option label="全场通用" value="all" />
-            <el-option label="场地预约" value="venue" />
-            <el-option label="在线点餐" value="food" />
-            <el-option label="教练预约" value="coach" />
-          </el-select>
-        </el-form-item>
+        <!-- 体验券专用字段 -->
+        <template v-if="formData.type === 'experience'">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="会员等级" required>
+                <el-select v-model="formData.experience_level_id" placeholder="请选择会员等级" style="width: 100%;">
+                  <el-option v-for="level in memberLevels" :key="level.id" :label="level.name" :value="level.id" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="体验天数" required>
+                <el-input-number v-model="formData.experience_days" :min="1" placeholder="天数" style="width: 100%;" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <div class="form-tip" style="margin-bottom: 16px; color: #909399;">使用该券后，用户将自动升级为所选等级的会员，体验期结束后恢复原等级</div>
+        </template>
+        <!-- 折扣券/代金券字段 -->
+        <template v-else>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="优惠值" prop="discount_value">
+                <el-input-number v-model="formData.discount_value" :min="0" :precision="2" style="width: 100%;" />
+                <div class="form-tip">折扣券填折扣(如0.8)，代金券填金额</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="最低消费">
+                <el-input-number v-model="formData.min_amount" :min="0" :precision="2" style="width: 100%;" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="最大优惠">
+            <el-input-number v-model="formData.max_discount" :min="0" :precision="2" placeholder="折扣券时限制最大优惠金额" style="width: 100%;" />
+          </el-form-item>
+          <el-form-item label="适用类型">
+            <el-select v-model="formData.applicable_type" style="width: 100%;">
+              <el-option label="全场通用" value="all" />
+              <el-option label="场地预约" value="venue" />
+              <el-option label="在线点餐" value="food" />
+              <el-option label="教练预约" value="coach" />
+            </el-select>
+          </el-form-item>
+        </template>
         <el-form-item label="有效期类型">
           <el-radio-group v-model="validType">
             <el-radio label="days">领取后N天</el-radio>
@@ -191,7 +215,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import request from '@/utils/request'
 
-const typeMap: Record<string, string> = { discount: '折扣券', cash: '代金券', gift: '礼品券' }
+const typeMap: Record<string, string> = { discount: '折扣券', cash: '代金券', gift: '礼品券', experience: '体验券' }
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -207,8 +231,12 @@ const validType = ref('days')
 const formData = reactive({
   id: 0, name: '', type: '', discount_value: 0, min_amount: 0, max_discount: null,
   applicable_type: 'all', applicable_ids: '', valid_days: 7, start_time: '', end_time: '',
-  total_count: 0, per_limit: 1, is_active: true, description: ''
+  total_count: 0, per_limit: 1, is_active: true, description: '',
+  experience_days: null as number | null, experience_level_id: null as number | null
 })
+
+// 会员等级列表
+const memberLevels = ref<any[]>([])
 const formRules = {
   name: [{ required: true, message: '请输入券名称', trigger: 'blur' }],
   type: [{ required: true, message: '请选择类型', trigger: 'change' }]
@@ -247,7 +275,8 @@ const handleAdd = () => {
   Object.assign(formData, {
     id: 0, name: '', type: '', discount_value: 0, min_amount: 0, max_discount: null,
     applicable_type: 'all', applicable_ids: '', valid_days: 7, start_time: '', end_time: '',
-    total_count: 0, per_limit: 1, is_active: true, description: ''
+    total_count: 0, per_limit: 1, is_active: true, description: '',
+    experience_days: null, experience_level_id: null
   })
   validType.value = 'days'
   dialogVisible.value = true
@@ -329,7 +358,19 @@ const handleIssueSubmit = async () => {
   }
 }
 
-onMounted(() => { fetchList() })
+const fetchMemberLevels = async () => {
+  try {
+    const res = await request.get('/member-cards/levels')
+    memberLevels.value = res.data || []
+  } catch (e) {
+    console.error('获取会员等级失败:', e)
+  }
+}
+
+onMounted(() => {
+  fetchList()
+  fetchMemberLevels()
+})
 </script>
 
 <style scoped>

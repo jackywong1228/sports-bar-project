@@ -8,7 +8,7 @@ import asyncio
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.coupon import CouponTemplate, MemberCoupon
-from app.models.member import Member
+from app.models.member import Member, MemberLevel
 from app.schemas.response import ResponseModel, PageResponseModel
 from app.core.wechat import user_wechat_service, subscribe_message_helper, WeChatAPIError
 
@@ -90,25 +90,39 @@ def get_templates(
     items = query.order_by(CouponTemplate.created_at.desc())\
         .offset((page - 1) * page_size).limit(page_size).all()
 
+    result_list = []
+    for item in items:
+        # 获取体验券关联的会员等级名称
+        experience_level_name = None
+        if item.type == "experience" and item.experience_level_id:
+            level = db.query(MemberLevel).filter(MemberLevel.id == item.experience_level_id).first()
+            if level:
+                experience_level_name = level.name
+
+        result_list.append({
+            "id": item.id,
+            "name": item.name,
+            "type": item.type,
+            "discount_value": float(item.discount_value) if item.discount_value else None,
+            "min_amount": float(item.min_amount) if item.min_amount else 0,
+            "max_discount": float(item.max_discount) if item.max_discount else None,
+            "applicable_type": item.applicable_type,
+            "valid_days": item.valid_days,
+            "start_time": item.start_time.strftime("%Y-%m-%d %H:%M") if item.start_time else None,
+            "end_time": item.end_time.strftime("%Y-%m-%d %H:%M") if item.end_time else None,
+            "total_count": item.total_count,
+            "issued_count": item.issued_count,
+            "per_limit": item.per_limit,
+            "is_active": item.is_active,
+            "experience_days": item.experience_days,
+            "experience_level_id": item.experience_level_id,
+            "experience_level_name": experience_level_name,
+            "created_at": item.created_at.strftime("%Y-%m-%d %H:%M:%S") if item.created_at else None
+        })
+
     return PageResponseModel(
         data={
-            "list": [{
-                "id": item.id,
-                "name": item.name,
-                "type": item.type,
-                "discount_value": float(item.discount_value) if item.discount_value else None,
-                "min_amount": float(item.min_amount) if item.min_amount else 0,
-                "max_discount": float(item.max_discount) if item.max_discount else None,
-                "applicable_type": item.applicable_type,
-                "valid_days": item.valid_days,
-                "start_time": item.start_time.strftime("%Y-%m-%d %H:%M") if item.start_time else None,
-                "end_time": item.end_time.strftime("%Y-%m-%d %H:%M") if item.end_time else None,
-                "total_count": item.total_count,
-                "issued_count": item.issued_count,
-                "per_limit": item.per_limit,
-                "is_active": item.is_active,
-                "created_at": item.created_at.strftime("%Y-%m-%d %H:%M:%S") if item.created_at else None
-            } for item in items],
+            "list": result_list,
             "total": total,
             "page": page,
             "page_size": page_size
@@ -131,6 +145,13 @@ def get_template(
     if not template:
         return ResponseModel(code=404, message="模板不存在")
 
+    # 获取体验券关联的会员等级名称
+    experience_level_name = None
+    if template.type == "experience" and template.experience_level_id:
+        level = db.query(MemberLevel).filter(MemberLevel.id == template.experience_level_id).first()
+        if level:
+            experience_level_name = level.name
+
     return ResponseModel(data={
         "id": template.id,
         "name": template.name,
@@ -147,7 +168,10 @@ def get_template(
         "issued_count": template.issued_count,
         "per_limit": template.per_limit,
         "is_active": template.is_active,
-        "description": template.description
+        "description": template.description,
+        "experience_days": template.experience_days,
+        "experience_level_id": template.experience_level_id,
+        "experience_level_name": experience_level_name
     })
 
 
@@ -158,9 +182,18 @@ def create_template(
     current_user = Depends(get_current_user)
 ):
     """创建优惠券模板"""
+    coupon_type = data.get("type")
+
+    # 体验券类型验证
+    if coupon_type == "experience":
+        if not data.get("experience_days"):
+            return ResponseModel(code=400, message="体验券必须设置体验天数")
+        if not data.get("experience_level_id"):
+            return ResponseModel(code=400, message="体验券必须选择会员等级")
+
     template = CouponTemplate(
         name=data.get("name"),
-        type=data.get("type"),
+        type=coupon_type,
         discount_value=data.get("discount_value"),
         min_amount=data.get("min_amount", 0),
         max_discount=data.get("max_discount"),
@@ -172,7 +205,9 @@ def create_template(
         total_count=data.get("total_count", 0),
         per_limit=data.get("per_limit", 1),
         is_active=data.get("is_active", True),
-        description=data.get("description")
+        description=data.get("description"),
+        experience_days=data.get("experience_days"),
+        experience_level_id=data.get("experience_level_id")
     )
     db.add(template)
     db.commit()
@@ -295,7 +330,9 @@ def issue_coupon(
             min_amount=template.min_amount,
             start_time=start_time,
             end_time=end_time,
-            status="unused"
+            status="unused",
+            experience_days=template.experience_days,
+            experience_level_id=template.experience_level_id
         )
         db.add(coupon)
         template.issued_count += 1
@@ -308,6 +345,14 @@ def issue_coupon(
                 coupon_value = f"{float(template.discount_value)}折"
             elif template.type == "cash":
                 coupon_value = f"满{float(template.min_amount)}减{float(template.discount_value)}元"
+            elif template.type == "experience":
+                # 体验券显示体验天数和会员等级
+                level_name = "会员"
+                if template.experience_level_id:
+                    level = db.query(MemberLevel).filter(MemberLevel.id == template.experience_level_id).first()
+                    if level:
+                        level_name = level.name
+                coupon_value = f"{level_name}体验{template.experience_days}天"
             else:
                 coupon_value = f"{float(template.discount_value)}元"
 
