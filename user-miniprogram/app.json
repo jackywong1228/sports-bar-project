@@ -27,6 +27,7 @@
     "pages/settings/settings",
     "pages/coach-home/coach-home",
     "pages/coach-login/coach-login",
+    "pages/coach-apply/coach-apply",
     "pages/coach-schedule/coach-schedule",
     "pages/coach-code/coach-code",
     "pages/coach-profile/coach-profile",

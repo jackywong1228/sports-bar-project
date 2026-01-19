@@ -1,16 +1,67 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timedelta
+import asyncio
 
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.coupon import CouponTemplate, MemberCoupon
 from app.models.member import Member
 from app.schemas.response import ResponseModel, PageResponseModel
+from app.core.wechat import user_wechat_service, subscribe_message_helper, WeChatAPIError
 
 router = APIRouter()
+
+
+# ================== 优惠券通知辅助函数 ==================
+
+async def send_coupon_notification(
+    openid: str,
+    coupon_name: str,
+    coupon_value: str,
+    expire_date: str
+):
+    """后台任务：发送优惠券到账通知"""
+    try:
+        await subscribe_message_helper.send_coupon_received(
+            service=user_wechat_service,
+            openid=openid,
+            coupon_name=coupon_name,
+            coupon_value=coupon_value,
+            expire_date=expire_date,
+            remark="请在有效期内使用",
+            page="pages/coupons/coupons"
+        )
+    except WeChatAPIError as e:
+        # 发送失败不影响主流程，只记录日志
+        print(f"发送优惠券通知失败: {e.errmsg}")
+    except Exception as e:
+        print(f"发送优惠券通知异常: {str(e)}")
+
+
+def run_send_notifications(notifications: List[dict]):
+    """在后台线程中运行异步通知任务"""
+    async def _send_all():
+        tasks = [
+            send_coupon_notification(
+                n["openid"],
+                n["coupon_name"],
+                n["coupon_value"],
+                n["expire_date"]
+            )
+            for n in notifications
+        ]
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    # 创建新的事件循环运行异步任务
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(_send_all())
+    finally:
+        loop.close()
 
 
 # ================== 优惠券模板 ==================
@@ -182,10 +233,11 @@ def delete_template(
 def issue_coupon(
     template_id: int,
     data: dict,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """发放优惠券"""
+    """发放优惠券（同时发送微信通知）"""
     template = db.query(CouponTemplate).filter(
         CouponTemplate.id == template_id,
         CouponTemplate.is_deleted == False
@@ -201,7 +253,12 @@ def issue_coupon(
     if not member_ids:
         return ResponseModel(code=400, message="请选择要发放的会员")
 
+    # 是否发送通知（默认发送）
+    send_notification = data.get("send_notification", True)
+
     success_count = 0
+    notifications_to_send = []  # 收集需要发送通知的会员信息
+
     for member_id in member_ids:
         # 检查是否超过总量限制
         if template.total_count > 0 and template.issued_count >= template.total_count:
@@ -244,8 +301,32 @@ def issue_coupon(
         template.issued_count += 1
         success_count += 1
 
+        # 收集需要发送通知的会员信息（只有有openid的会员才能收到通知）
+        if send_notification and member.openid:
+            # 格式化优惠券面值显示
+            if template.type == "discount":
+                coupon_value = f"{float(template.discount_value)}折"
+            elif template.type == "cash":
+                coupon_value = f"满{float(template.min_amount)}减{float(template.discount_value)}元"
+            else:
+                coupon_value = f"{float(template.discount_value)}元"
+
+            notifications_to_send.append({
+                "openid": member.openid,
+                "coupon_name": template.name,
+                "coupon_value": coupon_value,
+                "expire_date": end_time.strftime("%Y-%m-%d") if end_time else "长期有效"
+            })
+
     db.commit()
-    return ResponseModel(message=f"成功发放 {success_count} 张优惠券")
+
+    # 在后台发送通知（不阻塞主请求）
+    if notifications_to_send:
+        background_tasks.add_task(run_send_notifications, notifications_to_send)
+
+    return ResponseModel(
+        message=f"成功发放 {success_count} 张优惠券" + (f"，正在发送 {len(notifications_to_send)} 条通知" if notifications_to_send else "")
+    )
 
 
 # ================== 会员优惠券 ==================

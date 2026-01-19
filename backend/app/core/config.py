@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     WECHAT_TEMPLATE_ACTIVITY_REMIND: str = ""  # 活动提醒通知
     WECHAT_TEMPLATE_ORDER_STATUS: str = ""  # 订单状态通知
     WECHAT_TEMPLATE_MEMBER_EXPIRE: str = ""  # 会员到期提醒
+    WECHAT_TEMPLATE_COUPON_RECEIVED: str = ""  # 优惠券到账通知
 
     # 文件上传配置
     UPLOAD_DIR: str = "uploads"

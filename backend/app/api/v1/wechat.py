@@ -181,7 +181,7 @@ async def get_member_promote_qrcode(
 class SubscribeMessageRequest(BaseModel):
     """订阅消息请求"""
     openid: str
-    template_type: str  # reservation_success/reservation_cancel/activity_remind/order_status/member_expire
+    template_type: str  # reservation_success/reservation_cancel/activity_remind/order_status/member_expire/coupon_received
     data: dict  # 模板数据
 
 
@@ -245,6 +245,16 @@ async def send_subscribe_message(
                 member_name=data.get("member_name", ""),
                 level_name=data.get("level_name", ""),
                 expire_date=data.get("expire_date", ""),
+                page=data.get("page", "")
+            )
+        elif template_type == "coupon_received":
+            success = await subscribe_message_helper.send_coupon_received(
+                service=user_wechat_service,
+                openid=openid,
+                coupon_name=data.get("coupon_name", ""),
+                coupon_value=data.get("coupon_value", ""),
+                expire_date=data.get("expire_date", ""),
+                remark=data.get("remark", "请在有效期内使用"),
                 page=data.get("page", "")
             )
         else:

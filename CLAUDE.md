@@ -17,15 +17,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |------|------|----------|
 | 管理后台 | ✅ 正常 | http://111.231.105.41 |
 | 后端 API | ✅ 正常 | http://111.231.105.41/api/v1 |
-| 用户端小程序 | ✅ 正常 | 开发者工具测试（需勾选"不校验合法域名"） |
-| 教练端小程序 | ✅ 正常 | 开发者工具测试（需勾选"不校验合法域名"） |
+| 小程序（用户+教练） | ✅ 正常 | 开发者工具测试（需勾选"不校验合法域名"） |
 | 数据库 | ✅ 正常 | MySQL 8.0 |
+| 微信支付 | ✅ 已配置 | 商户号 1738466280 |
 | ICP 备案 | ⏳ 待完成 | - |
 | SSL 证书 | ⏳ 备案后申请 | - |
 
 ### 登录信息
 - **管理后台账号**: admin
 - **管理后台密码**: admin123
+
+### 微信配置信息
+- **小程序 AppID**: `wxa780255d50dfbf1e`
+- **商户号 MCH_ID**: `1738466280`
+- **证书序列号**: `60D0FB36A12A4BD5A7A567EDDF3D71D6A30483C2`
+- **微信支付公钥ID**: `PUB_KEY_ID_0117384662802026011900191677001600`
 
 ---
 
@@ -38,10 +44,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - [ ] 在微信公众平台配置服务器域名（request/uploadFile/downloadFile）
 
 ### 小程序上线
-- [ ] 配置微信支付（需要商户号、APIv3密钥、证书）
-- [ ] 配置 .env 中的 WECHAT_APP_ID、WECHAT_APP_SECRET 等
-- [ ] 用户端小程序提交审核
-- [ ] 教练端小程序提交审核
+- [x] 配置微信支付（商户号、APIv3密钥、证书）✅ 已完成
+- [x] 配置 .env 中的 WECHAT_APP_ID、WECHAT_APP_SECRET 等 ✅ 已完成
+- [x] 教练端合并到用户端小程序 ✅ 已完成
+- [ ] 小程序提交审核（需ICP备案后）
 
 ### 后续开发
 - [ ] 物联设备对接（智能门禁、胸卡/手环、中控网关、小票机、扫码设备）
@@ -81,10 +87,13 @@ systemctl status nginx
 
 这是一个场馆体育社交系统（Sports Bar Project），包含以下子系统：
 
-1. **用户端微信小程序** - 面向普通用户的移动端应用 ✅ 已完成
-2. **教练端微信小程序** - 面向教练的移动端应用 ✅ 已完成
-3. **管理后台（PC端）** - 面向运营管理人员的 Web 管理系统 ✅ 已完成
-4. **物联设备对接** - 智能门禁、胸卡/手环、中控网关、小票机、扫码设备等（待开发）
+1. **微信小程序（用户+教练）** - 面向普通用户和教练的移动端应用 ✅ 已完成
+   - 用户功能：场馆预约、教练预约、活动报名、点餐、积分商城等
+   - 教练功能：预约管理、排期管理、收入管理、教练码等（在"我的"页面切换）
+2. **管理后台（PC端）** - 面向运营管理人员的 Web 管理系统 ✅ 已完成
+3. **物联设备对接** - 智能门禁、胸卡/手环、中控网关、小票机、扫码设备等（待开发）
+
+> **注意**: 教练端功能已合并到用户端小程序中，通过"我的"页面的"教练中心"入口访问。
 
 ## 技术栈
 
@@ -131,24 +140,9 @@ sports-bar-project/
 │   ├── init_data.py        # 初始化数据脚本
 │   └── requirements.txt
 │
-├── coach-miniprogram/       # 教练端微信小程序
-│   ├── pages/
-│   │   ├── index/          # 预约日历首页
-│   │   ├── schedule/       # 排期管理
-│   │   ├── code/           # 教练码
-│   │   ├── profile/        # 我的
-│   │   ├── login/          # 登录
-│   │   ├── reservation-detail/  # 预约详情
-│   │   ├── income/         # 课程收入
-│   │   ├── wallet/         # 钱包
-│   │   ├── orders/         # 订单
-│   │   └── promote/        # 推广
-│   ├── utils/              # 工具函数
-│   ├── app.js
-│   ├── app.json
-│   └── app.wxss
+├── coach-miniprogram/       # 教练端微信小程序（已废弃，功能已合并到user-miniprogram）
 │
-├── user-miniprogram/        # 用户端微信小程序
+├── user-miniprogram/        # 微信小程序（用户+教练功能）
 │   ├── pages/
 │   │   ├── index/          # 首页
 │   │   ├── venue/          # 场馆列表
@@ -166,7 +160,7 @@ sports-bar-project/
 │   │   ├── mall-detail/    # 商品详情
 │   │   ├── team/           # 组队广场
 │   │   ├── team-detail/    # 组队详情
-│   │   ├── profile/        # 我的
+│   │   ├── profile/        # 我的（含教练中心入口）
 │   │   ├── login/          # 登录
 │   │   ├── wallet/         # 钱包
 │   │   ├── recharge/       # 充值
@@ -174,9 +168,24 @@ sports-bar-project/
 │   │   ├── order-detail/   # 订单详情
 │   │   ├── member/         # 会员中心
 │   │   ├── coupons/        # 优惠券
-│   │   └── settings/       # 设置
-│   ├── utils/              # 工具函数
-│   ├── app.js
+│   │   ├── settings/       # 设置
+│   │   ├── coach-home/     # 【教练】预约日历首页
+│   │   ├── coach-login/    # 【教练】登录
+│   │   ├── coach-profile/  # 【教练】我的
+│   │   ├── coach-schedule/ # 【教练】排期管理
+│   │   ├── coach-code/     # 【教练】教练码
+│   │   ├── coach-income/   # 【教练】课程收入
+│   │   ├── coach-wallet/   # 【教练】钱包
+│   │   ├── coach-orders/   # 【教练】订单
+│   │   ├── coach-promote/  # 【教练】推广
+│   │   └── coach-reservation-detail/  # 【教练】预约详情
+│   ├── utils/
+│   │   ├── request.js      # 用户端请求封装
+│   │   ├── api.js          # 用户端API接口
+│   │   ├── coach-api.js    # 教练端API接口
+│   │   ├── wx-api.js       # 微信API封装
+│   │   └── util.js         # 通用工具函数
+│   ├── app.js              # 含用户和教练双重登录状态管理
 │   ├── app.json
 │   └── app.wxss
 │
@@ -203,7 +212,7 @@ npm run dev
 ```
 
 ### 小程序开发
-使用微信开发者工具打开 `coach-miniprogram` 或 `user-miniprogram` 目录
+使用微信开发者工具打开 `user-miniprogram` 目录（已包含用户和教练功能）
 
 ### 访问地址
 - 管理后台前端: http://localhost:5173
@@ -309,7 +318,7 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 - ✅ 教练管理（教练列表、教练申请审核）
 - ✅ 活动管理（活动列表、报名管理、签到）
 - ✅ 点餐管理（餐饮分类、餐饮商品、餐饮订单）
-- ✅ 票券管理（优惠券模板、发放记录）
+- ✅ 票券管理（优惠券模板、发放记录、**微信推送通知**）
 - ✅ 商城管理（商品分类、积分商品、兑换订单）
 - ✅ 财务管理（财务概览、充值记录、消费记录、教练结算）
 - ✅ 消息通知（消息模板、消息发送、公告管理、轮播图管理）
@@ -347,21 +356,26 @@ WECHAT_TEMPLATE_RESERVATION_CANCEL=your_template_id    # 预约取消通知
 WECHAT_TEMPLATE_ACTIVITY_REMIND=your_template_id       # 活动提醒通知
 WECHAT_TEMPLATE_ORDER_STATUS=your_template_id          # 订单状态通知
 WECHAT_TEMPLATE_MEMBER_EXPIRE=your_template_id         # 会员到期提醒
+WECHAT_TEMPLATE_COUPON_RECEIVED=your_template_id       # 优惠券到账通知
 ```
 
 ## 小程序工具函数
 
 ### 用户端小程序 (`user-miniprogram/utils/`)
 - `request.js` - 网络请求封装（自动添加token、错误处理）
-- `api.js` - API接口定义（所有后端接口）
+- `api.js` - 用户端API接口定义（所有后端接口）
+- `coach-api.js` - 教练端API接口定义
 - `wx-api.js` - 微信API封装（登录、位置、支付、扫码等）
 - `util.js` - 通用工具函数（日期格式化、状态映射等）
 
-### 教练端小程序 (`coach-miniprogram/utils/`)
-- `request.js` - 网络请求封装
-- `api.js` - API接口定义
-- `wx-api.js` - 微信API封装
-- `util.js` - 通用工具函数
+### app.js 全局状态
+- `globalData.token` - 用户登录token
+- `globalData.memberInfo` - 用户信息
+- `globalData.coachToken` - 教练登录token
+- `globalData.coachInfo` - 教练信息
+- `checkLogin()` - 检查用户登录状态
+- `checkCoachLogin()` - 检查教练登录状态
+- `coachRequest()` - 教练端API请求方法
 
 ## 待开发模块
 
@@ -374,11 +388,10 @@ WECHAT_TEMPLATE_MEMBER_EXPIRE=your_template_id         # 会员到期提醒
 ### 一、微信公众平台注册与配置
 
 #### 1.1 注册小程序账号
-- [ ] 访问 [微信公众平台](https://mp.weixin.qq.com/) 注册**两个**小程序账号
-  - 用户端小程序（面向普通用户）
-  - 教练端小程序（面向教练）
+- [x] 访问 [微信公众平台](https://mp.weixin.qq.com/) 注册小程序账号 ✅ 已完成
+  - 用户+教练功能合并在一个小程序中
 - [ ] 完成企业主体认证（需要营业执照、对公账户）
-- [ ] 记录两个小程序的 AppID 和 AppSecret
+- [x] 记录小程序的 AppID 和 AppSecret ✅ 已完成（AppID: wxa780255d50dfbf1e）
 
 #### 1.2 小程序基本设置
 - [ ] 设置小程序名称、头像、简介
@@ -497,36 +510,41 @@ python init_data.py
 ### 四、小程序代码配置
 
 #### 4.1 修改API地址
-**用户端小程序** `user-miniprogram/utils/request.js`：
+**小程序** `user-miniprogram/app.js`：
 ```javascript
-const BASE_URL = 'https://你的云托管域名/api/v1/member'
+globalData: {
+  baseUrl: 'https://你的域名/api/v1'  // ICP备案后修改为正式域名
+}
 ```
 
-**教练端小程序** `coach-miniprogram/utils/request.js`：
-```javascript
-const BASE_URL = 'https://你的云托管域名/api/v1/coach'
-```
+> 当前配置为 `http://111.231.105.41/api/v1`，需要在ICP备案完成后修改为HTTPS域名
 
 #### 4.2 配置合法域名
-部署完成后，将云托管分配的域名添加到小程序的「服务器域名」配置中。
+ICP备案完成后，在微信公众平台配置「服务器域名」：
+- request 合法域名：`https://yunlifang.cloud`
+- uploadFile 合法域名：`https://yunlifang.cloud`
+- downloadFile 合法域名：`https://yunlifang.cloud`
 
 ---
 
-### 五、微信支付配置
+### 五、微信支付配置 ✅ 已完成
 
 #### 5.1 开通微信支付
-- [ ] 在微信支付商户平台注册商户号
-- [ ] 完成商户认证
-- [ ] 与小程序进行关联
+- [x] 在微信支付商户平台注册商户号 ✅ 商户号: 1738466280
+- [x] 完成商户认证 ✅
+- [x] 与小程序进行关联 ✅
 
 #### 5.2 获取支付配置
-- [ ] 商户号（mch_id）
-- [ ] APIv3 密钥
-- [ ] 下载并保存支付证书（apiclient_key.pem）
-- [ ] 获取证书序列号
+- [x] 商户号（mch_id）：`1738466280`
+- [x] APIv3 密钥：已配置到服务器 .env
+- [x] 下载并保存支付证书（apiclient_key.pem）：已上传到服务器 `/var/www/sports-bar-project/backend/certs/`
+- [x] 获取证书序列号：`60D0FB36A12A4BD5A7A567EDDF3D71D6A30483C2`
+- [x] 微信支付公钥：已配置（公钥ID: `PUB_KEY_ID_0117384662802026011900191677001600`）
 
-#### 5.3 上传证书到云托管
-将支付证书通过环境变量或文件挂载方式配置到云托管服务中。
+#### 5.3 服务器证书文件
+证书文件已上传到服务器 `/var/www/sports-bar-project/backend/certs/` 目录：
+- `apiclient_key.pem` - 商户API私钥
+- `pub_key.pem` - 微信支付公钥（用于验签）
 
 ---
 
@@ -588,14 +606,17 @@ npm run build
 ### 快速检查清单
 
 ```
-□ 两个小程序账号已注册并认证
-□ AppID 和 AppSecret 已获取
-□ 后端服务部署成功
-□ 数据库已创建并初始化
-□ 环境变量已正确配置
-□ 服务器域名已配置到小程序
-□ 微信支付已开通并测试通过
-□ 小程序代码中API地址已修改
+✅ 小程序账号已注册（AppID: wxa780255d50dfbf1e）
+✅ AppID 和 AppSecret 已获取并配置
+✅ 后端服务部署成功
+✅ 数据库已创建并初始化
+✅ 环境变量已正确配置
+✅ 微信支付已开通并配置
+✅ 教练端已合并到用户端小程序
+□ ICP备案（等待中）
+□ SSL证书配置（备案后）
+□ 服务器域名已配置到小程序（备案后）
+□ 小程序代码中API地址改为HTTPS（备案后）
 □ 所有功能测试通过
 □ 提交审核
 ```
@@ -875,15 +896,14 @@ ufw status
 
 ### 第十一步：修改小程序 API 地址
 
-**用户端小程序** `user-miniprogram/utils/request.js`：
+**小程序** `user-miniprogram/app.js`：
 ```javascript
-const BASE_URL = 'https://你的域名/api/v1/member'
+globalData: {
+  baseUrl: 'https://你的域名/api/v1'
+}
 ```
 
-**教练端小程序** `coach-miniprogram/utils/request.js`：
-```javascript
-const BASE_URL = 'https://你的域名/api/v1/coach'
-```
+> 教练端功能已合并到用户端小程序，使用同一个 baseUrl
 
 ---
 

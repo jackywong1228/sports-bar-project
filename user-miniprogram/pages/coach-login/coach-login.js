@@ -1,20 +1,73 @@
 const app = getApp()
+const api = require('../../utils/api')
 const coachApi = require('../../utils/coach-api')
 const wxApi = require('../../utils/wx-api')
 
 Page({
   data: {
     phone: '',
-    isLoading: false
+    isLoading: false,
+    checkingStatus: true  // 是否正在检查教练状态
   },
 
   onLoad() {
-    // 检查是否已登录
-    const token = wx.getStorageSync('coach_token')
-    if (token) {
+    // 检查是否已登录教练
+    const coachToken = wx.getStorageSync('coach_token')
+    if (coachToken) {
       wx.redirectTo({
         url: '/pages/coach-home/coach-home'
       })
+      return
+    }
+
+    // 检查用户是否已登录
+    if (!app.globalData.token) {
+      wx.showToast({
+        title: '请先登录用户账号',
+        icon: 'none'
+      })
+      setTimeout(() => {
+        wx.navigateTo({
+          url: '/pages/login/login'
+        })
+      }, 1500)
+      return
+    }
+
+    // 检查是否已是教练
+    this.checkCoachStatus()
+  },
+
+  // 检查教练状态
+  async checkCoachStatus() {
+    try {
+      const res = await api.getCoachApplyStatus()
+      const data = res.data
+
+      this.setData({ checkingStatus: false })
+
+      if (data.is_coach) {
+        // 已是教练，尝试用微信登录获取教练token
+        this.wxLogin()
+      } else if (data.status === 'none' || data.status === 'rejected') {
+        // 未申请或被拒绝，跳转到申请页面
+        wx.redirectTo({
+          url: '/pages/coach-apply/coach-apply'
+        })
+      } else if (data.status === 'pending') {
+        // 申请中
+        wx.showModal({
+          title: '申请审核中',
+          content: '您的教练申请正在审核中，请耐心等待',
+          showCancel: false,
+          success: () => {
+            wx.navigateBack()
+          }
+        })
+      }
+    } catch (err) {
+      console.error('检查教练状态失败:', err)
+      this.setData({ checkingStatus: false })
     }
   },
 

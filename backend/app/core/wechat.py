@@ -477,5 +477,44 @@ class SubscribeMessageHelper:
             page=page
         )
 
+    @staticmethod
+    async def send_coupon_received(
+        service: WeChatService,
+        openid: str,
+        coupon_name: str,
+        coupon_value: str,
+        expire_date: str,
+        remark: str = "请在有效期内使用",
+        page: str = ""
+    ) -> bool:
+        """
+        发送优惠券到账通知
+
+        :param service: 微信服务实例
+        :param openid: 接收者openid
+        :param coupon_name: 优惠券名称
+        :param coupon_value: 优惠券面值/折扣
+        :param expire_date: 有效期
+        :param remark: 备注
+        :param page: 点击跳转页面
+        :return: 是否发送成功
+        """
+        if not settings.WECHAT_TEMPLATE_COUPON_RECEIVED:
+            return False
+
+        data = {
+            "thing1": {"value": coupon_name[:20]},    # 优惠券名称
+            "thing2": {"value": coupon_value[:20]},   # 优惠券面值
+            "date3": {"value": expire_date},          # 有效期
+            "thing4": {"value": remark[:20]}          # 备注
+        }
+
+        return await service.send_subscribe_message(
+            openid=openid,
+            template_id=settings.WECHAT_TEMPLATE_COUPON_RECEIVED,
+            data=data,
+            page=page
+        )
+
 
 subscribe_message_helper = SubscribeMessageHelper()

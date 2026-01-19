@@ -36,7 +36,7 @@ Page({
     this.setData({ isLoading: true })
 
     try {
-      const res = await api.wxLogin(this.data.phone)
+      const res = await api.loginByPhone(this.data.phone)
       this.handleLoginSuccess(res.data)
     } catch (err) {
       wxApi.showToast(err.message || '登录失败')

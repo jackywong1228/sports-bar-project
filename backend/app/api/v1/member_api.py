@@ -14,6 +14,7 @@ from app.core.security import create_access_token
 from app.core.config import settings
 from app.core.wechat import user_wechat_service, WeChatAPIError
 from app.models import Member, Venue, VenueType, Coach, Reservation, CoinRecord, PointRecord
+from app.models.coach import CoachApplication
 from app.models.activity import Activity
 from app.models.message import Banner
 from app.models.food import FoodCategory, FoodItem, FoodOrder, FoodOrderItem
@@ -196,6 +197,110 @@ async def get_member_phone(
     db.commit()
 
     return ResponseModel(message="绑定成功", data={"phone": phone})
+
+
+# ==================== 教练申请 ====================
+
+class CoachApplyRequest(BaseModel):
+    """教练申请请求"""
+    name: str
+    phone: str
+    type: str = "technical"  # technical技术教练 / entertainment娱乐教练
+    introduction: Optional[str] = None
+    skills: Optional[str] = None  # JSON字符串
+    certificates: Optional[str] = None  # JSON字符串
+
+
+@router.post("/coach/apply", response_model=ResponseModel)
+def apply_for_coach(
+    data: CoachApplyRequest,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """申请成为教练"""
+    # 检查是否已经是教练
+    existing_coach = db.query(Coach).filter(
+        Coach.member_id == current_member.id,
+        Coach.is_deleted == False
+    ).first()
+
+    if existing_coach:
+        raise HTTPException(status_code=400, detail="您已经是教练，无需重复申请")
+
+    # 检查是否有待审核的申请
+    pending_application = db.query(CoachApplication).filter(
+        CoachApplication.member_id == current_member.id,
+        CoachApplication.status == 0  # 待审核
+    ).first()
+
+    if pending_application:
+        raise HTTPException(status_code=400, detail="您有待审核的申请，请耐心等待")
+
+    # 创建申请
+    application = CoachApplication(
+        member_id=current_member.id,
+        name=data.name,
+        phone=data.phone,
+        type=data.type,
+        introduction=data.introduction,
+        skills=data.skills,
+        certificates=data.certificates,
+        status=0  # 待审核
+    )
+    db.add(application)
+    db.commit()
+    db.refresh(application)
+
+    return ResponseModel(
+        message="申请提交成功，请等待审核",
+        data={"application_id": application.id}
+    )
+
+
+@router.get("/coach/apply/status", response_model=ResponseModel)
+def get_coach_apply_status(
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取教练申请状态"""
+    # 检查是否已经是教练
+    coach = db.query(Coach).filter(
+        Coach.member_id == current_member.id,
+        Coach.is_deleted == False
+    ).first()
+
+    if coach:
+        return ResponseModel(data={
+            "status": "approved",
+            "is_coach": True,
+            "coach_id": coach.id,
+            "coach_name": coach.name,
+            "message": "您已是认证教练"
+        })
+
+    # 查找最新的申请记录
+    application = db.query(CoachApplication).filter(
+        CoachApplication.member_id == current_member.id
+    ).order_by(CoachApplication.created_at.desc()).first()
+
+    if not application:
+        return ResponseModel(data={
+            "status": "none",
+            "is_coach": False,
+            "message": "您还未提交教练申请"
+        })
+
+    status_map = {
+        0: {"status": "pending", "message": "申请审核中，请耐心等待"},
+        1: {"status": "approved", "message": "申请已通过"},
+        2: {"status": "rejected", "message": f"申请被拒绝：{application.audit_remark or '未说明原因'}"}
+    }
+
+    result = status_map.get(application.status, {"status": "unknown", "message": "未知状态"})
+    result["is_coach"] = False
+    result["application_id"] = application.id
+
+    return ResponseModel(data=result)
 
 
 # ==================== 会员信息 ====================

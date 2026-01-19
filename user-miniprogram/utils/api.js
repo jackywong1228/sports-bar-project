@@ -8,12 +8,20 @@ const { get, post, put, del, upload } = require('./request')
 // ==================== 用户认证 ====================
 
 /**
+ * 手机号登录（开发测试用）
+ * @param {string} phone 手机号
+ */
+const loginByPhone = (phone) => {
+  return post('/member/auth/login', { phone })
+}
+
+/**
  * 微信登录
  * @param {string} code wx.login获取的code
  * @param {Object} userInfo 用户信息
  */
 const wxLogin = (code, userInfo = {}) => {
-  return post('/member/wx-login', { code, ...userInfo })
+  return post('/member/auth/wx-login', { code, ...userInfo })
 }
 
 /**
@@ -21,7 +29,7 @@ const wxLogin = (code, userInfo = {}) => {
  * @param {string} code getPhoneNumber事件获取的code
  */
 const getPhoneNumber = (code) => {
-  return post('/member/phone', { code })
+  return post('/member/auth/phone', { code })
 }
 
 /**
@@ -36,6 +44,22 @@ const getUserProfile = () => {
  */
 const updateUserProfile = (data) => {
   return put('/member/profile', data)
+}
+
+// ==================== 教练申请 ====================
+
+/**
+ * 申请成为教练
+ */
+const applyForCoach = (data) => {
+  return post('/member/coach/apply', data)
+}
+
+/**
+ * 获取教练申请状态
+ */
+const getCoachApplyStatus = () => {
+  return get('/member/coach/apply/status')
 }
 
 // ==================== 首页 ====================
@@ -460,10 +484,15 @@ const uploadImage = (filePath) => {
 
 module.exports = {
   // 认证
+  loginByPhone,
   wxLogin,
   getPhoneNumber,
   getUserProfile,
   updateUserProfile,
+
+  // 教练申请
+  applyForCoach,
+  getCoachApplyStatus,
 
   // 首页
   getHomeData,
