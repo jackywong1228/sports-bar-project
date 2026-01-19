@@ -1,9 +1,11 @@
 const app = getApp()
+const api = require('../../utils/api')
 
 Page({
   data: {
     memberInfo: null,
     isLoggedIn: false,
+    isCoach: false,
     menus: [
       { icon: '/assets/icons/order.png', text: '我的订单', url: '/pages/orders/orders' },
       { icon: '/assets/icons/reservation.png', text: '我的预约', url: '/pages/orders/orders?type=reservation' },
@@ -39,6 +41,47 @@ Page({
       setTimeout(() => {
         this.setData({ memberInfo: app.globalData.memberInfo })
       }, 500)
+    }
+
+    // 检查是否是教练
+    if (isLoggedIn) {
+      this.checkCoachStatus()
+    }
+  },
+
+  // 检查教练身份
+  async checkCoachStatus() {
+    try {
+      const coachToken = wx.getStorageSync('coach_token')
+      if (coachToken) {
+        this.setData({ isCoach: true })
+        return
+      }
+      // 可以调用后端接口检查用户是否有教练身份
+      // 这里简化处理，默认显示"申请成为教练"
+    } catch (err) {
+      console.error('检查教练状态失败:', err)
+    }
+  },
+
+  // 跳转教练中心
+  goToCoachCenter() {
+    if (!this.data.isLoggedIn) {
+      this.goToLogin()
+      return
+    }
+
+    const coachToken = wx.getStorageSync('coach_token')
+    if (coachToken) {
+      // 已是教练，直接进入教练首页
+      wx.navigateTo({
+        url: '/pages/coach-home/coach-home'
+      })
+    } else {
+      // 未登录教练，跳转教练登录页
+      wx.navigateTo({
+        url: '/pages/coach-login/coach-login'
+      })
     }
   },
 

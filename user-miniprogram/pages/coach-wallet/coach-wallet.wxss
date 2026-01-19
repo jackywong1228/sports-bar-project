@@ -1,0 +1,161 @@
+/* 页面容器 */
+.page-container {
+  min-height: 100vh;
+  padding: 20rpx;
+  box-sizing: border-box;
+  background: #f5f5f5;
+}
+
+/* 余额卡片 */
+.balance-card {
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+  color: #fff;
+  margin-bottom: 20rpx;
+}
+
+.tab-bar {
+  display: flex;
+  margin-bottom: 30rpx;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  opacity: 0.7;
+  border-bottom: 4rpx solid transparent;
+}
+
+.tab-item.active {
+  opacity: 1;
+  font-weight: 500;
+  border-bottom-color: #fff;
+}
+
+.balance-content {
+  text-align: center;
+  padding: 20rpx 0 30rpx;
+}
+
+.balance-label {
+  font-size: 26rpx;
+  opacity: 0.8;
+  margin-bottom: 16rpx;
+}
+
+.balance-value {
+  font-size: 72rpx;
+  font-weight: 600;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.2);
+}
+
+.action-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: none;
+  padding: 16rpx 60rpx;
+  border-radius: 30rpx;
+  font-size: 28rpx;
+}
+
+/* 规则说明 */
+.rules-card {
+  margin-bottom: 20rpx;
+}
+
+.rules-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.rules-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.rules-content text {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.8;
+}
+
+/* 收支记录 */
+.record-card {
+  margin-bottom: 20rpx;
+}
+
+.record-header {
+  margin-bottom: 20rpx;
+}
+
+.record-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.month-picker {
+  font-size: 26rpx;
+  color: #1890ff;
+}
+
+.record-list {
+  margin: 0 -24rpx;
+}
+
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.record-item:last-child {
+  border-bottom: none;
+}
+
+.record-info {
+  flex: 1;
+}
+
+.record-desc {
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.record-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.record-amount {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.record-amount.income {
+  color: #52c41a;
+}
+
+.record-amount.expense {
+  color: #f5222d;
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 60rpx;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}

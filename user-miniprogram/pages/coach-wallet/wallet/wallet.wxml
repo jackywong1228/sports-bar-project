@@ -1,0 +1,70 @@
+<!-- 钱包页面 -->
+<view class="page-container">
+  <!-- 余额卡片 -->
+  <view class="balance-card card">
+    <view class="tab-bar">
+      <view class="tab-item {{currentTab === 'coin' ? 'active' : ''}}" bindtap="switchTab" data-tab="coin">
+        金币
+      </view>
+      <view class="tab-item {{currentTab === 'point' ? 'active' : ''}}" bindtap="switchTab" data-tab="point">
+        积分
+      </view>
+    </view>
+    <view class="balance-content">
+      <view class="balance-label">当前{{currentTab === 'coin' ? '金币' : '积分'}}余额</view>
+      <view class="balance-value">{{currentTab === 'coin' ? walletData.coin_balance : walletData.point_balance}}</view>
+    </view>
+    <view class="action-buttons" wx:if="{{currentTab === 'coin'}}">
+      <button class="action-btn" bindtap="goToRecharge">充值</button>
+    </view>
+  </view>
+
+  <!-- 规则说明 -->
+  <view class="rules-card card">
+    <view class="rules-title">{{currentTab === 'coin' ? '金币' : '积分'}}说明</view>
+    <view class="rules-content" wx:if="{{currentTab === 'coin'}}">
+      <text>• 金币可用于场馆消费、点餐等</text>
+      <text>• 教练享受专属充值优惠</text>
+      <text>• 金币不可提现，不可转让</text>
+    </view>
+    <view class="rules-content" wx:else>
+      <text>• 积分可在积分商城兑换商品</text>
+      <text>• 完成课程、推广可获得积分</text>
+      <text>• 积分不可提现，不可转让</text>
+    </view>
+  </view>
+
+  <!-- 收支记录 -->
+  <view class="record-card card">
+    <view class="record-header flex flex-between">
+      <view class="record-title">收支记录</view>
+      <picker mode="date" fields="month" bindchange="selectMonth">
+        <view class="month-picker">{{selectedMonth}} ▼</view>
+      </picker>
+    </view>
+
+    <view class="record-list">
+      <block wx:if="{{recordList.length > 0}}">
+        <view class="record-item" wx:for="{{recordList}}" wx:key="id">
+          <view class="record-info">
+            <view class="record-desc">{{item.description}}</view>
+            <view class="record-time">{{item.created_at}}</view>
+          </view>
+          <view class="record-amount {{item.amount > 0 ? 'income' : 'expense'}}">
+            {{item.amount > 0 ? '+' : ''}}{{item.amount}}
+          </view>
+        </view>
+      </block>
+
+      <!-- 空状态 -->
+      <view class="empty-state" wx:if="{{!loading && recordList.length === 0}}">
+        <text>暂无记录</text>
+      </view>
+
+      <!-- 加载状态 -->
+      <view class="loading" wx:if="{{loading}}">
+        <text>加载中...</text>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,92 @@
+<!-- 教练码页面 -->
+<view class="page-container">
+  <!-- 教练信息卡片 -->
+  <view class="coach-card card">
+    <view class="coach-header flex">
+      <image class="avatar" src="{{coachInfo.avatar || '/assets/icons/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="coach-info flex-1">
+        <view class="coach-name">{{coachInfo.name || '教练'}}</view>
+        <view class="coach-type">{{coachInfo.type_name || '专业教练'}}</view>
+        <view class="coach-rating">
+          <text class="star" wx:for="{{5}}" wx:key="*this">{{index < coachInfo.rating ? '★' : '☆'}}</text>
+          <text class="rating-text">{{coachInfo.rating || 5.0}}分</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 二维码区域 -->
+  <view class="qrcode-card card">
+    <view class="qrcode-title">教练通行码</view>
+    <view class="qrcode-wrapper">
+      <canvas canvas-id="coachQrcode" class="qrcode-canvas"></canvas>
+      <view class="qrcode-border"></view>
+    </view>
+    <view class="qrcode-tip">
+      <text>扫码进入已预约场馆</text>
+    </view>
+    <view class="refresh-time">
+      <text>{{refreshTimeText}}</text>
+      <view class="refresh-btn" bindtap="refreshCode">刷新</view>
+    </view>
+  </view>
+
+  <!-- 余额信息 -->
+  <view class="balance-card card">
+    <view class="balance-title">我的账户</view>
+    <view class="balance-grid">
+      <view class="balance-item" bindtap="goToWallet" data-type="coin">
+        <view class="balance-icon coin">💰</view>
+        <view class="balance-value">{{coachInfo.coin_balance || 0}}</view>
+        <view class="balance-label">金币余额</view>
+      </view>
+      <view class="balance-divider"></view>
+      <view class="balance-item" bindtap="goToWallet" data-type="point">
+        <view class="balance-icon point">🎯</view>
+        <view class="balance-value">{{coachInfo.point_balance || 0}}</view>
+        <view class="balance-label">积分余额</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 今日预约 -->
+  <view class="today-card card">
+    <view class="card-header flex flex-between">
+      <view class="card-title">今日预约</view>
+      <view class="card-more" bindtap="goToIndex">查看全部 ▶</view>
+    </view>
+    <view class="today-stats flex">
+      <view class="stat-item">
+        <view class="stat-value">{{todayStats.total || 0}}</view>
+        <view class="stat-label">总预约</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-value confirmed">{{todayStats.confirmed || 0}}</view>
+        <view class="stat-label">待完成</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-value completed">{{todayStats.completed || 0}}</view>
+        <view class="stat-label">已完成</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 使用说明 -->
+  <view class="tips-card card">
+    <view class="tips-title">使用说明</view>
+    <view class="tips-list">
+      <view class="tips-item">
+        <text class="tips-num">1</text>
+        <text class="tips-text">教练码用于进入已预约的场馆</text>
+      </view>
+      <view class="tips-item">
+        <text class="tips-num">2</text>
+        <text class="tips-text">二维码每5分钟自动刷新</text>
+      </view>
+      <view class="tips-item">
+        <text class="tips-num">3</text>
+        <text class="tips-text">如无法通行请联系场馆工作人员</text>
+      </view>
+    </view>
+  </view>
+</view>

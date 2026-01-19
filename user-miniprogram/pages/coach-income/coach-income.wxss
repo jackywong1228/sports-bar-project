@@ -1,0 +1,198 @@
+/* 页面容器 */
+.page-container {
+  min-height: 100vh;
+  padding: 20rpx;
+  box-sizing: border-box;
+  background: #f5f5f5;
+}
+
+/* 收入概览 */
+.overview-card {
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+  color: #fff;
+  margin-bottom: 20rpx;
+}
+
+.overview-header {
+  text-align: center;
+  padding-bottom: 30rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 24rpx;
+}
+
+.overview-label {
+  font-size: 26rpx;
+  opacity: 0.8;
+  margin-bottom: 12rpx;
+}
+
+.overview-value {
+  font-size: 64rpx;
+  font-weight: 600;
+}
+
+.overview-stats {
+  justify-content: space-around;
+}
+
+.overview-stats .stat-item {
+  text-align: center;
+}
+
+.overview-stats .stat-value {
+  font-size: 36rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.overview-stats .stat-label {
+  font-size: 24rpx;
+  opacity: 0.8;
+}
+
+/* 提示卡片 */
+.tips-card {
+  display: flex;
+  align-items: flex-start;
+  background: #fffbe6;
+  border: 1rpx solid #ffe58f;
+  margin-bottom: 20rpx;
+}
+
+.tips-icon {
+  font-size: 32rpx;
+  margin-right: 16rpx;
+}
+
+.tips-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tips-content text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 筛选栏 */
+.filter-bar {
+  display: flex;
+  padding: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.filter-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 26rpx;
+  color: #666;
+  border-radius: 8rpx;
+}
+
+.filter-item.active {
+  background: #e6f7ff;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+/* 收入列表 */
+.income-list {
+  padding-bottom: 20rpx;
+}
+
+.income-item {
+  margin-bottom: 20rpx;
+}
+
+.income-header {
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 16rpx;
+}
+
+.income-date {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.income-status {
+  font-size: 24rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.income-status.pending {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.income-status.settled {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.income-body {
+  margin-bottom: 16rpx;
+}
+
+.info-row {
+  margin-bottom: 12rpx;
+}
+
+.info-row .label {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.info-row .value {
+  font-size: 26rpx;
+  color: #333;
+}
+
+.income-footer {
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.income-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 4rpx;
+}
+
+.income-amount {
+  text-align: right;
+}
+
+.amount-label {
+  font-size: 24rpx;
+  color: #999;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.amount-value {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #f5222d;
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 100rpx 40rpx;
+}
+
+.empty-state image {
+  width: 200rpx;
+  height: 200rpx;
+  opacity: 0.5;
+}

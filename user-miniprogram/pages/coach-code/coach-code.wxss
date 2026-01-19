@@ -1,0 +1,257 @@
+/* 页面容器 */
+.page-container {
+  min-height: 100vh;
+  padding: 20rpx;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #1890ff 0%, #096dd9 200rpx, #f5f5f5 200rpx);
+}
+
+/* 教练卡片 */
+.coach-card {
+  margin-bottom: 20rpx;
+}
+
+.coach-header {
+  padding: 10rpx 0;
+}
+
+.coach-header .avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+  border: 4rpx solid #fff;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.coach-info {
+  justify-content: center;
+}
+
+.coach-name {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.coach-type {
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+}
+
+.coach-rating .star {
+  color: #fadb14;
+  font-size: 28rpx;
+}
+
+.coach-rating .rating-text {
+  margin-left: 8rpx;
+  font-size: 26rpx;
+  color: #999;
+}
+
+/* 二维码卡片 */
+.qrcode-card {
+  text-align: center;
+  padding: 40rpx;
+  margin-bottom: 20rpx;
+}
+
+.qrcode-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 30rpx;
+}
+
+.qrcode-wrapper {
+  position: relative;
+  width: 400rpx;
+  height: 400rpx;
+  margin: 0 auto;
+  padding: 20rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+}
+
+.qrcode-canvas {
+  width: 360rpx;
+  height: 360rpx;
+}
+
+.qrcode-border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 4rpx solid #1890ff;
+  border-radius: 16rpx;
+  pointer-events: none;
+}
+
+.qrcode-tip {
+  margin-top: 24rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.refresh-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.refresh-btn {
+  margin-left: 16rpx;
+  padding: 8rpx 20rpx;
+  background: #e6f7ff;
+  color: #1890ff;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+}
+
+/* 余额卡片 */
+.balance-card {
+  margin-bottom: 20rpx;
+}
+
+.balance-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.balance-grid {
+  display: flex;
+  align-items: center;
+}
+
+.balance-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+}
+
+.balance-divider {
+  width: 1rpx;
+  height: 80rpx;
+  background: #f0f0f0;
+}
+
+.balance-icon {
+  font-size: 40rpx;
+  margin-bottom: 8rpx;
+}
+
+.balance-value {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.balance-label {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 今日预约 */
+.today-card {
+  margin-bottom: 20rpx;
+}
+
+.card-header {
+  margin-bottom: 20rpx;
+}
+
+.card-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.card-more {
+  font-size: 24rpx;
+  color: #1890ff;
+}
+
+.today-stats {
+  justify-content: space-around;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 48rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.stat-value.confirmed {
+  color: #1890ff;
+}
+
+.stat-value.completed {
+  color: #52c41a;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 使用说明 */
+.tips-card {
+  margin-bottom: 20rpx;
+}
+
+.tips-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.tips-list {
+  padding: 0;
+}
+
+.tips-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+
+.tips-item:last-child {
+  margin-bottom: 0;
+}
+
+.tips-num {
+  width: 36rpx;
+  height: 36rpx;
+  line-height: 36rpx;
+  text-align: center;
+  background: #1890ff;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 22rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.tips-text {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 36rpx;
+}

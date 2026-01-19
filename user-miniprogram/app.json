@@ -24,7 +24,17 @@
     "pages/order-detail/order-detail",
     "pages/member/member",
     "pages/coupons/coupons",
-    "pages/settings/settings"
+    "pages/settings/settings",
+    "pages/coach-home/coach-home",
+    "pages/coach-login/coach-login",
+    "pages/coach-schedule/coach-schedule",
+    "pages/coach-code/coach-code",
+    "pages/coach-profile/coach-profile",
+    "pages/coach-reservation-detail/coach-reservation-detail",
+    "pages/coach-income/coach-income",
+    "pages/coach-wallet/coach-wallet",
+    "pages/coach-orders/coach-orders",
+    "pages/coach-promote/coach-promote"
   ],
   "window": {
     "backgroundTextStyle": "dark",

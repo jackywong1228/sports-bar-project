@@ -1,0 +1,104 @@
+<!-- 预约计划首页 -->
+<view class="page-container">
+  <!-- 日期选择器 -->
+  <view class="date-picker card">
+    <view class="date-header flex flex-between">
+      <view class="date-nav" bindtap="prevWeek">
+        <text class="iconfont">◀</text>
+      </view>
+      <view class="date-title">{{currentMonth}}</view>
+      <view class="date-nav" bindtap="nextWeek">
+        <text class="iconfont">▶</text>
+      </view>
+    </view>
+    <view class="date-list">
+      <view
+        class="date-item {{item.date === selectedDate ? 'active' : ''}} {{item.isToday ? 'today' : ''}}"
+        wx:for="{{weekDates}}"
+        wx:key="date"
+        bindtap="selectDate"
+        data-date="{{item.date}}"
+      >
+        <view class="week-day">{{item.weekDay}}</view>
+        <view class="day">{{item.day}}</view>
+        <view class="dot" wx:if="{{reservationCounts[item.date] > 0}}"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar card">
+    <view class="filter-item {{currentFilter === 'all' ? 'active' : ''}}" bindtap="setFilter" data-filter="all">
+      全部
+    </view>
+    <view class="filter-item {{currentFilter === 'pending' ? 'active' : ''}}" bindtap="setFilter" data-filter="pending">
+      待确认
+    </view>
+    <view class="filter-item {{currentFilter === 'confirmed' ? 'active' : ''}}" bindtap="setFilter" data-filter="confirmed">
+      已确认
+    </view>
+    <view class="filter-item {{currentFilter === 'completed' ? 'active' : ''}}" bindtap="setFilter" data-filter="completed">
+      已完成
+    </view>
+  </view>
+
+  <!-- 预约列表 -->
+  <view class="reservation-list">
+    <block wx:if="{{reservations.length > 0}}">
+      <view
+        class="reservation-item card"
+        wx:for="{{reservations}}"
+        wx:key="id"
+        bindtap="goToDetail"
+        data-id="{{item.id}}"
+      >
+        <view class="reservation-header flex flex-between">
+          <view class="time-range">
+            <text class="time">{{item.start_time}} - {{item.end_time}}</text>
+          </view>
+          <view class="status-tag {{item.statusClass}}">{{item.statusText}}</view>
+        </view>
+
+        <view class="reservation-body">
+          <view class="info-row flex">
+            <view class="label">预约人：</view>
+            <view class="value">{{item.member_name}}</view>
+          </view>
+          <view class="info-row flex">
+            <view class="label">联系方式：</view>
+            <view class="value">{{item.member_phone}}</view>
+          </view>
+          <view class="info-row flex">
+            <view class="label">预约场馆：</view>
+            <view class="value">{{item.venue_name}}</view>
+          </view>
+          <view class="info-row flex" wx:if="{{item.remark}}">
+            <view class="label">备注：</view>
+            <view class="value">{{item.remark}}</view>
+          </view>
+        </view>
+
+        <view class="reservation-footer flex flex-between">
+          <view class="price">
+            <text class="price-unit">金币 </text>
+            <text>{{item.coach_price}}</text>
+          </view>
+          <view class="action-btn" wx:if="{{item.status === 'confirmed'}}">
+            <text>出示完课码</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{!loading && reservations.length === 0}}">
+      <image src="/assets/icons/empty.png" mode="aspectFit"></image>
+      <text>暂无预约记录</text>
+    </view>
+
+    <!-- 加载状态 -->
+    <view class="loading" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+  </view>
+</view>

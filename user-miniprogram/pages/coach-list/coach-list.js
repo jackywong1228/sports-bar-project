@@ -53,7 +53,7 @@ Page({
         url += `&type=${this.data.currentType}`
       }
 
-      const res = await app.request({ url })
+      const res = await app.coachRequest({ url })
       const coaches = res.data || []
 
       this.setData({

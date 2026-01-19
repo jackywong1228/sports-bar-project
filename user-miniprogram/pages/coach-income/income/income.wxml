@@ -1,0 +1,93 @@
+<!-- 课程收入页面 -->
+<view class="page-container">
+  <!-- 收入概览 -->
+  <view class="overview-card card">
+    <view class="overview-header">
+      <view class="overview-label">待结算金额（金币）</view>
+      <view class="overview-value">{{incomeData.pending_amount || 0}}</view>
+    </view>
+    <view class="overview-stats flex">
+      <view class="stat-item">
+        <view class="stat-value">{{incomeData.pending_courses || 0}}</view>
+        <view class="stat-label">待结算课程</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-value">{{incomeData.total_amount || 0}}</view>
+        <view class="stat-label">累计收入</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-value">{{incomeData.total_courses || 0}}</view>
+        <view class="stat-label">累计课程</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 结算说明 -->
+  <view class="tips-card card">
+    <view class="tips-icon">💡</view>
+    <view class="tips-content">
+      <text>课程收入 = 用户支付教练预约金额 - 场馆预约金额</text>
+      <text>结算方式：线下结算，请联系场馆管理员</text>
+    </view>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar card">
+    <view class="filter-item {{currentFilter === 'all' ? 'active' : ''}}" bindtap="setFilter" data-filter="all">
+      全部
+    </view>
+    <view class="filter-item {{currentFilter === 'pending' ? 'active' : ''}}" bindtap="setFilter" data-filter="pending">
+      待结算
+    </view>
+    <view class="filter-item {{currentFilter === 'settled' ? 'active' : ''}}" bindtap="setFilter" data-filter="settled">
+      已结算
+    </view>
+  </view>
+
+  <!-- 收入记录列表 -->
+  <view class="income-list">
+    <block wx:if="{{incomeList.length > 0}}">
+      <view class="income-item card" wx:for="{{incomeList}}" wx:key="id">
+        <view class="income-header flex flex-between">
+          <view class="income-date">{{item.course_date}}</view>
+          <view class="income-status {{item.status}}">{{item.status === 'pending' ? '待结算' : '已结算'}}</view>
+        </view>
+        <view class="income-body">
+          <view class="info-row flex flex-between">
+            <text class="label">课程时间</text>
+            <text class="value">{{item.start_time}} - {{item.end_time}}</text>
+          </view>
+          <view class="info-row flex flex-between">
+            <text class="label">学员</text>
+            <text class="value">{{item.member_name}}</text>
+          </view>
+          <view class="info-row flex flex-between">
+            <text class="label">场馆</text>
+            <text class="value">{{item.venue_name}}</text>
+          </view>
+        </view>
+        <view class="income-footer flex flex-between">
+          <view class="income-detail">
+            <text class="detail-item">用户支付：{{item.total_price}}</text>
+            <text class="detail-item">场馆费用：{{item.venue_price}}</text>
+          </view>
+          <view class="income-amount">
+            <text class="amount-label">收入</text>
+            <text class="amount-value">{{item.coach_income}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{!loading && incomeList.length === 0}}">
+      <image src="/assets/icons/empty.png" mode="aspectFit"></image>
+      <text>暂无收入记录</text>
+    </view>
+
+    <!-- 加载状态 -->
+    <view class="loading" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+  </view>
+</view>

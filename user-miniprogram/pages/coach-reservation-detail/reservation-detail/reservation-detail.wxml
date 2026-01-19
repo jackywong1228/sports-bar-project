@@ -1,0 +1,88 @@
+<!-- 预约详情页面 -->
+<view class="page-container">
+  <!-- 状态卡片 -->
+  <view class="status-card card {{reservation.status}}">
+    <view class="status-icon">
+      <text wx:if="{{reservation.status === 'pending'}}">⏳</text>
+      <text wx:elif="{{reservation.status === 'confirmed'}}">✓</text>
+      <text wx:elif="{{reservation.status === 'in_progress'}}">▶</text>
+      <text wx:elif="{{reservation.status === 'completed'}}">✓</text>
+      <text wx:elif="{{reservation.status === 'cancelled'}}">✕</text>
+    </view>
+    <view class="status-text">{{reservation.statusText}}</view>
+    <view class="status-desc" wx:if="{{reservation.status === 'confirmed'}}">
+      请准时到达场馆，完成课程后出示完课码
+    </view>
+  </view>
+
+  <!-- 预约信息 -->
+  <view class="info-card card">
+    <view class="card-title">预约信息</view>
+    <view class="info-list">
+      <view class="info-item">
+        <view class="label">预约日期</view>
+        <view class="value">{{reservation.date}}</view>
+      </view>
+      <view class="info-item">
+        <view class="label">预约时间</view>
+        <view class="value">{{reservation.start_time}} - {{reservation.end_time}}</view>
+      </view>
+      <view class="info-item">
+        <view class="label">预约场馆</view>
+        <view class="value">{{reservation.venue_name}}</view>
+      </view>
+      <view class="info-item">
+        <view class="label">课程费用</view>
+        <view class="value price">{{reservation.coach_price}} 金币</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 学员信息 -->
+  <view class="info-card card">
+    <view class="card-title">学员信息</view>
+    <view class="info-list">
+      <view class="info-item">
+        <view class="label">学员姓名</view>
+        <view class="value">{{reservation.member_name}}</view>
+      </view>
+      <view class="info-item">
+        <view class="label">联系方式</view>
+        <view class="value clickable" bindtap="callPhone">
+          {{reservation.member_phone}}
+          <text class="call-icon">📞</text>
+        </view>
+      </view>
+      <view class="info-item" wx:if="{{reservation.remark}}">
+        <view class="label">备注</view>
+        <view class="value">{{reservation.remark}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 完课码 -->
+  <view class="qrcode-card card" wx:if="{{reservation.status === 'confirmed' || reservation.status === 'in_progress'}}">
+    <view class="card-title">完课码</view>
+    <view class="qrcode-content">
+      <canvas canvas-id="qrcode" class="qrcode-canvas"></canvas>
+      <view class="qrcode-tip">请学员扫码确认完课</view>
+    </view>
+  </view>
+
+  <!-- 评价信息 -->
+  <view class="info-card card" wx:if="{{reservation.status === 'completed' && reservation.rating}}">
+    <view class="card-title">学员评价</view>
+    <view class="rating-content">
+      <view class="rating-stars">
+        <text wx:for="{{5}}" wx:key="*this" class="star {{index < reservation.rating ? 'active' : ''}}">★</text>
+      </view>
+      <view class="rating-comment" wx:if="{{reservation.comment}}">{{reservation.comment}}</view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-bar" wx:if="{{reservation.status === 'pending'}}">
+    <button class="btn-reject" bindtap="rejectReservation">拒绝预约</button>
+    <button class="btn-confirm" bindtap="confirmReservation">确认预约</button>
+  </view>
+</view>

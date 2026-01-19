@@ -1,0 +1,95 @@
+<!-- 排期管理页面 -->
+<view class="page-container">
+  <!-- 周选择器 -->
+  <view class="week-picker card">
+    <view class="picker-header flex flex-between">
+      <view class="nav-btn" bindtap="prevWeek">
+        <text>◀ 上一周</text>
+      </view>
+      <view class="week-title">{{weekTitle}}</view>
+      <view class="nav-btn" bindtap="nextWeek">
+        <text>下一周 ▶</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 排期表格 -->
+  <view class="schedule-grid card">
+    <!-- 表头 -->
+    <view class="grid-header">
+      <view class="time-col header-cell">时间</view>
+      <view
+        class="day-col header-cell {{item.isToday ? 'today' : ''}}"
+        wx:for="{{weekDates}}"
+        wx:key="date"
+      >
+        <view class="week-day">{{item.weekDay}}</view>
+        <view class="date">{{item.month}}/{{item.day}}</view>
+      </view>
+    </view>
+
+    <!-- 时间段行 -->
+    <scroll-view scroll-y class="grid-body">
+      <view class="grid-row" wx:for="{{timeSlots}}" wx:key="start" wx:for-item="slot">
+        <view class="time-col time-cell">{{slot.start}}</view>
+        <view
+          class="day-col slot-cell {{getSlotClass(slot.start, date.date)}}"
+          wx:for="{{weekDates}}"
+          wx:key="date"
+          wx:for-item="date"
+          bindtap="toggleSlot"
+          data-time="{{slot.start}}"
+          data-date="{{date.date}}"
+        >
+          <view class="slot-status">
+            <text wx:if="{{isReserved(slot.start, date.date)}}">已约</text>
+            <text wx:elif="{{isAvailable(slot.start, date.date)}}">✓</text>
+            <text wx:else>-</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 图例说明 -->
+  <view class="legend card">
+    <view class="legend-title">图例说明</view>
+    <view class="legend-items">
+      <view class="legend-item">
+        <view class="legend-dot available"></view>
+        <text>可预约</text>
+      </view>
+      <view class="legend-item">
+        <view class="legend-dot reserved"></view>
+        <text>已被预约</text>
+      </view>
+      <view class="legend-item">
+        <view class="legend-dot unavailable"></view>
+        <text>不可用</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作提示 -->
+  <view class="tips card">
+    <view class="tips-title">操作提示</view>
+    <view class="tips-content">
+      <text>• 点击时间格子可切换可用/不可用状态</text>
+      <text>• 已被预约的时间段无法修改</text>
+      <text>• 修改后自动保存</text>
+    </view>
+  </view>
+
+  <!-- 快捷操作 -->
+  <view class="quick-actions card">
+    <view class="action-btn" bindtap="setAllAvailable">
+      <text>全部可用</text>
+    </view>
+    <view class="action-btn" bindtap="setAllUnavailable">
+      <text>全部不可用</text>
+    </view>
+    <view class="action-btn" bindtap="copyLastWeek">
+      <text>复制上周</text>
+    </view>
+  </view>
+</view>

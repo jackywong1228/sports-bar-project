@@ -1,0 +1,51 @@
+<view class="container">
+  <view class="logo-section">
+    <image class="logo" src="/assets/logo.png" mode="aspectFit"></image>
+    <text class="title">教练端</text>
+    <text class="subtitle">场馆体育社交管理系统</text>
+  </view>
+
+  <view class="login-section">
+    <!-- 手机号登录（开发测试用） -->
+    <view class="input-group">
+      <input
+        class="input"
+        type="number"
+        placeholder="请输入手机号"
+        maxlength="11"
+        value="{{phone}}"
+        bindinput="onPhoneInput"
+      />
+    </view>
+
+    <button
+      class="btn btn-primary"
+      bindtap="loginByPhone"
+      loading="{{isLoading}}"
+      disabled="{{isLoading}}"
+    >
+      手机号登录
+    </button>
+
+    <view class="divider">
+      <view class="line"></view>
+      <text class="text">或</text>
+      <view class="line"></view>
+    </view>
+
+    <!-- 微信一键登录 -->
+    <button
+      class="btn btn-wx"
+      bindtap="wxLogin"
+      loading="{{isLoading}}"
+      disabled="{{isLoading}}"
+    >
+      <text class="icon-wx"></text>
+      微信一键登录
+    </button>
+  </view>
+
+  <view class="footer">
+    <text class="tip">仅限已注册教练使用</text>
+  </view>
+</view>

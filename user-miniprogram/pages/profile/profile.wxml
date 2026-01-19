@@ -37,6 +37,18 @@
     </view>
   </view>
 
+  <!-- 教练入口 -->
+  <view class="coach-entry-card" wx:if="{{isLoggedIn}}" bindtap="goToCoachCenter">
+    <view class="coach-entry-left">
+      <image class="coach-entry-icon" src="/assets/icons/coach-entry.png" mode="aspectFit"></image>
+      <view class="coach-entry-info">
+        <text class="coach-entry-title">教练中心</text>
+        <text class="coach-entry-desc">{{isCoach ? '管理您的课程和预约' : '申请成为教练'}}</text>
+      </view>
+    </view>
+    <text class="coach-entry-arrow">></text>
+  </view>
+
   <!-- 功能菜单 -->
   <view class="menu-card">
     <view
