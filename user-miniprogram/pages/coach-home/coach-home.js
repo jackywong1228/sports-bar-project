@@ -20,6 +20,10 @@ Page({
 
   onShow() {
     if (!app.globalData.coachToken) return
+    // 确保日期已初始化
+    if (!this.data.selectedDate) {
+      this.initDates()
+    }
     this.loadReservations()
   },
 
