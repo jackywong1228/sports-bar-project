@@ -34,8 +34,8 @@ Page({
   async loadData() {
     try {
       const [coachRes, venuesRes] = await Promise.all([
-        app.coachRequest({ url: `/member/coaches/${this.data.coachId}` }),
-        app.coachRequest({ url: '/member/venues?limit=100' })
+        app.request({ url: `/member/coaches/${this.data.coachId}` }),
+        app.request({ url: '/member/venues?limit=100' })
       ])
 
       this.setData({
@@ -75,7 +75,7 @@ Page({
   // 加载时间段
   async loadTimeSlots() {
     try {
-      const res = await app.coachRequest({
+      const res = await app.request({
         url: `/member/coaches/${this.data.coachId}/schedule?date=${this.data.selectedDate}`
       })
 
@@ -177,7 +177,7 @@ Page({
       const endHour = parseInt(slots[slots.length - 1].split(':')[0]) + 1
       const endTime = `${String(endHour).padStart(2, '0')}:00`
 
-      const res = await app.coachRequest({
+      const res = await app.request({
         url: '/member/reservations',
         method: 'POST',
         data: {

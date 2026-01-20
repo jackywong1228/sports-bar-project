@@ -15,7 +15,7 @@ Page({
   // 加载教练详情
   async loadCoachDetail() {
     try {
-      const res = await app.coachRequest({
+      const res = await app.request({
         url: `/member/coaches/${this.data.coachId}`
       })
       this.setData({
@@ -40,7 +40,7 @@ Page({
 
   // 立即预约
   goToBooking() {
-    if (!app.checkCoachLogin()) return
+    if (!app.checkLogin()) return
     wx.navigateTo({
       url: `/pages/coach-booking/coach-booking?id=${this.data.coachId}`
     })
