@@ -7,6 +7,7 @@ from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.models import SysUser, SysRole, SysDepartment, SysPermission, MemberLevel
 from app.models.venue import VenueType, Venue
+from app.models.member import MemberCard
 
 # 创建所有表
 Base.metadata.create_all(bind=engine)
@@ -148,6 +149,89 @@ def init_member_levels(db: Session):
     print("会员等级初始化完成")
 
 
+def init_member_cards(db: Session):
+    """初始化会员卡套餐"""
+    # 获取会员等级
+    levels = {level.level: level.id for level in db.query(MemberLevel).all()}
+
+    if not levels:
+        print("请先初始化会员等级")
+        return
+
+    cards_config = [
+        {
+            "name": "月卡体验",
+            "level_id": levels.get(2, 1),  # 银卡会员
+            "original_price": 99,
+            "price": 68,
+            "duration_days": 30,
+            "bonus_coins": 10,
+            "bonus_points": 100,
+            "description": "适合新用户体验",
+            "is_recommended": False,
+            "sort_order": 1
+        },
+        {
+            "name": "季卡畅享",
+            "level_id": levels.get(3, 1),  # 金卡会员
+            "original_price": 299,
+            "price": 199,
+            "duration_days": 90,
+            "bonus_coins": 50,
+            "bonus_points": 500,
+            "description": "高性价比之选",
+            "is_recommended": True,
+            "sort_order": 2
+        },
+        {
+            "name": "年卡尊享",
+            "level_id": levels.get(4, 1),  # 钻石会员
+            "original_price": 999,
+            "price": 699,
+            "duration_days": 365,
+            "bonus_coins": 200,
+            "bonus_points": 2000,
+            "description": "全年无忧，尊享特权",
+            "is_recommended": False,
+            "sort_order": 3
+        },
+        {
+            "name": "黑金终身卡",
+            "level_id": levels.get(5, 1),  # 黑金会员
+            "original_price": 2999,
+            "price": 1999,
+            "duration_days": 3650,  # 10年
+            "bonus_coins": 1000,
+            "bonus_points": 10000,
+            "description": "终身尊享，尊贵身份",
+            "is_recommended": False,
+            "sort_order": 4
+        }
+    ]
+
+    for card_config in cards_config:
+        existing = db.query(MemberCard).filter(MemberCard.name == card_config["name"]).first()
+        if not existing:
+            card = MemberCard(
+                name=card_config["name"],
+                level_id=card_config["level_id"],
+                original_price=card_config["original_price"],
+                price=card_config["price"],
+                duration_days=card_config["duration_days"],
+                bonus_coins=card_config["bonus_coins"],
+                bonus_points=card_config["bonus_points"],
+                description=card_config["description"],
+                is_recommended=card_config["is_recommended"],
+                sort_order=card_config["sort_order"],
+                is_active=True
+            )
+            db.add(card)
+            print(f"创建会员卡套餐: {card_config['name']}")
+
+    db.commit()
+    print("会员卡套餐初始化完成")
+
+
 def init_venues(db: Session):
     """初始化场馆类型和场馆"""
     # 场馆类型配置
@@ -244,6 +328,7 @@ def main():
         dept_id = init_departments(db)
         init_admin_user(db, dept_id)
         init_member_levels(db)
+        init_member_cards(db)
         init_venues(db)
         print("数据初始化完成!")
     finally:
