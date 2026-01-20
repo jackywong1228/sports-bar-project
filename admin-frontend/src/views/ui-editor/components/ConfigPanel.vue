@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// @ts-nocheck - Disable type checking for draggable slot parameters
 import { computed } from 'vue'
 import draggable from 'vuedraggable'
 import type { UIPageConfig, UIBlockConfig, UIMenuItem } from '../types'
