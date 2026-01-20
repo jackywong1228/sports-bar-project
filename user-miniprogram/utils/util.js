@@ -38,6 +38,33 @@ const getWeekDay = (date) => {
   return '周' + days[date.getDay()]
 }
 
+// 获取一周的日期（以传入日期为起点）
+const getWeekDates = (startDate) => {
+  const result = []
+  const date = new Date(startDate)
+
+  // 获取本周的周一
+  const day = date.getDay()
+  const diff = day === 0 ? -6 : 1 - day  // 周日要往前推6天
+  date.setDate(date.getDate() + diff)
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(date)
+    d.setDate(d.getDate() + i)
+    const today = new Date()
+    const isToday = d.toDateString() === today.toDateString()
+
+    result.push({
+      date: formatDate(d, 'YYYY-MM-DD'),
+      day: String(d.getDate()).padStart(2, '0'),
+      weekDay: isToday ? '今天' : getWeekDay(d),
+      isToday
+    })
+  }
+
+  return result
+}
+
 // 获取未来N天的日期列表
 const getDateList = (days = 7) => {
   const result = []
@@ -281,6 +308,7 @@ module.exports = {
   formatDate,
   formatTime,
   getWeekDay,
+  getWeekDates,
   getDateList,
   getTimeSlots,
   getReservationStatus,
