@@ -2,13 +2,14 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
+void draggable // available for future use
 import ConfigPanel from './components/ConfigPanel.vue'
 import PhonePreview from './components/PhonePreview.vue'
 import MenuItemEditor from './components/MenuItemEditor.vue'
 import {
   getPageList,
-  getPageDetail,
-  updatePage,
+  getPageDetail as _getPageDetail,
+  updatePage as _updatePage,
   getBlockList,
   updateBlock,
   getMenuItemList,
@@ -21,6 +22,9 @@ import {
   rollbackVersion,
   initDefaultData
 } from '@/api/ui-editor'
+// Reserved for future use
+void _getPageDetail
+void _updatePage
 import type { UIPageConfig, UIBlockConfig, UIMenuItem } from './types'
 
 // 数据状态

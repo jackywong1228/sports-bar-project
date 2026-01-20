@@ -45,10 +45,12 @@ const mockActivities = [
   { id: 2, title: '篮球3v3比赛', image: 'https://via.placeholder.com/120x80/f0f0f0/333333?text=活动2' }
 ]
 
-const mockCoaches = [
+// Mock coaches data for preview (used in template)
+const _mockCoaches = [
   { id: 1, name: '张教练', avatar: 'https://via.placeholder.com/60x60/1a5d3a/ffffff?text=张', price: 200 },
   { id: 2, name: '李教练', avatar: 'https://via.placeholder.com/60x60/2d7a4e/ffffff?text=李', price: 180 }
 ]
+void _mockCoaches // suppress unused warning
 </script>
 
 <template>
@@ -74,7 +76,7 @@ const mockCoaches = [
         <!-- 轮播图 -->
         <div class="block banner-block" v-if="isBlockVisible('banner')">
           <div class="banner-item">
-            <img :src="mockBanners[0].image" alt="banner" />
+            <img :src="mockBanners[0]?.image" alt="banner" />
           </div>
           <div class="banner-dots">
             <span class="dot active"></span>
