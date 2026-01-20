@@ -6,7 +6,7 @@ import os
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1 import auth, staff, members, venues, reservations, coaches, coach_api, member_api
-from app.api.v1 import activities, foods, coupons, mall, payment, finance, dashboard, messages, member_cards, wechat, upload, ui_assets
+from app.api.v1 import activities, foods, coupons, mall, payment, finance, dashboard, messages, member_cards, wechat, upload, ui_assets, ui_editor
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -49,6 +49,7 @@ app.include_router(member_cards.router, prefix=f"{settings.API_V1_PREFIX}/member
 app.include_router(wechat.router, prefix=f"{settings.API_V1_PREFIX}/wechat", tags=["微信服务"])
 app.include_router(upload.router, prefix=f"{settings.API_V1_PREFIX}/upload", tags=["文件上传"])
 app.include_router(ui_assets.router, prefix=f"{settings.API_V1_PREFIX}/ui-assets", tags=["UI素材管理"])
+app.include_router(ui_editor.router, prefix=f"{settings.API_V1_PREFIX}/ui-editor", tags=["UI可视化编辑"])
 
 # 挂载静态文件目录（用于上传文件访问）
 upload_dir = settings.UPLOAD_DIR

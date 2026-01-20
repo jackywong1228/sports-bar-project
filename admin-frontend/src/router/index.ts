@@ -316,6 +316,13 @@ const routes: RouteRecordRaw[] = [
         name: 'UIImage',
         component: () => import('@/views/ui-assets/Image.vue'),
         meta: { title: '图片素材', icon: 'Picture' }
+      },
+      // UI可视化编辑器
+      {
+        path: 'ui-editor',
+        name: 'UIEditor',
+        component: () => import('@/views/ui-editor/index.vue'),
+        meta: { title: '小程序布局编辑器', icon: 'Edit' }
       }
     ]
   },

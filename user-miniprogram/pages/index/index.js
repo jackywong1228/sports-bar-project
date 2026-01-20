@@ -1,26 +1,21 @@
 const app = getApp()
+const uiConfig = require('../../utils/ui-config')
 
 Page({
   data: {
     banners: [],
-    quickEntries: [
-      { icon: '/assets/icons/venue-entry.png', text: '场馆预约', url: '/pages/venue/venue' },
-      { icon: '/assets/icons/coach-entry.png', text: '教练预约', url: '/pages/coach-list/coach-list' },
-      { icon: '/assets/icons/food-entry.png', text: '在线点餐', url: '/pages/food/food' },
-      { icon: '/assets/icons/activity-entry.png', text: '活动报名', url: '/pages/activity/activity' },
-      { icon: '/assets/icons/team-entry.png', text: '组队广场', url: '/pages/team/team' },
-      { icon: '/assets/icons/mall-entry.png', text: '积分商城', url: '/pages/mall/mall' },
-      { icon: '/assets/icons/member-entry.png', text: '会员中心', url: '/pages/member/member' },
-      { icon: '/assets/icons/coupon-entry.png', text: '我的券包', url: '/pages/coupons/coupons' }
-    ],
+    quickEntries: [],
     hotVenues: [],
     hotActivities: [],
     hotCoaches: [],
-    loading: true
+    loading: true,
+    // UI配置相关
+    visibleBlocks: ['banner', 'quick_entry', 'hot_venues', 'hot_activities', 'hot_coaches'],
+    uiConfigLoaded: false
   },
 
   onLoad() {
-    this.loadData()
+    this.loadUIConfig()
   },
 
   onShow() {
@@ -31,31 +26,119 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.loadData().then(() => {
+    this.loadData(true).then(() => {
       wx.stopPullDownRefresh()
     })
   },
 
+  // 加载UI配置
+  async loadUIConfig() {
+    try {
+      const [blocksConfig, quickEntriesConfig] = await Promise.all([
+        uiConfig.getVisibleBlocks('home'),
+        uiConfig.getQuickEntries()
+      ])
+
+      // 转换快捷入口格式
+      const quickEntries = quickEntriesConfig.map(item => ({
+        icon: item.icon || '/assets/icons/default.png',
+        text: item.title,
+        url: item.link_value || '',
+        linkType: item.link_type
+      }))
+
+      this.setData({
+        visibleBlocks: blocksConfig.length > 0 ? blocksConfig : this.data.visibleBlocks,
+        quickEntries: quickEntries.length > 0 ? quickEntries : this.getDefaultQuickEntries(),
+        uiConfigLoaded: true
+      })
+
+      // 加载业务数据
+      await this.loadData()
+    } catch (err) {
+      console.error('加载UI配置失败:', err)
+      // 使用默认快捷入口
+      this.setData({
+        quickEntries: this.getDefaultQuickEntries(),
+        uiConfigLoaded: true
+      })
+      await this.loadData()
+    }
+  },
+
+  // 获取默认快捷入口
+  getDefaultQuickEntries() {
+    return [
+      { icon: '/assets/icons/venue-entry.png', text: '场馆预约', url: '/pages/venue/venue', linkType: 'tab' },
+      { icon: '/assets/icons/coach-entry.png', text: '教练预约', url: '/pages/coach-list/coach-list', linkType: 'page' },
+      { icon: '/assets/icons/food-entry.png', text: '在线点餐', url: '/pages/food/food', linkType: 'page' },
+      { icon: '/assets/icons/activity-entry.png', text: '活动报名', url: '/pages/activity/activity', linkType: 'tab' },
+      { icon: '/assets/icons/team-entry.png', text: '组队广场', url: '/pages/team/team', linkType: 'page' },
+      { icon: '/assets/icons/mall-entry.png', text: '积分商城', url: '/pages/mall/mall', linkType: 'page' },
+      { icon: '/assets/icons/member-entry.png', text: '会员中心', url: '/pages/member/member', linkType: 'page' },
+      { icon: '/assets/icons/coupon-entry.png', text: '我的券包', url: '/pages/coupons/coupons', linkType: 'page' }
+    ]
+  },
+
+  // 处理快捷入口跳转
+  handleQuickEntryNav(url, linkType) {
+    if (!url) return
+
+    // 根据链接类型跳转
+    if (linkType === 'tab') {
+      wx.switchTab({ url })
+    } else if (linkType === 'webview') {
+      wx.navigateTo({ url: `/pages/webview/webview?url=${encodeURIComponent(url)}` })
+    } else {
+      wx.navigateTo({ url })
+    }
+  },
+
+  // 检查区块是否可见
+  isBlockVisible(blockCode) {
+    return this.data.visibleBlocks.includes(blockCode)
+  },
+
   // 加载数据
-  async loadData() {
+  async loadData(forceRefresh = false) {
     this.setData({ loading: true })
 
     try {
-      // 并行加载多个数据
-      const [bannersRes, venuesRes, activitiesRes, coachesRes] = await Promise.all([
-        this.loadBanners(),
-        this.loadHotVenues(),
-        this.loadHotActivities(),
-        this.loadHotCoaches()
-      ])
+      const promises = []
 
-      this.setData({
-        banners: bannersRes || [],
-        hotVenues: venuesRes || [],
-        hotActivities: activitiesRes || [],
-        hotCoaches: coachesRes || [],
-        loading: false
-      })
+      // 根据可见区块加载对应数据
+      if (this.isBlockVisible('banner')) {
+        promises.push(this.loadBanners())
+      }
+      if (this.isBlockVisible('hot_venues') || this.isBlockVisible('list')) {
+        promises.push(this.loadHotVenues())
+      }
+      if (this.isBlockVisible('hot_activities') || this.isBlockVisible('scroll')) {
+        promises.push(this.loadHotActivities())
+      }
+      if (this.isBlockVisible('hot_coaches')) {
+        promises.push(this.loadHotCoaches())
+      }
+
+      const results = await Promise.all(promises)
+
+      let resultIndex = 0
+      const updateData = { loading: false }
+
+      if (this.isBlockVisible('banner')) {
+        updateData.banners = results[resultIndex++] || []
+      }
+      if (this.isBlockVisible('hot_venues') || this.isBlockVisible('list')) {
+        updateData.hotVenues = results[resultIndex++] || []
+      }
+      if (this.isBlockVisible('hot_activities') || this.isBlockVisible('scroll')) {
+        updateData.hotActivities = results[resultIndex++] || []
+      }
+      if (this.isBlockVisible('hot_coaches')) {
+        updateData.hotCoaches = results[resultIndex++] || []
+      }
+
+      this.setData(updateData)
     } catch (err) {
       console.error('加载数据失败:', err)
       this.setData({ loading: false })
@@ -116,15 +199,17 @@ Page({
 
   // 快捷入口点击
   onEntryTap(e) {
-    const url = e.currentTarget.dataset.url
-    if (url.includes('/pages/profile/') || url.includes('/pages/member/') || url.includes('/pages/coupons/')) {
+    const { url, linktype } = e.currentTarget.dataset
+    if (!url) return
+
+    // 需要登录的页面
+    const loginRequiredPages = ['/pages/profile/', '/pages/member/', '/pages/coupons/', '/pages/wallet/', '/pages/orders/']
+    if (loginRequiredPages.some(page => url.includes(page))) {
       if (!app.checkLogin()) return
     }
-    if (url.startsWith('/pages/venue/') || url.startsWith('/pages/activity/')) {
-      wx.switchTab({ url })
-    } else {
-      wx.navigateTo({ url })
-    }
+
+    // 根据链接类型跳转
+    this.handleQuickEntryNav(url, linktype)
   },
 
   // 查看更多场馆

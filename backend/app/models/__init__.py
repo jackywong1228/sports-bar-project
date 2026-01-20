@@ -10,6 +10,7 @@ from app.models.mall import ProductCategory, Product, ProductOrder
 from app.models.finance import RechargeOrder, ConsumeRecord, CoachSettlement, FinanceStat
 from app.models.message import MessageTemplate, Message, Announcement, Banner
 from app.models.ui_asset import UIIcon, UITheme, UIImage
+from app.models.ui_editor import UIPageConfig, UIBlockConfig, UIMenuItem, UIConfigVersion
 from app.models.team import Team, TeamMember
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "RechargeOrder", "ConsumeRecord", "CoachSettlement", "FinanceStat",
     "MessageTemplate", "Message", "Announcement", "Banner",
     "UIIcon", "UITheme", "UIImage",
+    "UIPageConfig", "UIBlockConfig", "UIMenuItem", "UIConfigVersion",
     "Team", "TeamMember",
 ]

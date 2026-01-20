@@ -114,9 +114,10 @@ const menuList = [
   },
   {
     path: '/ui-assets',
-    title: 'UI素材管理',
-    icon: 'Picture',
+    title: '小程序管理',
+    icon: 'Cellphone',
     children: [
+      { path: '/ui-editor', title: '布局编辑器' },
       { path: '/ui-assets/icon', title: '图标管理' },
       { path: '/ui-assets/theme', title: '主题配色' },
       { path: '/ui-assets/image', title: '图片素材' }

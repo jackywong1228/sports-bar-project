@@ -1,139 +1,162 @@
+<wxs module="utils">
+module.exports = {
+  includes: function(arr, item) {
+    if (!arr || !arr.length) return false;
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] === item) return true;
+    }
+    return false;
+  }
+}
+</wxs>
+
 <view class="container">
   <!-- 轮播图 -->
-  <swiper class="banner-swiper" indicator-dots autoplay circular>
-    <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerTap" data-url="{{item.url}}">
-      <image class="banner-image" src="{{item.image}}" mode="aspectFill"></image>
-    </swiper-item>
-  </swiper>
+  <block wx:if="{{utils.includes(visibleBlocks, 'banner')}}">
+    <swiper class="banner-swiper" indicator-dots autoplay circular>
+      <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerTap" data-url="{{item.url}}">
+        <image class="banner-image" src="{{item.image}}" mode="aspectFill"></image>
+      </swiper-item>
+    </swiper>
+  </block>
 
   <!-- 快捷入口 -->
-  <view class="quick-entries">
-    <view
-      class="entry-item"
-      wx:for="{{quickEntries}}"
-      wx:key="text"
-      bindtap="onEntryTap"
-      data-url="{{item.url}}"
-    >
-      <image class="entry-icon" src="{{item.icon}}" mode="aspectFit"></image>
-      <text class="entry-text">{{item.text}}</text>
+  <block wx:if="{{utils.includes(visibleBlocks, 'quick_entry')}}">
+    <view class="quick-entries">
+      <view
+        class="entry-item"
+        wx:for="{{quickEntries}}"
+        wx:key="text"
+        bindtap="onEntryTap"
+        data-url="{{item.url}}"
+        data-linktype="{{item.linkType}}"
+      >
+        <image class="entry-icon" src="{{item.icon}}" mode="aspectFit"></image>
+        <text class="entry-text">{{item.text}}</text>
+      </view>
     </view>
-  </view>
+  </block>
 
   <!-- 热门场馆 -->
-  <view class="section">
-    <view class="section-header">
-      <text class="section-title">热门场馆</text>
-      <view class="section-more" bindtap="viewMoreVenues">
-        <text>更多</text>
-        <text class="arrow">></text>
-      </view>
-    </view>
-    <scroll-view class="venue-scroll" scroll-x enable-flex>
-      <view
-        class="venue-card"
-        wx:for="{{hotVenues}}"
-        wx:key="id"
-        bindtap="goToVenueDetail"
-        data-id="{{item.id}}"
-      >
-        <image class="venue-image" src="{{item.image || '/assets/images/venue-default.jpg'}}" mode="aspectFill"></image>
-        <view class="venue-info">
-          <text class="venue-name">{{item.name}}</text>
-          <view class="venue-tags">
-            <text class="tag tag-primary" wx:if="{{item.type_name}}">{{item.type_name}}</text>
-          </view>
-          <view class="venue-price">
-            <text class="price-symbol">¥</text>
-            <text class="price-value">{{item.price || 0}}</text>
-            <text class="price-unit">/小时</text>
-          </view>
+  <block wx:if="{{utils.includes(visibleBlocks, 'hot_venues') || utils.includes(visibleBlocks, 'list')}}">
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">热门场馆</text>
+        <view class="section-more" bindtap="viewMoreVenues">
+          <text>更多</text>
+          <text class="arrow">></text>
         </view>
       </view>
-    </scroll-view>
-    <view class="empty-hint" wx:if="{{hotVenues.length === 0 && !loading}}">
-      <text>暂无场馆数据</text>
+      <scroll-view class="venue-scroll" scroll-x enable-flex>
+        <view
+          class="venue-card"
+          wx:for="{{hotVenues}}"
+          wx:key="id"
+          bindtap="goToVenueDetail"
+          data-id="{{item.id}}"
+        >
+          <image class="venue-image" src="{{item.image || '/assets/images/venue-default.jpg'}}" mode="aspectFill"></image>
+          <view class="venue-info">
+            <text class="venue-name">{{item.name}}</text>
+            <view class="venue-tags">
+              <text class="tag tag-primary" wx:if="{{item.type_name}}">{{item.type_name}}</text>
+            </view>
+            <view class="venue-price">
+              <text class="price-symbol">¥</text>
+              <text class="price-value">{{item.price || 0}}</text>
+              <text class="price-unit">/小时</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="empty-hint" wx:if="{{hotVenues.length === 0 && !loading}}">
+        <text>暂无场馆数据</text>
+      </view>
     </view>
-  </view>
+  </block>
 
   <!-- 热门活动 -->
-  <view class="section">
-    <view class="section-header">
-      <text class="section-title">热门活动</text>
-      <view class="section-more" bindtap="viewMoreActivities">
-        <text>更多</text>
-        <text class="arrow">></text>
+  <block wx:if="{{utils.includes(visibleBlocks, 'hot_activities') || utils.includes(visibleBlocks, 'scroll')}}">
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">热门活动</text>
+        <view class="section-more" bindtap="viewMoreActivities">
+          <text>更多</text>
+          <text class="arrow">></text>
+        </view>
       </view>
-    </view>
-    <view class="activity-list">
-      <view
-        class="activity-card"
-        wx:for="{{hotActivities}}"
-        wx:key="id"
-        bindtap="goToActivityDetail"
-        data-id="{{item.id}}"
-      >
-        <image class="activity-image" src="{{item.image || '/assets/images/activity-default.jpg'}}" mode="aspectFill"></image>
-        <view class="activity-info">
-          <text class="activity-title">{{item.title}}</text>
-          <view class="activity-meta">
-            <text class="activity-time">{{item.start_date}} {{item.start_time}}</text>
-          </view>
-          <view class="activity-bottom">
-            <view class="activity-price">
-              <text class="price" wx:if="{{item.price > 0}}">¥{{item.price}}</text>
-              <text class="free" wx:else>免费</text>
+      <view class="activity-list">
+        <view
+          class="activity-card"
+          wx:for="{{hotActivities}}"
+          wx:key="id"
+          bindtap="goToActivityDetail"
+          data-id="{{item.id}}"
+        >
+          <image class="activity-image" src="{{item.image || '/assets/images/activity-default.jpg'}}" mode="aspectFill"></image>
+          <view class="activity-info">
+            <text class="activity-title">{{item.title}}</text>
+            <view class="activity-meta">
+              <text class="activity-time">{{item.start_date}} {{item.start_time}}</text>
             </view>
-            <view class="activity-status">
-              <text class="status-text">{{item.enrolled || 0}}/{{item.max_participants || '不限'}}人</text>
+            <view class="activity-bottom">
+              <view class="activity-price">
+                <text class="price" wx:if="{{item.price > 0}}">¥{{item.price}}</text>
+                <text class="free" wx:else>免费</text>
+              </view>
+              <view class="activity-status">
+                <text class="status-text">{{item.enrolled || 0}}/{{item.max_participants || '不限'}}人</text>
+              </view>
             </view>
           </view>
         </view>
       </view>
+      <view class="empty-hint" wx:if="{{hotActivities.length === 0 && !loading}}">
+        <text>暂无活动数据</text>
+      </view>
     </view>
-    <view class="empty-hint" wx:if="{{hotActivities.length === 0 && !loading}}">
-      <text>暂无活动数据</text>
-    </view>
-  </view>
+  </block>
 
   <!-- 推荐教练 -->
-  <view class="section">
-    <view class="section-header">
-      <text class="section-title">推荐教练</text>
-      <view class="section-more" bindtap="viewMoreCoaches">
-        <text>更多</text>
-        <text class="arrow">></text>
-      </view>
-    </view>
-    <view class="coach-list">
-      <view
-        class="coach-card"
-        wx:for="{{hotCoaches}}"
-        wx:key="id"
-        bindtap="goToCoachDetail"
-        data-id="{{item.id}}"
-      >
-        <image class="coach-avatar" src="{{item.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
-        <view class="coach-info">
-          <text class="coach-name">{{item.name}}</text>
-          <view class="coach-tags">
-            <text class="tag tag-primary">{{item.type_name || '教练'}}</text>
-          </view>
-          <view class="coach-rating">
-            <text class="rating-star">★</text>
-            <text class="rating-value">{{item.rating || 5.0}}</text>
-          </view>
-        </view>
-        <view class="coach-price">
-          <text class="price-value">{{item.price || 0}}</text>
-          <text class="price-unit">金币/时</text>
+  <block wx:if="{{utils.includes(visibleBlocks, 'hot_coaches')}}">
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">推荐教练</text>
+        <view class="section-more" bindtap="viewMoreCoaches">
+          <text>更多</text>
+          <text class="arrow">></text>
         </view>
       </view>
+      <view class="coach-list">
+        <view
+          class="coach-card"
+          wx:for="{{hotCoaches}}"
+          wx:key="id"
+          bindtap="goToCoachDetail"
+          data-id="{{item.id}}"
+        >
+          <image class="coach-avatar" src="{{item.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
+          <view class="coach-info">
+            <text class="coach-name">{{item.name}}</text>
+            <view class="coach-tags">
+              <text class="tag tag-primary">{{item.type_name || '教练'}}</text>
+            </view>
+            <view class="coach-rating">
+              <text class="rating-star">★</text>
+              <text class="rating-value">{{item.rating || 5.0}}</text>
+            </view>
+          </view>
+          <view class="coach-price">
+            <text class="price-value">{{item.price || 0}}</text>
+            <text class="price-unit">金币/时</text>
+          </view>
+        </view>
+      </view>
+      <view class="empty-hint" wx:if="{{hotCoaches.length === 0 && !loading}}">
+        <text>暂无教练数据</text>
+      </view>
     </view>
-    <view class="empty-hint" wx:if="{{hotCoaches.length === 0 && !loading}}">
-      <text>暂无教练数据</text>
-    </view>
-  </view>
+  </block>
 
   <!-- 底部安全区 -->
   <view class="safe-bottom"></view>

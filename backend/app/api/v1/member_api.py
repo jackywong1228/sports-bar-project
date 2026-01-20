@@ -22,6 +22,7 @@ from app.models.mall import ProductCategory, Product
 from app.models.member import MemberCard, MemberLevel, MemberCardOrder
 from app.core.wechat_pay import wechat_pay
 from app.models.coupon import MemberCoupon, CouponTemplate
+from app.models.ui_editor import UIConfigVersion, UIPageConfig, UIBlockConfig, UIMenuItem
 from app.schemas.common import ResponseModel
 from app.api.deps import get_current_member
 
@@ -2040,3 +2041,135 @@ def _process_member_card_payment(order: MemberCardOrder, transaction_id: str, db
         card.sales_count = (card.sales_count or 0) + 1
 
     db.commit()
+
+
+# ==================== UI配置（公开接口） ====================
+
+@router.get("/ui-config", response_model=ResponseModel)
+def get_ui_config(
+    page_code: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """获取UI配置（公开接口，小程序使用）
+
+    返回当前发布的UI配置，包括页面配置、区块配置、菜单项等
+    """
+    # 获取当前发布的版本
+    current_version = db.query(UIConfigVersion).filter(
+        UIConfigVersion.is_current == True
+    ).first()
+
+    # 如果有当前版本，直接返回快照
+    if current_version and current_version.config_snapshot:
+        config = current_version.config_snapshot
+
+        # 如果指定了页面，只返回该页面的配置
+        if page_code:
+            filtered_pages = [p for p in config.get("pages", []) if p.get("page_code") == page_code]
+            filtered_blocks = [b for b in config.get("blocks", []) if b.get("page_code") == page_code]
+            filtered_menu_items = [m for m in config.get("menuItems", []) if m.get("page_code") == page_code or m.get("menu_type") == "tabbar"]
+
+            return ResponseModel(data={
+                "pages": filtered_pages,
+                "blocks": filtered_blocks,
+                "menuItems": filtered_menu_items,
+                "tabBar": config.get("tabBar", []),
+                "version": current_version.version,
+                "publishedAt": config.get("publishedAt")
+            })
+
+        return ResponseModel(data=config)
+
+    # 如果没有发布版本，从数据库实时读取已发布的配置
+    pages_query = db.query(UIPageConfig).filter(
+        UIPageConfig.is_deleted == False,
+        UIPageConfig.is_active == True,
+        UIPageConfig.status == "published"
+    )
+
+    if page_code:
+        pages_query = pages_query.filter(UIPageConfig.page_code == page_code)
+
+    pages = pages_query.all()
+
+    pages_data = []
+    for p in pages:
+        pages_data.append({
+            "id": p.id,
+            "page_code": p.page_code,
+            "page_name": p.page_name,
+            "page_type": p.page_type,
+            "blocks_config": p.blocks_config or [],
+            "style_config": p.style_config or {},
+            "version": p.version
+        })
+
+    # 获取区块配置
+    blocks_query = db.query(UIBlockConfig).filter(
+        UIBlockConfig.is_deleted == False,
+        UIBlockConfig.is_active == True
+    )
+
+    if page_code:
+        blocks_query = blocks_query.filter(UIBlockConfig.page_code == page_code)
+
+    blocks = blocks_query.order_by(UIBlockConfig.sort_order.asc()).all()
+
+    blocks_data = []
+    for b in blocks:
+        blocks_data.append({
+            "id": b.id,
+            "block_code": b.block_code,
+            "block_name": b.block_name,
+            "page_code": b.page_code,
+            "block_type": b.block_type,
+            "config": b.config or {},
+            "style_config": b.style_config or {},
+            "data_source": b.data_source,
+            "sort_order": b.sort_order
+        })
+
+    # 获取菜单项
+    menu_items_query = db.query(UIMenuItem).filter(
+        UIMenuItem.is_deleted == False,
+        UIMenuItem.is_active == True,
+        UIMenuItem.is_visible == True
+    )
+
+    menu_items = menu_items_query.order_by(UIMenuItem.sort_order.asc()).all()
+
+    menu_items_data = []
+    tabbar_data = []
+
+    for m in menu_items:
+        item_data = {
+            "id": m.id,
+            "menu_code": m.menu_code,
+            "menu_type": m.menu_type,
+            "block_id": m.block_id,
+            "title": m.title,
+            "subtitle": m.subtitle,
+            "icon": m.icon,
+            "icon_active": m.icon_active,
+            "link_type": m.link_type,
+            "link_value": m.link_value,
+            "link_params": m.link_params,
+            "show_condition": m.show_condition,
+            "badge_type": m.badge_type,
+            "badge_value": m.badge_value,
+            "sort_order": m.sort_order
+        }
+
+        if m.menu_type == "tabbar":
+            tabbar_data.append(item_data)
+        else:
+            menu_items_data.append(item_data)
+
+    return ResponseModel(data={
+        "pages": pages_data,
+        "blocks": blocks_data,
+        "menuItems": menu_items_data,
+        "tabBar": tabbar_data,
+        "version": 0,
+        "publishedAt": None
+    })
