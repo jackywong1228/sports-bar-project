@@ -10,6 +10,8 @@ Page({
       { value: 'monthly', label: '月榜' }
     ],
     venueTypeId: null,  // null 表示综合排行
+    venueTypeIndex: 0,  // picker 选中索引
+    selectedVenueTypeName: '综合',  // 当前选中的场馆类型名称
     venueTypes: [],
     leaderboard: [],
     myRank: null,
@@ -28,7 +30,10 @@ Page({
       const res = await api.getVenueTypes()
       if (res.code === 200) {
         const types = [{ id: null, name: '综合' }, ...res.data]
-        this.setData({ venueTypes: types })
+        this.setData({
+          venueTypes: types,
+          selectedVenueTypeName: types[0]?.name || '综合'
+        })
       }
     } catch (err) {
       console.error('加载场馆类型失败:', err)
@@ -41,10 +46,9 @@ Page({
     this.setData({ loading: true })
 
     try {
-      const res = await api.getLeaderboard({
-        period: periodType,
-        venue_type_id: venueTypeId
-      })
+      const params = { period: periodType }
+      if (venueTypeId) params.venue_type_id = venueTypeId
+      const res = await api.getLeaderboard(params)
       if (res.code === 200) {
         this.setData({ leaderboard: res.data || [] })
       }
@@ -61,10 +65,9 @@ Page({
     const { periodType, venueTypeId } = this.data
 
     try {
-      const res = await api.getMyRank({
-        period: periodType,
-        venue_type_id: venueTypeId
-      })
+      const params = { period: periodType }
+      if (venueTypeId) params.venue_type_id = venueTypeId
+      const res = await api.getMyRank(params)
       if (res.code === 200) {
         this.setData({ myRank: res.data })
       }
@@ -85,10 +88,16 @@ Page({
 
   // 切换场馆类型
   onVenueTypeChange(e) {
-    const index = e.detail.value
-    const venueTypeId = this.data.venueTypes[index]?.id || null
+    const index = parseInt(e.detail.value)
+    const selectedType = this.data.venueTypes[index]
+    const venueTypeId = selectedType?.id || null
+    const selectedVenueTypeName = selectedType?.name || '综合'
 
-    this.setData({ venueTypeId })
+    this.setData({
+      venueTypeId,
+      venueTypeIndex: index,
+      selectedVenueTypeName
+    })
     this.loadLeaderboard()
     this.loadMyRank()
   },

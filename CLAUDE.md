@@ -59,8 +59,11 @@ app/
 │   ├── database.py      # SQLAlchemy 引擎和会话
 │   ├── security.py      # JWT 编解码、密码哈希
 │   ├── wechat.py        # 微信 API 封装（登录、小程序码、订阅消息）
-│   └── wechat_pay.py    # 微信支付 V3 封装
+│   └── wechat_pay.py    # 微信支付 V3 封装（含公钥验证）
 ├── models/              # SQLAlchemy ORM 模型
+│   ├── checkin.py       # 打卡相关（CheckinRecord、CheckinRule、积分流水）
+│   ├── ui_editor.py     # UI 编辑器配置
+│   └── ...              # 其他业务模型
 ├── schemas/             # Pydantic 请求/响应模型
 └── api/
     ├── deps.py          # 依赖注入（认证、数据库会话）
@@ -84,20 +87,39 @@ app/
 所有 API 都在 `/api/v1/` 下，路由注册见 `backend/app/main.py`：
 
 **小程序端 API：**
-- `/member` - 会员端（会员登录、个人中心、预约、订单等）
+- `/member` - 会员端（会员登录、个人中心、预约、订单、打卡、会员卡购买等）
 - `/coach` - 教练端（教练登录、日程、收入等）
 - `/payment` - 微信支付回调
 - `/wechat` - 微信服务（小程序码、订阅消息）
+- `/gate` - 闸机接口（设备对接用）
+- `/checkin` - 打卡管理（打卡记录、积分规则、排行榜）
 
 **管理后台 API：**
 - `/auth` - 管理员登录认证
 - `/staff`, `/members`, `/coaches`, `/venues`, `/reservations` 等 CRUD 接口
+- `/member-cards` - 会员卡套餐管理
+- `/ui-editor` - UI 可视化编辑（小程序布局配置）
+- `/ui-assets` - UI 素材管理（图标、主题、图片）
+- `/coupons` - 票券管理（含推送通知功能）
 
 ### 前端结构（`admin-frontend/src/`）
 ```
 src/
 ├── api/           # 按业务模块划分的 API 封装
 ├── views/         # 页面组件
+│   ├── system/    # 系统管理（用户、角色、部门）
+│   ├── member/    # 会员管理（列表、等级、会员卡套餐、订单）
+│   ├── checkin/   # 打卡管理（记录、积分规则、排行榜）
+│   ├── venue/     # 场地管理（列表、类型、价格）
+│   ├── coach/     # 教练管理（列表、申请审核）
+│   ├── activity/  # 活动管理
+│   ├── food/      # 点餐管理
+│   ├── coupon/    # 票券管理
+│   ├── mall/      # 商城管理
+│   ├── finance/   # 财务管理（概览、充值、消费、结算）
+│   ├── message/   # 消息通知（发送、模板、公告、轮播图）
+│   ├── ui-assets/ # UI 素材（图标、主题、图片）
+│   └── ui-editor/ # 小程序布局可视化编辑器
 ├── stores/        # Pinia 状态管理
 ├── router/        # Vue Router 配置
 ├── layouts/       # 布局组件
@@ -110,16 +132,34 @@ src/
 ### 小程序结构（`user-miniprogram/`）
 ```
 user-miniprogram/
-├── app.js         # 全局状态（token、memberInfo、coachInfo）
-├── pages/         # 页面（用户页面和 coach-* 教练页面）
+├── app.js              # 全局状态（token、memberInfo、coachInfo）
+├── app.json            # 小程序配置（页面注册、tabBar）
+├── pages/              # 页面目录
+│   ├── index/          # 首页
+│   ├── venue*/         # 场地相关（列表、详情、预约）
+│   ├── coach-*/        # 教练端页面（home、schedule、income 等）
+│   ├── activity*/      # 活动相关
+│   ├── food*/          # 点餐相关
+│   ├── mall*/          # 商城相关
+│   ├── wallet/         # 钱包
+│   ├── member/         # 会员卡购买
+│   ├── coupons/        # 优惠券
+│   ├── orders/         # 订单
+│   ├── checkin-calendar/ # 打卡日历
+│   ├── leaderboard/    # 排行榜
+│   └── coach-apply/    # 教练申请
 └── utils/
-    ├── request.js     # 请求封装
-    ├── api.js         # 用户端 API
-    ├── coach-api.js   # 教练端 API
-    └── wx-api.js      # 微信原生 API 封装
+    ├── request.js      # 请求封装
+    ├── api.js          # 用户端 API
+    ├── coach-api.js    # 教练端 API
+    └── wx-api.js       # 微信原生 API 封装
 ```
 
 小程序通过 `app.js` 中的 `globalData.baseUrl` 配置 API 地址。会员和教练使用独立的 token 存储（`token` / `coach_token`）。
+
+**小程序主要功能模块：**
+- 会员端：场地预约、教练预约、活动报名、点餐、商城、打卡签到、排行榜、钱包充值、会员卡购买
+- 教练端：日程管理、学员预约、收入统计、推广码
 
 ## 添加新功能的模式
 
@@ -169,7 +209,35 @@ journalctl -u sports-bar -f
 
 所有微信相关配置在 `backend/.env` 中设置，参见 `backend/app/core/config.py` 的 Settings 类。
 
+## 已完成功能
+
+**核心业务：**
+- 会员管理（注册、等级、会员卡套餐购买）
+- 场地预约与管理
+- 教练预约与管理（含教练申请流程）
+- 活动报名与管理
+- 点餐系统
+- 积分商城
+
+**营销与运营：**
+- 打卡签到系统（积分规则、排行榜、训练日历）
+- 优惠券系统（模板、发放、推送通知）
+- 钱包充值（微信支付 V3）
+- 会员卡购买（微信支付集成）
+
+**管理后台：**
+- 数据看板
+- 财务管理（充值、消费、教练结算）
+- 消息通知（订阅消息、公告、轮播图）
+- UI 可视化编辑器（小程序布局自定义）
+- UI 素材管理（图标、主题、图片）
+
+**技术对接：**
+- 微信支付 V3（含公钥验证）
+- 闸机 API 接口（`/api/v1/gate`）
+
 ## 待开发
 
-- 物联设备对接（智能门禁、胸卡/手环、中控网关、小票机、扫码设备）
+- 物联设备实际对接测试（智能门禁、胸卡/手环、中控网关、小票机、扫码设备）
 - ICP 备案完成后需更新小程序 baseUrl 为 HTTPS 域名
+- 数据统计报表增强

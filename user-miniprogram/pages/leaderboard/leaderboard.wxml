@@ -14,9 +14,9 @@
 
   <!-- 场馆类型筛选 -->
   <view class="filter-bar" wx:if="{{venueTypes.length > 0}}">
-    <picker mode="selector" range="{{venueTypes}}" range-key="name" bindchange="onVenueTypeChange">
+    <picker mode="selector" range="{{venueTypes}}" range-key="name" value="{{venueTypeIndex}}" bindchange="onVenueTypeChange">
       <view class="filter-picker">
-        <text>{{venueTypes[venueTypeId ? venueTypes.findIndex(v => v.id === venueTypeId) : 0].name || '综合'}}</text>
+        <text>{{selectedVenueTypeName}}</text>
         <text class="arrow">▼</text>
       </view>
     </picker>
@@ -49,18 +49,16 @@
     <view class="loading-tip" wx:if="{{loading}}">
       <text>加载中...</text>
     </view>
-
     <view class="empty-tip" wx:elif="{{leaderboard.length === 0}}">
       <image src="/assets/icons/empty.png" mode="aspectFit"></image>
       <text>暂无排行数据</text>
     </view>
-
-    <view
-      wx:else
-      wx:for="{{leaderboard}}"
-      wx:key="member_id"
-      class="rank-item"
-    >
+    <block wx:else>
+      <view
+        wx:for="{{leaderboard}}"
+        wx:key="member_id"
+        class="rank-item"
+      >
       <view class="rank-num {{item.rank <= 3 ? (item.rank === 1 ? 'gold' : item.rank === 2 ? 'silver' : 'bronze') : ''}}">
         <text wx:if="{{item.rank === 1}}" class="rank-medal">🥇</text>
         <text wx:elif="{{item.rank === 2}}" class="rank-medal">🥈</text>
@@ -86,6 +84,7 @@
       <view class="count-col">
         <text>{{item.check_count}}次</text>
       </view>
-    </view>
+      </view>
+    </block>
   </view>
 </view>
