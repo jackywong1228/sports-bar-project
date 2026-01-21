@@ -3,10 +3,14 @@
   <view class="user-header" wx:if="{{isLoggedIn && memberInfo}}">
     <image class="user-avatar" src="{{memberInfo.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
     <view class="user-info">
-      <text class="user-name">{{memberInfo.nickname || '用户'}}</text>
-      <view class="user-level" wx:if="{{memberInfo.level_name}}">
-        <text class="level-tag">{{memberInfo.level_name}}</text>
+      <view class="user-name-row">
+        <text class="user-name">{{memberInfo.nickname || '用户'}}</text>
+        <view class="user-level {{memberInfo.level_type || 'normal'}}" wx:if="{{memberInfo.level_name}}">
+          <image class="level-icon" wx:if="{{memberInfo.level_icon}}" src="{{memberInfo.level_icon}}" mode="aspectFit"></image>
+          <text class="level-tag">{{memberInfo.level_name}}</text>
+        </view>
       </view>
+      <text class="user-id">ID: {{memberInfo.id}}</text>
     </view>
   </view>
 
@@ -47,6 +51,40 @@
       </view>
     </view>
     <text class="coach-entry-arrow">></text>
+  </view>
+
+  <!-- 训练日历入口 -->
+  <view class="training-card" wx:if="{{isLoggedIn}}" bindtap="goToCalendar">
+    <view class="training-header">
+      <text class="training-title">训练日历</text>
+      <text class="training-more">查看更多 ></text>
+    </view>
+    <view class="training-stats">
+      <view class="stat-item">
+        <text class="stat-value">{{checkinStats.month_count || 0}}</text>
+        <text class="stat-label">本月打卡</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{checkinStats.month_duration || 0}}</text>
+        <text class="stat-label">总时长(分)</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{checkinStats.month_points || 0}}</text>
+        <text class="stat-label">获得积分</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 排行榜入口 -->
+  <view class="rank-card" wx:if="{{isLoggedIn}}" bindtap="goToLeaderboard">
+    <view class="rank-left">
+      <view class="rank-icon-emoji">🏆</view>
+      <view class="rank-info">
+        <text class="rank-title">运动排行榜</text>
+        <text class="rank-desc">看看你的运动排名</text>
+      </view>
+    </view>
+    <text class="rank-arrow">></text>
   </view>
 
   <!-- 功能菜单 -->

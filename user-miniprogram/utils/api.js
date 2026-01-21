@@ -434,6 +434,57 @@ const createRecharge = (amount, packageId = null) => {
   return post('/wallet/recharge', { amount, package_id: packageId }, { showLoading: true })
 }
 
+// ==================== 打卡与训练 ====================
+
+/**
+ * 获取打卡统计（本月数据，用于我的页面）
+ */
+const getCheckinStats = () => {
+  return get('/member/checkin/stats')
+}
+
+/**
+ * 获取今日打卡状态
+ */
+const getTodayCheckin = () => {
+  return get('/member/checkin/today')
+}
+
+/**
+ * 获取训练日历数据
+ * @param {number} year 年份
+ * @param {number} month 月份
+ */
+const getCheckinCalendar = (year, month) => {
+  return get('/member/checkin/calendar', { year, month })
+}
+
+/**
+ * 获取打卡记录列表
+ * @param {Object} params 查询参数
+ */
+const getCheckinRecords = (params = {}) => {
+  return get('/member/checkin/records', params)
+}
+
+// ==================== 排行榜 ====================
+
+/**
+ * 获取排行榜
+ * @param {Object} params { period: 'daily'|'weekly'|'monthly', venue_type_id?: number }
+ */
+const getLeaderboard = (params = {}) => {
+  return get('/member/leaderboard', params)
+}
+
+/**
+ * 获取我的排名
+ * @param {Object} params { period: 'daily'|'weekly'|'monthly', venue_type_id?: number }
+ */
+const getMyRank = (params = {}) => {
+  return get('/member/leaderboard/my-rank', params)
+}
+
 // ==================== 优惠券 ====================
 
 /**
@@ -570,6 +621,16 @@ module.exports = {
   getPointRecords,
   getRechargePackages,
   createRecharge,
+
+  // 打卡与训练
+  getCheckinStats,
+  getTodayCheckin,
+  getCheckinCalendar,
+  getCheckinRecords,
+
+  // 排行榜
+  getLeaderboard,
+  getMyRank,
 
   // 优惠券
   getMyCoupons,

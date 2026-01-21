@@ -35,7 +35,9 @@
     "pages/coach-income/coach-income",
     "pages/coach-wallet/coach-wallet",
     "pages/coach-orders/coach-orders",
-    "pages/coach-promote/coach-promote"
+    "pages/coach-promote/coach-promote",
+    "pages/checkin-calendar/checkin-calendar",
+    "pages/leaderboard/leaderboard"
   ],
   "window": {
     "backgroundTextStyle": "dark",

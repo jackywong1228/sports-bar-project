@@ -79,6 +79,33 @@ const routes: RouteRecordRaw[] = [
           }
         ]
       },
+      // 打卡管理
+      {
+        path: 'checkin',
+        name: 'Checkin',
+        redirect: '/checkin/records',
+        meta: { title: '打卡管理', icon: 'Clock' },
+        children: [
+          {
+            path: 'records',
+            name: 'CheckinRecords',
+            component: () => import('@/views/checkin/Records.vue'),
+            meta: { title: '打卡记录' }
+          },
+          {
+            path: 'rules',
+            name: 'CheckinRules',
+            component: () => import('@/views/checkin/Rules.vue'),
+            meta: { title: '积分规则' }
+          },
+          {
+            path: 'leaderboard',
+            name: 'CheckinLeaderboard',
+            component: () => import('@/views/checkin/Leaderboard.vue'),
+            meta: { title: '排行榜' }
+          }
+        ]
+      },
       // 场地管理
       {
         path: 'venue',

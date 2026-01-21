@@ -1,0 +1,82 @@
+<view class="container">
+  <!-- 月份选择器 -->
+  <view class="month-selector">
+    <view class="arrow" bindtap="prevMonth">
+      <text class="arrow-text">&lt;</text>
+    </view>
+    <text class="month-text">{{currentYear}}年{{currentMonth}}月</text>
+    <view class="arrow" bindtap="nextMonth">
+      <text class="arrow-text">&gt;</text>
+    </view>
+  </view>
+
+  <!-- 本月统计 -->
+  <view class="month-stats">
+    <view class="stat-item">
+      <text class="stat-value">{{monthStats.checkin_days || 0}}</text>
+      <text class="stat-label">打卡天数</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">{{monthStats.total_duration || 0}}</text>
+      <text class="stat-label">总时长(分)</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">{{monthStats.total_points || 0}}</text>
+      <text class="stat-label">获得积分</text>
+    </view>
+  </view>
+
+  <!-- 日历网格 -->
+  <view class="calendar-grid">
+    <!-- 星期头部 -->
+    <view class="week-header">
+      <text wx:for="{{weekDays}}" wx:key="*this" class="week-day">{{item}}</text>
+    </view>
+
+    <!-- 日期网格 -->
+    <view class="days-grid">
+      <view
+        wx:for="{{calendarData}}"
+        wx:key="date"
+        class="day-cell {{item.isCurrentMonth ? '' : 'other-month'}} {{item.hasCheckin ? 'has-checkin' : ''}} {{item.isToday ? 'today' : ''}} {{selectedDate === item.date ? 'selected' : ''}}"
+        bindtap="selectDate"
+        data-date="{{item.date}}"
+        data-isCurrentMonth="{{item.isCurrentMonth}}"
+        data-hasCheckin="{{item.hasCheckin}}"
+      >
+        <text class="day-num">{{item.day}}</text>
+        <view class="checkin-dot" wx:if="{{item.hasCheckin && item.isCurrentMonth}}"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 选中日期详情 -->
+  <view class="day-detail-mask" wx:if="{{selectedDate && dayDetail}}" bindtap="closeDetail">
+    <view class="day-detail" catchtap="">
+      <view class="detail-header">
+        <text class="detail-title">{{selectedDate}} 训练记录</text>
+        <text class="close-btn" bindtap="closeDetail">×</text>
+      </view>
+
+      <view class="record-list" wx:if="{{dayDetail.length > 0}}">
+        <view class="record-item" wx:for="{{dayDetail}}" wx:key="id">
+          <view class="venue-info">
+            <text class="venue-name">{{item.venue_name}}</text>
+            <text class="venue-type">{{item.venue_type_name}}</text>
+          </view>
+          <view class="time-info">
+            <text>{{item.check_in_time}} - {{item.check_out_time || '进行中'}}</text>
+          </view>
+          <view class="stats-info">
+            <text class="duration">时长: {{item.duration}}分钟</text>
+            <text class="points">积分: +{{item.points_earned}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="no-record" wx:else>
+        <text>当天没有训练记录</text>
+      </view>
+    </view>
+  </view>
+</view>

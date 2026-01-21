@@ -1,0 +1,280 @@
+/* 训练日历页面样式 - 温网风格 */
+.container {
+  min-height: 100vh;
+  background: #F5F7F5;
+  padding-bottom: 40rpx;
+}
+
+/* 月份选择器 */
+.month-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx 0;
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+}
+
+.arrow {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+}
+
+.arrow:active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.arrow-text {
+  font-size: 32rpx;
+  color: #fff;
+  font-weight: bold;
+}
+
+.month-text {
+  font-size: 36rpx;
+  color: #fff;
+  font-weight: 600;
+  margin: 0 40rpx;
+  min-width: 200rpx;
+  text-align: center;
+}
+
+/* 本月统计 */
+.month-stats {
+  display: flex;
+  background: #FFFFFF;
+  margin: -20rpx 24rpx 20rpx;
+  border-radius: 16rpx;
+  padding: 28rpx 0;
+  box-shadow: 0 4rpx 20rpx rgba(26, 93, 58, 0.1);
+  position: relative;
+  z-index: 10;
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 1rpx solid #E8EDE9;
+}
+
+.stat-item:last-child {
+  border-right: none;
+}
+
+.stat-value {
+  font-size: 44rpx;
+  font-weight: bold;
+  color: #1A5D3A;
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: #6B7B6E;
+}
+
+/* 日历网格 */
+.calendar-grid {
+  background: #FFFFFF;
+  margin: 0 24rpx 20rpx;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(26, 93, 58, 0.05);
+}
+
+/* 星期头部 */
+.week-header {
+  display: flex;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #E8EDE9;
+  margin-bottom: 10rpx;
+}
+
+.week-day {
+  flex: 1;
+  text-align: center;
+  font-size: 26rpx;
+  color: #6B7B6E;
+  font-weight: 500;
+}
+
+/* 日期网格 */
+.days-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.day-cell {
+  width: calc(100% / 7);
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.day-num {
+  font-size: 30rpx;
+  color: #2C3E2D;
+  font-weight: 500;
+}
+
+/* 非当月日期 */
+.day-cell.other-month .day-num {
+  color: #C4D0C5;
+}
+
+/* 今天 */
+.day-cell.today .day-num {
+  color: #fff;
+  background: #1A5D3A;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 选中日期 */
+.day-cell.selected {
+  background: rgba(26, 93, 58, 0.1);
+  border-radius: 12rpx;
+}
+
+/* 打卡标记点 */
+.checkin-dot {
+  width: 12rpx;
+  height: 12rpx;
+  background: #FF6B6B;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 8rpx;
+}
+
+/* 有打卡记录的日期 */
+.day-cell.has-checkin .day-num {
+  color: #1A5D3A;
+  font-weight: bold;
+}
+
+/* 选中日期详情遮罩 */
+.day-detail-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 详情弹窗 */
+.day-detail {
+  width: 85%;
+  max-height: 70vh;
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+}
+
+.detail-title {
+  font-size: 32rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+.close-btn {
+  font-size: 44rpx;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1;
+}
+
+/* 记录列表 */
+.record-list {
+  padding: 20rpx;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.record-item {
+  background: #F5F7F5;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.record-item:last-child {
+  margin-bottom: 0;
+}
+
+.venue-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.venue-name {
+  font-size: 30rpx;
+  color: #2C3E2D;
+  font-weight: 600;
+  margin-right: 12rpx;
+}
+
+.venue-type {
+  font-size: 22rpx;
+  color: #6B7B6E;
+  padding: 4rpx 12rpx;
+  background: rgba(26, 93, 58, 0.1);
+  border-radius: 8rpx;
+}
+
+.time-info {
+  font-size: 26rpx;
+  color: #6B7B6E;
+  margin-bottom: 12rpx;
+}
+
+.stats-info {
+  display: flex;
+  justify-content: space-between;
+}
+
+.duration {
+  font-size: 26rpx;
+  color: #1A5D3A;
+  font-weight: 500;
+}
+
+.points {
+  font-size: 26rpx;
+  color: #FF6B6B;
+  font-weight: 500;
+}
+
+/* 无记录 */
+.no-record {
+  padding: 60rpx 0;
+  text-align: center;
+  color: #6B7B6E;
+  font-size: 28rpx;
+}

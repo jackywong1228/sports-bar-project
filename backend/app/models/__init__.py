@@ -12,6 +12,7 @@ from app.models.message import MessageTemplate, Message, Announcement, Banner
 from app.models.ui_asset import UIIcon, UITheme, UIImage
 from app.models.ui_editor import UIPageConfig, UIBlockConfig, UIMenuItem, UIConfigVersion
 from app.models.team import Team, TeamMember
+from app.models.checkin import GateCheckRecord, PointRuleConfig, Leaderboard
 
 __all__ = [
     "SysUser", "SysRole", "SysDepartment", "SysPermission",
@@ -28,4 +29,5 @@ __all__ = [
     "UIIcon", "UITheme", "UIImage",
     "UIPageConfig", "UIBlockConfig", "UIMenuItem", "UIConfigVersion",
     "Team", "TeamMember",
+    "GateCheckRecord", "PointRuleConfig", "Leaderboard",
 ]

@@ -6,6 +6,11 @@ Page({
     memberInfo: null,
     isLoggedIn: false,
     isCoach: false,
+    checkinStats: {
+      month_count: 0,
+      month_duration: 0,
+      month_points: 0
+    },
     menus: [
       { icon: '/assets/icons/order.png', text: '我的订单', url: '/pages/orders/orders' },
       { icon: '/assets/icons/reservation.png', text: '我的预约', url: '/pages/orders/orders?type=reservation' },
@@ -46,6 +51,21 @@ Page({
     // 检查是否是教练
     if (isLoggedIn) {
       this.checkCoachStatus()
+      this.loadCheckinStats()
+    }
+  },
+
+  // 加载打卡统计
+  async loadCheckinStats() {
+    try {
+      const res = await api.getCheckinStats()
+      if (res.code === 200) {
+        this.setData({
+          checkinStats: res.data
+        })
+      }
+    } catch (err) {
+      console.error('加载打卡统计失败:', err)
     }
   },
 
@@ -149,6 +169,28 @@ Page({
     }
     wx.navigateTo({
       url: '/pages/recharge/recharge'
+    })
+  },
+
+  // 跳转训练日历
+  goToCalendar() {
+    if (!this.data.isLoggedIn) {
+      this.goToLogin()
+      return
+    }
+    wx.navigateTo({
+      url: '/pages/checkin-calendar/checkin-calendar'
+    })
+  },
+
+  // 跳转排行榜
+  goToLeaderboard() {
+    if (!this.data.isLoggedIn) {
+      this.goToLogin()
+      return
+    }
+    wx.navigateTo({
+      url: '/pages/leaderboard/leaderboard'
     })
   }
 })

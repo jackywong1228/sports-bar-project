@@ -1,0 +1,91 @@
+<view class="container">
+  <!-- 周期选择 -->
+  <view class="period-tabs">
+    <view
+      wx:for="{{periodOptions}}"
+      wx:key="value"
+      class="period-tab {{periodType === item.value ? 'active' : ''}}"
+      bindtap="onPeriodChange"
+      data-period="{{item.value}}"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <!-- 场馆类型筛选 -->
+  <view class="filter-bar" wx:if="{{venueTypes.length > 0}}">
+    <picker mode="selector" range="{{venueTypes}}" range-key="name" bindchange="onVenueTypeChange">
+      <view class="filter-picker">
+        <text>{{venueTypes[venueTypeId ? venueTypes.findIndex(v => v.id === venueTypeId) : 0].name || '综合'}}</text>
+        <text class="arrow">▼</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 我的排名卡片 -->
+  <view class="my-rank-card" wx:if="{{myRank}}">
+    <view class="my-rank-left">
+      <image class="my-avatar" src="{{myRank.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
+      <view class="my-info">
+        <text class="my-name">{{myRank.nickname || '我'}}</text>
+        <text class="my-stats">时长 {{myRank.total_duration || 0}}分钟 · 打卡 {{myRank.check_count || 0}}次</text>
+      </view>
+    </view>
+    <view class="my-rank-right">
+      <text class="my-rank-num" wx:if="{{myRank.rank}}">第{{myRank.rank}}名</text>
+      <text class="my-rank-num unranked" wx:else>暂未上榜</text>
+    </view>
+  </view>
+
+  <!-- 排行榜列表 -->
+  <view class="leaderboard-list">
+    <view class="list-header">
+      <text class="header-rank">排名</text>
+      <text class="header-user">用户</text>
+      <text class="header-duration">时长</text>
+      <text class="header-count">打卡</text>
+    </view>
+
+    <view class="loading-tip" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+
+    <view class="empty-tip" wx:elif="{{leaderboard.length === 0}}">
+      <image src="/assets/icons/empty.png" mode="aspectFit"></image>
+      <text>暂无排行数据</text>
+    </view>
+
+    <view
+      wx:else
+      wx:for="{{leaderboard}}"
+      wx:key="member_id"
+      class="rank-item"
+    >
+      <view class="rank-num {{item.rank <= 3 ? (item.rank === 1 ? 'gold' : item.rank === 2 ? 'silver' : 'bronze') : ''}}">
+        <text wx:if="{{item.rank === 1}}" class="rank-medal">🥇</text>
+        <text wx:elif="{{item.rank === 2}}" class="rank-medal">🥈</text>
+        <text wx:elif="{{item.rank === 3}}" class="rank-medal">🥉</text>
+        <text wx:else>{{item.rank}}</text>
+      </view>
+
+      <view class="user-info">
+        <image class="user-avatar" src="{{item.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
+        <view class="user-detail">
+          <text class="user-name">{{item.nickname || '用户' + item.member_id}}</text>
+          <view class="user-level" wx:if="{{item.level_name}}">
+            <text>{{item.level_name}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="duration-col">
+        <text class="duration-value">{{item.total_duration}}</text>
+        <text class="duration-unit">分钟</text>
+      </view>
+
+      <view class="count-col">
+        <text>{{item.check_count}}次</text>
+      </view>
+    </view>
+  </view>
+</view>

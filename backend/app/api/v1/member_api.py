@@ -14,6 +14,7 @@ from app.core.security import create_access_token
 from app.core.config import settings
 from app.core.wechat import user_wechat_service, WeChatAPIError
 from app.models import Member, Venue, VenueType, Coach, Reservation, CoinRecord, PointRecord
+from app.models.checkin import GateCheckRecord, PointRuleConfig, Leaderboard
 from app.models.coach import CoachApplication
 from app.models.activity import Activity
 from app.models.message import Banner
@@ -313,9 +314,21 @@ def get_member_profile(
     db: Session = Depends(get_db)
 ):
     """获取会员信息"""
-    level_name = None
+    level_info = {
+        "level_id": None,
+        "level_name": None,
+        "level_icon": None,
+        "level_type": "normal",
+        "level_discount": 1.0
+    }
     if current_member.level:
-        level_name = current_member.level.name
+        level_info = {
+            "level_id": current_member.level.id,
+            "level_name": current_member.level.name,
+            "level_icon": current_member.level.icon,
+            "level_type": current_member.level.type or "normal",
+            "level_discount": float(current_member.level.discount) if current_member.level.discount else 1.0
+        }
 
     return ResponseModel(data={
         "id": current_member.id,
@@ -324,7 +337,7 @@ def get_member_profile(
         "phone": current_member.phone,
         "real_name": current_member.real_name,
         "gender": current_member.gender,
-        "level_name": level_name,
+        **level_info,
         "member_expire_time": str(current_member.member_expire_time) if current_member.member_expire_time else None,
         "coin_balance": float(current_member.coin_balance or 0),
         "point_balance": current_member.point_balance or 0
@@ -2173,3 +2186,329 @@ def get_ui_config(
         "version": 0,
         "publishedAt": None
     })
+
+
+# ==================== 打卡相关 ====================
+
+@router.get("/checkin/today", response_model=ResponseModel)
+def get_today_checkin(
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取今日打卡状态"""
+    today = date.today()
+
+    # 查找今天的打卡记录
+    records = db.query(GateCheckRecord).filter(
+        GateCheckRecord.member_id == current_member.id,
+        GateCheckRecord.check_date == today
+    ).all()
+
+    # 查找未完成的打卡记录（正在场馆内）
+    active_record = None
+    for r in records:
+        if not r.check_out_time:
+            venue = db.query(Venue).filter(Venue.id == r.venue_id).first()
+            active_record = {
+                "record_id": r.id,
+                "venue_name": venue.name if venue else None,
+                "check_in_time": r.check_in_time.strftime("%H:%M"),
+                "duration_so_far": int((datetime.now() - r.check_in_time).total_seconds() / 60)
+            }
+            break
+
+    # 计算今日统计
+    completed_records = [r for r in records if r.check_out_time]
+    today_duration = sum(r.duration for r in completed_records)
+    today_points = sum(r.points_earned for r in completed_records if r.points_settled)
+    today_count = len(completed_records)
+
+    return ResponseModel(data={
+        "has_checkin": len(records) > 0,
+        "is_in_venue": active_record is not None,
+        "active_record": active_record,
+        "today_duration": today_duration,
+        "today_points": today_points,
+        "today_count": today_count
+    })
+
+
+@router.get("/checkin/calendar", response_model=ResponseModel)
+def get_checkin_calendar(
+    year: int = Query(...),
+    month: int = Query(...),
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取训练日历数据"""
+    import calendar as cal
+
+    # 计算月份的起止日期
+    _, last_day = cal.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, last_day)
+
+    # 查询该月的打卡记录
+    records = db.query(GateCheckRecord).filter(
+        GateCheckRecord.member_id == current_member.id,
+        GateCheckRecord.check_date >= start_date,
+        GateCheckRecord.check_date <= end_date,
+        GateCheckRecord.check_out_time != None  # 只统计已完成的
+    ).all()
+
+    # 按日期聚合
+    daily_stats = {}
+    for r in records:
+        date_str = str(r.check_date)
+        if date_str not in daily_stats:
+            daily_stats[date_str] = {
+                "date": date_str,
+                "has_checkin": True,
+                "duration": 0,
+                "points": 0,
+                "check_count": 0
+            }
+        daily_stats[date_str]["duration"] += r.duration
+        daily_stats[date_str]["points"] += r.points_earned if r.points_settled else 0
+        daily_stats[date_str]["check_count"] += 1
+
+    # 月统计
+    month_duration = sum(d["duration"] for d in daily_stats.values())
+    month_points = sum(d["points"] for d in daily_stats.values())
+    month_count = len(daily_stats)
+
+    return ResponseModel(data={
+        "year": year,
+        "month": month,
+        "checkin_days": list(daily_stats.keys()),
+        "days_detail": list(daily_stats.values()),
+        "stats": {
+            "checkin_days": month_count,
+            "total_duration": month_duration,
+            "total_points": month_points
+        }
+    })
+
+
+@router.get("/checkin/records", response_model=ResponseModel)
+def get_member_checkin_records(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=50),
+    check_date: Optional[str] = None,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取打卡记录列表"""
+    query = db.query(GateCheckRecord).filter(
+        GateCheckRecord.member_id == current_member.id
+    )
+
+    if check_date:
+        query = query.filter(GateCheckRecord.check_date == check_date)
+
+    total = query.count()
+    records = query.order_by(GateCheckRecord.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    items = []
+    for r in records:
+        venue = db.query(Venue).filter(Venue.id == r.venue_id).first()
+        venue_type = db.query(VenueType).filter(VenueType.id == venue.type_id).first() if venue else None
+        items.append({
+            "id": r.id,
+            "venue_name": venue.name if venue else None,
+            "venue_type_name": venue_type.name if venue_type else None,
+            "check_in_time": r.check_in_time.strftime("%Y-%m-%d %H:%M") if r.check_in_time else None,
+            "check_out_time": r.check_out_time.strftime("%Y-%m-%d %H:%M") if r.check_out_time else None,
+            "duration": r.duration,
+            "points_earned": r.points_earned,
+            "check_date": str(r.check_date)
+        })
+
+    return ResponseModel(data={"total": total, "items": items})
+
+
+@router.get("/checkin/stats", response_model=ResponseModel)
+def get_member_checkin_stats(
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取打卡统计（今日/本周/本月/累计）"""
+    today = date.today()
+
+    # 本周起止
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+
+    # 本月起止
+    month_start = date(today.year, today.month, 1)
+
+    # 今日统计
+    today_records = db.query(GateCheckRecord).filter(
+        GateCheckRecord.member_id == current_member.id,
+        GateCheckRecord.check_date == today,
+        GateCheckRecord.check_out_time != None
+    ).all()
+    today_duration = sum(r.duration for r in today_records)
+    today_points = sum(r.points_earned for r in today_records if r.points_settled)
+
+    # 本周统计
+    week_stats = db.query(
+        func.sum(GateCheckRecord.duration),
+        func.sum(GateCheckRecord.points_earned),
+        func.count(GateCheckRecord.id)
+    ).filter(
+        GateCheckRecord.member_id == current_member.id,
+        GateCheckRecord.check_date >= week_start,
+        GateCheckRecord.check_date <= week_end,
+        GateCheckRecord.check_out_time != None
+    ).first()
+
+    # 本月统计
+    month_stats = db.query(
+        func.sum(GateCheckRecord.duration),
+        func.sum(GateCheckRecord.points_earned),
+        func.count(GateCheckRecord.id)
+    ).filter(
+        GateCheckRecord.member_id == current_member.id,
+        GateCheckRecord.check_date >= month_start,
+        GateCheckRecord.check_out_time != None
+    ).first()
+
+    # 累计统计
+    total_stats = db.query(
+        func.sum(GateCheckRecord.duration),
+        func.sum(GateCheckRecord.points_earned),
+        func.count(GateCheckRecord.id)
+    ).filter(
+        GateCheckRecord.member_id == current_member.id,
+        GateCheckRecord.check_out_time != None
+    ).first()
+
+    return ResponseModel(data={
+        "today_checkin": len(today_records) > 0,
+        "today_duration": today_duration,
+        "today_points": today_points,
+        "week_duration": week_stats[0] or 0,
+        "week_points": week_stats[1] or 0,
+        "week_count": week_stats[2] or 0,
+        "month_duration": month_stats[0] or 0,
+        "month_points": month_stats[1] or 0,
+        "month_count": month_stats[2] or 0,
+        "total_duration": total_stats[0] or 0,
+        "total_points": total_stats[1] or 0,
+        "total_count": total_stats[2] or 0
+    })
+
+
+# ==================== 排行榜 ====================
+
+@router.get("/leaderboard", response_model=ResponseModel)
+def get_leaderboard(
+    period: str = Query("daily", description="daily/weekly/monthly"),
+    venue_type_id: Optional[int] = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取排行榜"""
+    today = date.today()
+
+    # 确定周期标识
+    if period == "daily":
+        period_key = today.strftime("%Y-%m-%d")
+    elif period == "weekly":
+        period_key = today.strftime("%Y-W%W")
+    elif period == "monthly":
+        period_key = today.strftime("%Y-%m")
+    else:
+        return ResponseModel(code=400, message="无效的周期类型")
+
+    # 查询排行榜
+    query = db.query(Leaderboard).filter(
+        Leaderboard.period_type == period,
+        Leaderboard.period_key == period_key
+    )
+
+    if venue_type_id is not None:
+        query = query.filter(Leaderboard.venue_type_id == venue_type_id)
+    else:
+        query = query.filter(Leaderboard.venue_type_id == None)
+
+    entries = query.order_by(Leaderboard.rank).offset((page - 1) * limit).limit(limit).all()
+
+    items = []
+    for entry in entries:
+        member = db.query(Member).filter(Member.id == entry.member_id).first()
+        level_name = member.level.name if member and member.level else None
+        items.append({
+            "rank": entry.rank,
+            "member_id": entry.member_id,
+            "nickname": member.nickname if member else None,
+            "avatar": member.avatar if member else None,
+            "level_name": level_name,
+            "total_duration": entry.total_duration,
+            "check_count": entry.check_count
+        })
+
+    venue_type = db.query(VenueType).filter(VenueType.id == venue_type_id).first() if venue_type_id else None
+
+    return ResponseModel(data={
+        "period_type": period,
+        "period_key": period_key,
+        "venue_type_id": venue_type_id,
+        "venue_type_name": venue_type.name if venue_type else "综合排行",
+        "items": items
+    })
+
+
+@router.get("/leaderboard/my-rank", response_model=ResponseModel)
+def get_my_rank(
+    period: str = Query("daily", description="daily/weekly/monthly"),
+    venue_type_id: Optional[int] = None,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取我的排名"""
+    today = date.today()
+
+    # 确定周期标识
+    if period == "daily":
+        period_key = today.strftime("%Y-%m-%d")
+    elif period == "weekly":
+        period_key = today.strftime("%Y-W%W")
+    elif period == "monthly":
+        period_key = today.strftime("%Y-%m")
+    else:
+        return ResponseModel(code=400, message="无效的周期类型")
+
+    # 查询我的排名
+    query = db.query(Leaderboard).filter(
+        Leaderboard.period_type == period,
+        Leaderboard.period_key == period_key,
+        Leaderboard.member_id == current_member.id
+    )
+
+    if venue_type_id is not None:
+        query = query.filter(Leaderboard.venue_type_id == venue_type_id)
+    else:
+        query = query.filter(Leaderboard.venue_type_id == None)
+
+    entry = query.first()
+
+    if entry:
+        return ResponseModel(data={
+            "rank": entry.rank,
+            "total_duration": entry.total_duration,
+            "check_count": entry.check_count,
+            "nickname": current_member.nickname,
+            "avatar": current_member.avatar
+        })
+    else:
+        return ResponseModel(data={
+            "rank": None,
+            "total_duration": 0,
+            "check_count": 0,
+            "nickname": current_member.nickname,
+            "avatar": current_member.avatar
+        })
