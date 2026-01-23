@@ -144,7 +144,7 @@ const handleSubmit = async () => {
 }
 
 const handleUploadSuccess = (response: any) => {
-  if (response.code === 0 && response.data) {
+  if (response.code === 200 && response.data) {
     form.value.image_url = response.data.url
     ElMessage.success('上传成功')
   } else {

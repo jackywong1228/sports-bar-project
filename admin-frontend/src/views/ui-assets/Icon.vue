@@ -141,7 +141,7 @@ const handleSubmit = async () => {
 }
 
 const handleUploadSuccess = (response: any, type: 'normal' | 'active') => {
-  if (response.code === 0 && response.data) {
+  if (response.code === 200 && response.data) {
     if (type === 'normal') {
       form.value.icon_normal = response.data.url
     } else {
