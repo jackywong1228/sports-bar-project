@@ -28,29 +28,31 @@ const isBlockVisible = (blockType: string) => {
   return visibleBlocks.value.some(b => b.block_type === blockType)
 }
 
+// 生成 SVG 占位图的辅助函数
+const createPlaceholder = (width: number, height: number, bgColor: string, textColor: string, text: string) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <rect fill="${bgColor}" width="${width}" height="${height}"/>
+    <text fill="${textColor}" font-family="Arial,sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">${text}</text>
+  </svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
 // 模拟数据
 const mockBanners = [
-  { image: 'https://via.placeholder.com/375x180/1a5d3a/ffffff?text=Banner+1', title: '轮播图1' },
-  { image: 'https://via.placeholder.com/375x180/2d7a4e/ffffff?text=Banner+2', title: '轮播图2' }
+  { image: createPlaceholder(375, 180, '#1a5d3a', '#ffffff', 'Banner 1'), title: '轮播图1' },
+  { image: createPlaceholder(375, 180, '#2d7a4e', '#ffffff', 'Banner 2'), title: '轮播图2' }
 ]
 
 const mockVenues = [
-  { id: 1, name: '羽毛球场', image: 'https://via.placeholder.com/120x80/f0f0f0/333333?text=场地1', price: 50 },
-  { id: 2, name: '篮球场', image: 'https://via.placeholder.com/120x80/f0f0f0/333333?text=场地2', price: 80 },
-  { id: 3, name: '网球场', image: 'https://via.placeholder.com/120x80/f0f0f0/333333?text=场地3', price: 100 }
+  { id: 1, name: '羽毛球场', image: createPlaceholder(120, 80, '#f0f0f0', '#333333', '场地1'), price: 50 },
+  { id: 2, name: '篮球场', image: createPlaceholder(120, 80, '#f0f0f0', '#333333', '场地2'), price: 80 },
+  { id: 3, name: '网球场', image: createPlaceholder(120, 80, '#f0f0f0', '#333333', '场地3'), price: 100 }
 ]
 
 const mockActivities = [
-  { id: 1, title: '周末羽毛球友谊赛', image: 'https://via.placeholder.com/120x80/f0f0f0/333333?text=活动1' },
-  { id: 2, title: '篮球3v3比赛', image: 'https://via.placeholder.com/120x80/f0f0f0/333333?text=活动2' }
+  { id: 1, title: '周末羽毛球友谊赛', image: createPlaceholder(120, 80, '#f0f0f0', '#333333', '活动1') },
+  { id: 2, title: '篮球3v3比赛', image: createPlaceholder(120, 80, '#f0f0f0', '#333333', '活动2') }
 ]
-
-// Mock coaches data for preview (used in template)
-const _mockCoaches = [
-  { id: 1, name: '张教练', avatar: 'https://via.placeholder.com/60x60/1a5d3a/ffffff?text=张', price: 200 },
-  { id: 2, name: '李教练', avatar: 'https://via.placeholder.com/60x60/2d7a4e/ffffff?text=李', price: 180 }
-]
-void _mockCoaches // suppress unused warning
 </script>
 
 <template>
