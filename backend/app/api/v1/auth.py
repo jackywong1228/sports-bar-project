@@ -85,7 +85,7 @@ def get_user_info(
 
 
 @router.post("/logout", response_model=ResponseModel)
-def logout(current_user: SysUser = Depends(get_current_user)):
+def logout():
     """用户登出"""
-    # JWT 无状态，客户端删除 token 即可
+    # JWT 无状态，客户端删除 token 即可，无需验证当前用户
     return ResponseModel(message="登出成功")

@@ -17,6 +17,8 @@ cd backend
 pip install -r requirements.txt
 python init_data.py                    # 首次运行，初始化数据库
 uvicorn app.main:app --reload --port 8000
+# API 文档: http://localhost:8000/docs
+# 默认管理员: admin / admin123
 ```
 
 ### 管理后台前端
@@ -24,7 +26,8 @@ uvicorn app.main:app --reload --port 8000
 cd admin-frontend
 npm install
 npm run dev      # 开发服务器 http://localhost:5173
-npm run build    # 生产构建（含 TypeScript 检查）
+npm run build    # 生产构建（含 TypeScript 类型检查）
+npm run preview  # 预览生产构建
 ```
 
 开发时前端通过 Vite 代理 `/api` 请求到后端 8000 端口（见 `vite.config.ts`）。
@@ -36,7 +39,29 @@ npm run build    # 生产构建（含 TypeScript 检查）
 ```sql
 CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
-配置文件：`backend/.env`，参考 `backend/app/core/config.py` 中的 Settings 类
+
+### 环境变量配置
+
+在 `backend/.env` 中配置（参考 `backend/app/core/config.py`）：
+
+```bash
+# 必需配置
+DATABASE_URL=mysql+pymysql://root:password@localhost:3306/sports_bar
+SECRET_KEY=your-secret-key
+
+# 微信小程序
+WECHAT_APP_ID=
+WECHAT_APP_SECRET=
+
+# 微信支付（可选）
+WECHAT_MCH_ID=
+WECHAT_API_KEY=
+WECHAT_SERIAL_NO=
+WECHAT_NOTIFY_URL=
+```
+
+- 文件上传目录：`backend/uploads/`（可通过 `UPLOAD_DIR` 配置）
+- 微信支付证书目录：`backend/certs/`（私钥 apiclient_key.pem、公钥 wechatpay_public_key.pem）
 
 ## 技术栈
 
@@ -51,26 +76,13 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 ## 架构说明
 
 ### 后端结构（`backend/app/`）
-```
-app/
-├── main.py              # FastAPI 入口，注册所有路由
-├── core/
-│   ├── config.py        # Settings 配置类（从 .env 读取）
-│   ├── database.py      # SQLAlchemy 引擎和会话
-│   ├── security.py      # JWT 编解码、密码哈希
-│   ├── wechat.py        # 微信 API 封装（登录、小程序码、订阅消息）
-│   └── wechat_pay.py    # 微信支付 V3 封装（含公钥验证）
-├── models/              # SQLAlchemy ORM 模型
-│   ├── checkin.py       # 打卡相关（CheckinRecord、CheckinRule、积分流水）
-│   ├── ui_editor.py     # UI 编辑器配置
-│   └── ...              # 其他业务模型
-├── schemas/             # Pydantic 请求/响应模型
-└── api/
-    ├── deps.py          # 依赖注入（认证、数据库会话）
-    └── v1/              # API 路由模块
-```
 
-数据库表通过 `Base.metadata.create_all()` 在 `main.py` 启动时自动创建。
+- `main.py` - FastAPI 入口，注册所有路由，启动时自动创建数据库表
+- `core/` - 核心模块（config 配置、database 数据库、security JWT、wechat 微信API、wechat_pay 支付）
+- `models/` - SQLAlchemy ORM 模型
+- `schemas/` - Pydantic 请求/响应模型
+- `api/deps.py` - 依赖注入（认证、数据库会话）
+- `api/v1/` - API 路由模块
 
 ### 三种用户认证
 
@@ -103,63 +115,23 @@ app/
 - `/coupons` - 票券管理（含推送通知功能）
 
 ### 前端结构（`admin-frontend/src/`）
-```
-src/
-├── api/           # 按业务模块划分的 API 封装
-├── views/         # 页面组件
-│   ├── system/    # 系统管理（用户、角色、部门）
-│   ├── member/    # 会员管理（列表、等级、会员卡套餐、订单）
-│   ├── checkin/   # 打卡管理（记录、积分规则、排行榜）
-│   ├── venue/     # 场地管理（列表、类型、价格）
-│   ├── coach/     # 教练管理（列表、申请审核）
-│   ├── activity/  # 活动管理
-│   ├── food/      # 点餐管理
-│   ├── coupon/    # 票券管理
-│   ├── mall/      # 商城管理
-│   ├── finance/   # 财务管理（概览、充值、消费、结算）
-│   ├── message/   # 消息通知（发送、模板、公告、轮播图）
-│   ├── ui-assets/ # UI 素材（图标、主题、图片）
-│   └── ui-editor/ # 小程序布局可视化编辑器
-├── stores/        # Pinia 状态管理
-├── router/        # Vue Router 配置
-├── layouts/       # 布局组件
-└── utils/
-    └── request.ts # Axios 封装（自动添加 Token、错误处理）
-```
+
+- `api/` - 按业务模块划分的 API 封装
+- `views/` - 页面组件（按业务模块：system、member、venue、coach、activity、food、coupon、mall、finance、message、ui-editor 等）
+- `stores/` - Pinia 状态管理
+- `router/` - Vue Router 配置
+- `utils/request.ts` - Axios 封装（自动添加 Token、错误处理）
 
 路径别名：`@` 指向 `src/` 目录。
 
 ### 小程序结构（`user-miniprogram/`）
-```
-user-miniprogram/
-├── app.js              # 全局状态（token、memberInfo、coachInfo）
-├── app.json            # 小程序配置（页面注册、tabBar）
-├── pages/              # 页面目录
-│   ├── index/          # 首页
-│   ├── venue*/         # 场地相关（列表、详情、预约）
-│   ├── coach-*/        # 教练端页面（home、schedule、income 等）
-│   ├── activity*/      # 活动相关
-│   ├── food*/          # 点餐相关
-│   ├── mall*/          # 商城相关
-│   ├── wallet/         # 钱包
-│   ├── member/         # 会员卡购买
-│   ├── coupons/        # 优惠券
-│   ├── orders/         # 订单
-│   ├── checkin-calendar/ # 打卡日历
-│   ├── leaderboard/    # 排行榜
-│   └── coach-apply/    # 教练申请
-└── utils/
-    ├── request.js      # 请求封装
-    ├── api.js          # 用户端 API
-    ├── coach-api.js    # 教练端 API
-    └── wx-api.js       # 微信原生 API 封装
-```
+
+- `app.js` - 全局状态（token、memberInfo、coachInfo）和请求方法
+- `app.json` - 小程序配置（页面注册、tabBar）
+- `pages/` - 页面目录，会员端页面（venue、activity、food、mall、wallet 等）和教练端页面（coach-* 前缀）
+- `utils/` - 工具函数（api.js 会员端、coach-api.js 教练端、wx-api.js 微信原生封装）
 
 小程序通过 `app.js` 中的 `globalData.baseUrl` 配置 API 地址。会员和教练使用独立的 token 存储（`token` / `coach_token`）。
-
-**小程序主要功能模块：**
-- 会员端：场地预约、教练预约、活动报名、点餐、商城、打卡签到、排行榜、钱包充值、会员卡购买
-- 教练端：日程管理、学员预约、收入统计、推广码
 
 ## 添加新功能的模式
 
@@ -182,7 +154,7 @@ user-miniprogram/
 
 - **服务器**: `111.231.105.41`（Ubuntu 22.04）
 - **域名**: `yunlifang.cloud`（待 ICP 备案）
-- **管理后台**: http://111.231.105.41（账号: admin / admin123）
+- **管理后台**: http://111.231.105.41
 - **API 文档**: http://111.231.105.41/api/v1/docs
 
 ### 服务器运维
@@ -208,33 +180,6 @@ journalctl -u sports-bar -f
 商户号: `1738466280`
 
 所有微信相关配置在 `backend/.env` 中设置，参见 `backend/app/core/config.py` 的 Settings 类。
-
-## 已完成功能
-
-**核心业务：**
-- 会员管理（注册、等级、会员卡套餐购买）
-- 场地预约与管理
-- 教练预约与管理（含教练申请流程）
-- 活动报名与管理
-- 点餐系统
-- 积分商城
-
-**营销与运营：**
-- 打卡签到系统（积分规则、排行榜、训练日历）
-- 优惠券系统（模板、发放、推送通知）
-- 钱包充值（微信支付 V3）
-- 会员卡购买（微信支付集成）
-
-**管理后台：**
-- 数据看板
-- 财务管理（充值、消费、教练结算）
-- 消息通知（订阅消息、公告、轮播图）
-- UI 可视化编辑器（小程序布局自定义）
-- UI 素材管理（图标、主题、图片）
-
-**技术对接：**
-- 微信支付 V3（含公钥验证）
-- 闸机 API 接口（`/api/v1/gate`）
 
 ## 待开发
 
