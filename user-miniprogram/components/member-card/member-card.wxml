@@ -1,0 +1,59 @@
+<!-- 会员卡片组件 -->
+<view
+  class="member-card level-{{level}}"
+  style="background: {{currentTheme.gradient}};"
+  bindtap="onCardTap"
+>
+  <!-- 卡片顶部 -->
+  <view class="card-header">
+    <view class="level-info">
+      <view class="level-badge">
+        <text class="level-text">{{currentTheme.name}}</text>
+      </view>
+    </view>
+    <view class="upgrade-btn" wx:if="{{level === 'TRIAL' || level === 'S'}}" catchtap="onUpgradeTap">
+      <text>升级</text>
+    </view>
+  </view>
+
+  <!-- 卡片内容 -->
+  <view class="card-body" wx:if="{{showDetail}}">
+    <!-- 会员权益概览 -->
+    <view class="benefits-row">
+      <view class="benefit-item">
+        <text class="benefit-value">{{quotaInfo.daily}}</text>
+        <text class="benefit-label">日预约额度</text>
+      </view>
+      <view class="benefit-divider"></view>
+      <view class="benefit-item">
+        <text class="benefit-value">{{quotaInfo.remaining}}</text>
+        <text class="benefit-label">今日剩余</text>
+      </view>
+      <view class="benefit-divider"></view>
+      <view class="benefit-item">
+        <text class="benefit-value" wx:if="{{level === 'TRIAL'}}">无</text>
+        <text class="benefit-value" wx:elif="{{level === 'S'}}">9.5折</text>
+        <text class="benefit-value" wx:elif="{{level === 'SS'}}">9折</text>
+        <text class="benefit-value" wx:else>8.5折</text>
+        <text class="benefit-label">餐饮折扣</text>
+      </view>
+    </view>
+
+    <!-- TRIAL会员提示 -->
+    <view class="trial-tip" wx:if="{{level === 'TRIAL'}}">
+      <text class="tip-icon">&#x1F4A1;</text>
+      <text class="tip-text">升级会员可自主预约场馆</text>
+    </view>
+  </view>
+
+  <!-- 简洁模式 -->
+  <view class="card-simple" wx:if="{{!showDetail}}">
+    <text class="simple-text">{{level === 'TRIAL' ? '体验中' : '有效期至 ' + (memberInfo.expire_date || '永久')}}</text>
+  </view>
+
+  <!-- 装饰元素 -->
+  <view class="card-decoration">
+    <view class="decoration-circle circle-1"></view>
+    <view class="decoration-circle circle-2"></view>
+  </view>
+</view>

@@ -160,112 +160,133 @@ async def payment_notify(
 
 def _handle_recharge_notify(out_trade_no: str, transaction_id: str, trade_state: str, db: Session):
     """处理充值订单支付回调"""
-    order = db.query(RechargeOrder).filter(
-        RechargeOrder.order_no == out_trade_no
-    ).first()
+    try:
+        # 使用悲观锁查询订单，确保幂等性
+        order = db.query(RechargeOrder).filter(
+            RechargeOrder.order_no == out_trade_no
+        ).with_for_update().first()
 
-    if not order:
-        return {"code": "FAIL", "message": "订单不存在"}
+        if not order:
+            db.rollback()
+            return {"code": "FAIL", "message": "订单不存在"}
 
-    if order.status == "paid":
+        # 幂等性检查：如果订单已支付，直接返回成功
+        if order.status == "paid":
+            db.rollback()
+            return {"code": "SUCCESS", "message": "成功"}
+
+        if trade_state == "SUCCESS":
+            order.status = "paid"
+            order.transaction_id = transaction_id
+            order.pay_time = datetime.now()
+
+            # 使用悲观锁查询会员，防止并发问题
+            member = db.query(Member).filter(Member.id == order.member_id).with_for_update().first()
+            if member:
+                total_coins = order.coins + order.bonus_coins
+                member.coin_balance = (member.coin_balance or 0) + total_coins
+
+                coin_record = CoinRecord(
+                    member_id=member.id,
+                    type="recharge",
+                    amount=total_coins,
+                    balance=member.coin_balance,
+                    remark=f"充值{order.amount}元，获得{order.coins}金币，赠送{order.bonus_coins}金币"
+                )
+                db.add(coin_record)
+
+            db.commit()
+        else:
+            db.rollback()
+
         return {"code": "SUCCESS", "message": "成功"}
-
-    if trade_state == "SUCCESS":
-        order.status = "paid"
-        order.transaction_id = transaction_id
-        order.pay_time = datetime.now()
-
-        member = db.query(Member).filter(Member.id == order.member_id).first()
-        if member:
-            total_coins = order.coins + order.bonus_coins
-            member.coin_balance = (member.coin_balance or 0) + total_coins
-
-            coin_record = CoinRecord(
-                member_id=member.id,
-                type="recharge",
-                amount=total_coins,
-                balance=member.coin_balance,
-                remark=f"充值{order.amount}元，获得{order.coins}金币，赠送{order.bonus_coins}金币"
-            )
-            db.add(coin_record)
-
-        db.commit()
-
-    return {"code": "SUCCESS", "message": "成功"}
+    except Exception as e:
+        db.rollback()
+        return {"code": "FAIL", "message": f"处理失败: {str(e)}"}
 
 
 def _handle_member_card_notify(out_trade_no: str, transaction_id: str, trade_state: str, db: Session):
     """处理会员卡订单支付回调"""
-    order = db.query(MemberCardOrder).filter(
-        MemberCardOrder.order_no == out_trade_no
-    ).first()
+    try:
+        # 使用悲观锁查询订单，确保幂等性
+        order = db.query(MemberCardOrder).filter(
+            MemberCardOrder.order_no == out_trade_no
+        ).with_for_update().first()
 
-    if not order:
-        return {"code": "FAIL", "message": "订单不存在"}
+        if not order:
+            db.rollback()
+            return {"code": "FAIL", "message": "订单不存在"}
 
-    if order.status == "paid":
+        # 幂等性检查：如果订单已支付，直接返回成功
+        if order.status == "paid":
+            db.rollback()
+            return {"code": "SUCCESS", "message": "成功"}
+
+        if trade_state == "SUCCESS":
+            now = datetime.now()
+
+            # 更新订单状态
+            order.status = "paid"
+            order.transaction_id = transaction_id
+            order.pay_time = now
+
+            # 使用悲观锁获取会员，防止并发问题
+            member = db.query(Member).filter(Member.id == order.member_id).with_for_update().first()
+            if member:
+                # 计算会员有效期
+                if member.member_expire_time and member.member_expire_time > now:
+                    start_time = member.member_expire_time
+                    expire_time = start_time + timedelta(days=order.duration_days)
+                else:
+                    start_time = now
+                    expire_time = now + timedelta(days=order.duration_days)
+
+                order.start_time = start_time
+                order.expire_time = expire_time
+
+                # 升级会员等级
+                member.level_id = order.level_id
+                member.member_expire_time = expire_time
+
+                # 发放赠送金币
+                if order.bonus_coins and float(order.bonus_coins) > 0:
+                    member.coin_balance = float(member.coin_balance or 0) + float(order.bonus_coins)
+                    coin_record = CoinRecord(
+                        member_id=member.id,
+                        type="income",
+                        amount=order.bonus_coins,
+                        balance=member.coin_balance,
+                        source="会员卡赠送",
+                        remark=f"购买会员卡赠送金币，订单号：{order.order_no}"
+                    )
+                    db.add(coin_record)
+
+                # 发放赠送积分
+                if order.bonus_points and order.bonus_points > 0:
+                    member.point_balance = (member.point_balance or 0) + order.bonus_points
+                    point_record = PointRecord(
+                        member_id=member.id,
+                        type="income",
+                        amount=order.bonus_points,
+                        balance=member.point_balance,
+                        source="会员卡赠送",
+                        remark=f"购买会员卡赠送积分，订单号：{order.order_no}"
+                    )
+                    db.add(point_record)
+
+                # 更新会员卡销量
+                card = db.query(MemberCard).filter(MemberCard.id == order.card_id).first()
+                if card:
+                    card.sales_count = (card.sales_count or 0) + 1
+
+            db.commit()
+        else:
+            db.rollback()
+
         return {"code": "SUCCESS", "message": "成功"}
-
-    if trade_state == "SUCCESS":
-        now = datetime.now()
-
-        # 更新订单状态
-        order.status = "paid"
-        order.transaction_id = transaction_id
-        order.pay_time = now
-
-        # 获取会员
-        member = db.query(Member).filter(Member.id == order.member_id).first()
-        if member:
-            # 计算会员有效期
-            if member.member_expire_time and member.member_expire_time > now:
-                start_time = member.member_expire_time
-                expire_time = start_time + timedelta(days=order.duration_days)
-            else:
-                start_time = now
-                expire_time = now + timedelta(days=order.duration_days)
-
-            order.start_time = start_time
-            order.expire_time = expire_time
-
-            # 升级会员等级
-            member.level_id = order.level_id
-            member.member_expire_time = expire_time
-
-            # 发放赠送金币
-            if order.bonus_coins and float(order.bonus_coins) > 0:
-                member.coin_balance = float(member.coin_balance or 0) + float(order.bonus_coins)
-                coin_record = CoinRecord(
-                    member_id=member.id,
-                    type="income",
-                    amount=order.bonus_coins,
-                    balance=member.coin_balance,
-                    source="会员卡赠送",
-                    remark=f"购买会员卡赠送金币，订单号：{order.order_no}"
-                )
-                db.add(coin_record)
-
-            # 发放赠送积分
-            if order.bonus_points and order.bonus_points > 0:
-                member.point_balance = (member.point_balance or 0) + order.bonus_points
-                point_record = PointRecord(
-                    member_id=member.id,
-                    type="income",
-                    amount=order.bonus_points,
-                    balance=member.point_balance,
-                    source="会员卡赠送",
-                    remark=f"购买会员卡赠送积分，订单号：{order.order_no}"
-                )
-                db.add(point_record)
-
-            # 更新会员卡销量
-            card = db.query(MemberCard).filter(MemberCard.id == order.card_id).first()
-            if card:
-                card.sales_count = (card.sales_count or 0) + 1
-
-        db.commit()
-
-    return {"code": "SUCCESS", "message": "成功"}
+    except Exception as e:
+        db.rollback()
+        return {"code": "FAIL", "message": f"处理失败: {str(e)}"}
 
 
 @router.get("/order/{order_no}", response_model=ResponseModel)

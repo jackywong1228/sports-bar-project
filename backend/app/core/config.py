@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # 应用配置
     APP_NAME: str = "场馆体育社交管理系统"
-    DEBUG: bool = True
+    DEBUG: bool = False  # 生产环境默认关闭调试模式
     API_V1_PREFIX: str = "/api/v1"
 
     # 微信小程序配置（用户端）

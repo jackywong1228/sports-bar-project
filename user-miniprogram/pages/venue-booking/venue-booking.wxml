@@ -1,5 +1,19 @@
 <wxs src="./venue-booking.wxs" module="utils" />
 <view class="container">
+  <!-- TRIAL会员提示横幅 -->
+  <view class="trial-banner" wx:if="{{!canBook && memberLevel === 'TRIAL'}}">
+    <view class="trial-banner-content">
+      <text class="trial-icon">&#x26A0;</text>
+      <text class="trial-text">体验会员无法自行预约，请联系前台或</text>
+      <text class="trial-link" bindtap="goToMember">升级会员</text>
+    </view>
+  </view>
+
+  <!-- 额度提示 -->
+  <view class="quota-banner" wx:if="{{canBook && remainingQuota > 0}}">
+    <text class="quota-text">今日剩余预约额度：{{remainingQuota}}小时</text>
+  </view>
+
   <!-- 场馆类型选择 -->
   <scroll-view class="type-tabs" scroll-x enable-flex>
     <view
@@ -37,7 +51,6 @@
         <view class="venues-header">
           <view class="venue-header-item" wx:for="{{calendarData.venues}}" wx:key="id">
             <text class="venue-name">{{item.name}}</text>
-            <text class="venue-price">¥{{item.price}}/时</text>
           </view>
         </view>
       </scroll-view>
@@ -111,16 +124,16 @@
         <text class="summary-label">时段：</text>
         <text class="summary-time">{{utils.getTimeRange(selectedSlots)}}</text>
       </view>
-      <view class="summary-row">
-        <text class="summary-label">合计：</text>
-        <text class="summary-price">¥{{utils.getTotalPrice(selectedVenuePrice, selectedSlots)}}</text>
+      <view class="summary-row" wx:if="{{remainingQuota >= 0}}">
+        <text class="summary-label">剩余额度：</text>
+        <text class="summary-quota">{{remainingQuota}}小时</text>
       </view>
     </view>
     <button
       class="btn-submit"
       bindtap="submitBooking"
       loading="{{submitting}}"
-      disabled="{{submitting}}"
+      disabled="{{submitting || !canBook}}"
     >
       确认预约
     </button>

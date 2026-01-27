@@ -1,6 +1,6 @@
 from app.models.user import SysUser, SysRole, SysDepartment, SysPermission
 from app.models.member import Member, MemberLevel, MemberTag, CoinRecord, PointRecord, MemberCard, MemberCardOrder
-from app.models.venue import Venue, VenueType
+from app.models.venue import Venue, VenueType, VenueTypeConfig
 from app.models.reservation import Reservation
 from app.models.coach import Coach, CoachSchedule, CoachApplication
 from app.models.activity import Activity, ActivityRegistration
@@ -13,11 +13,13 @@ from app.models.ui_asset import UIIcon, UITheme, UIImage
 from app.models.ui_editor import UIPageConfig, UIBlockConfig, UIMenuItem, UIConfigVersion
 from app.models.team import Team, TeamMember
 from app.models.checkin import GateCheckRecord, PointRuleConfig, Leaderboard
+from app.models.member_violation import MemberViolation
+from app.models.member_coupon_issuance import MemberCouponIssuance
 
 __all__ = [
     "SysUser", "SysRole", "SysDepartment", "SysPermission",
     "Member", "MemberLevel", "MemberTag", "CoinRecord", "PointRecord", "MemberCard", "MemberCardOrder",
-    "Venue", "VenueType",
+    "Venue", "VenueType", "VenueTypeConfig",
     "Reservation",
     "Coach", "CoachSchedule", "CoachApplication",
     "Activity", "ActivityRegistration",
@@ -30,4 +32,5 @@ __all__ = [
     "UIPageConfig", "UIBlockConfig", "UIMenuItem", "UIConfigVersion",
     "Team", "TeamMember",
     "GateCheckRecord", "PointRuleConfig", "Leaderboard",
+    "MemberViolation", "MemberCouponIssuance",
 ]

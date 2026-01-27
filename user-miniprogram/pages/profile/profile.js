@@ -6,6 +6,9 @@ Page({
     memberInfo: null,
     isLoggedIn: false,
     isCoach: false,
+    // 会员等级相关
+    memberLevel: 'TRIAL',
+    memberTheme: null,
     checkinStats: {
       month_count: 0,
       month_duration: 0,
@@ -38,13 +41,19 @@ Page({
     const isLoggedIn = !!app.globalData.token
     this.setData({
       isLoggedIn,
-      memberInfo: app.globalData.memberInfo
+      memberInfo: app.globalData.memberInfo,
+      memberLevel: app.globalData.memberLevel || 'TRIAL',
+      memberTheme: app.globalData.memberTheme
     })
 
     if (isLoggedIn && !app.globalData.memberInfo) {
       app.getMemberInfo()
       setTimeout(() => {
-        this.setData({ memberInfo: app.globalData.memberInfo })
+        this.setData({
+          memberInfo: app.globalData.memberInfo,
+          memberLevel: app.globalData.memberLevel || 'TRIAL',
+          memberTheme: app.globalData.memberTheme
+        })
       }, 500)
     }
 
@@ -191,6 +200,17 @@ Page({
     }
     wx.navigateTo({
       url: '/pages/leaderboard/leaderboard'
+    })
+  },
+
+  // 会员卡片点击
+  onMemberCardTap(e) {
+    if (!this.data.isLoggedIn) {
+      this.goToLogin()
+      return
+    }
+    wx.navigateTo({
+      url: '/pages/member/member'
     })
   }
 })

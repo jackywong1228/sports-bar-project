@@ -87,11 +87,18 @@
   opacity: 0.85;
 }
 
+/* 会员卡片容器 */
+.member-card-wrapper {
+  margin: -30rpx 0 20rpx;
+  position: relative;
+  z-index: 10;
+}
+
 /* 资产卡片 */
 .asset-card {
   display: flex;
   background: #FFFFFF;
-  margin: -30rpx 24rpx 20rpx;
+  margin: 0 24rpx 20rpx;
   border-radius: 16rpx;
   padding: 28rpx 0;
   box-shadow: 0 4rpx 20rpx rgba(26, 93, 58, 0.1);

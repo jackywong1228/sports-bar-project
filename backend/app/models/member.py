@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Numeric, DateTime, Text, Table
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Numeric, DateTime, Date, Text, Table
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -29,6 +29,17 @@ class MemberLevel(Base, TimestampMixin):
     venue_permissions = Column(Text, nullable=True, comment="场馆权限，JSON格式")
     benefits = Column(Text, nullable=True, comment="会员权益说明")
     status = Column(Boolean, default=True, comment="状态")
+
+    # 订阅会员制新增字段
+    level_code = Column(String(20), nullable=False, default='TRIAL', comment='等级代码: TRIAL/S/SS/SSS')
+    booking_range_days = Column(Integer, default=0, comment='可预约天数范围')
+    booking_max_count = Column(Integer, default=0, comment='预约次数上限')
+    booking_period = Column(String(20), default='day', comment='预约周期: day/week/month')
+    food_discount_rate = Column(Numeric(3, 2), default=1.00, comment='餐食折扣率（白天8:00-18:00）')
+    monthly_coupon_count = Column(Integer, default=0, comment='每月发放咖啡券数量')
+    can_book_golf = Column(Boolean, default=False, comment='是否可预约高尔夫')
+    theme_color = Column(String(20), default='#999999', comment='UI主题颜色')
+    theme_gradient = Column(String(100), nullable=True, comment='UI渐变色')
 
     # 关系
     members = relationship("Member", back_populates="level")
@@ -70,6 +81,19 @@ class Member(Base, TimestampMixin, SoftDeleteMixin):
     # 资产
     coin_balance = Column(Numeric(10, 2), default=0, comment="金币余额")
     point_balance = Column(Integer, default=0, comment="积分余额")
+
+    # 订阅会员制新增字段
+    subscription_start_date = Column(Date, nullable=True, comment='订阅开始日期（用于计算发券周期）')
+    subscription_status = Column(String(20), default='inactive', comment='订阅状态: inactive/active/expired')
+    last_coupon_issued_at = Column(DateTime, nullable=True, comment='上次发券时间')
+
+    # 惩罚相关字段
+    penalty_status = Column(String(20), default='normal', comment='惩罚状态: normal/penalized')
+    penalty_booking_range_days = Column(Integer, nullable=True, comment='惩罚期间可预约天数')
+    penalty_booking_max_count = Column(Integer, nullable=True, comment='惩罚期间预约上限')
+    penalty_start_at = Column(DateTime, nullable=True, comment='惩罚开始时间')
+    penalty_end_at = Column(DateTime, nullable=True, comment='惩罚结束时间（可选：自动恢复）')
+    penalty_reason = Column(String(255), nullable=True, comment='惩罚原因')
 
     # 状态
     status = Column(Boolean, default=True, comment="状态")

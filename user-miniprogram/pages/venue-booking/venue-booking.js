@@ -1,5 +1,6 @@
 const app = getApp()
 const util = require('../../utils/util.js')
+const api = require('../../utils/api.js')
 
 Page({
   data: {
@@ -18,7 +19,14 @@ Page({
     loading: true,
     submitting: false,
     calendarHeight: 800,
-    scrollLeft: 0
+    scrollLeft: 0,
+    // 会员权限相关
+    canBook: true,
+    memberLevel: 'TRIAL',
+    bookingQuota: 0,
+    usedQuota: 0,
+    remainingQuota: 0,
+    permissionReason: ''
   },
 
   onLoad(options) {
@@ -29,12 +37,69 @@ Page({
 
     this.initDates()
     this.loadVenueTypes(options.type_id)
+    this.checkMemberPermission()
   },
 
   onShow() {
     if (this.data.currentTypeId) {
       this.loadCalendarData()
     }
+    this.checkMemberPermission()
+  },
+
+  // 检查会员预约权限
+  async checkMemberPermission() {
+    try {
+      const res = await api.checkBookingPermission({
+        date: this.data.selectedDate
+      })
+      if (res.code === 200) {
+        const data = res.data || {}
+        this.setData({
+          canBook: data.can_book !== false,
+          memberLevel: data.member_level || app.globalData.memberLevel,
+          bookingQuota: data.daily_quota || 0,
+          usedQuota: data.used_quota || 0,
+          remainingQuota: data.remaining_quota || 0,
+          permissionReason: data.reason || ''
+        })
+
+        // 如果是TRIAL会员，显示提示
+        if (data.member_level === 'TRIAL' || !data.can_book) {
+          this.showTrialTip()
+        }
+      }
+    } catch (err) {
+      console.error('检查预约权限失败:', err)
+      // 从app获取默认值
+      this.setData({
+        canBook: app.checkCanBook(),
+        memberLevel: app.globalData.memberLevel,
+        bookingQuota: app.globalData.bookingQuota,
+        usedQuota: app.globalData.usedQuota,
+        remainingQuota: app.getRemainingQuota()
+      })
+      if (app.globalData.memberLevel === 'TRIAL') {
+        this.showTrialTip()
+      }
+    }
+  },
+
+  // 显示体验会员提示
+  showTrialTip() {
+    wx.showModal({
+      title: '预约提示',
+      content: '体验会员暂无法自行预约场馆，请联系前台或升级会员',
+      confirmText: '升级会员',
+      cancelText: '知道了',
+      success: (res) => {
+        if (res.confirm) {
+          wx.navigateTo({
+            url: '/pages/member/member'
+          })
+        }
+      }
+    })
   },
 
   // 初始化日期列表（7天）
@@ -205,12 +270,44 @@ Page({
     })
   },
 
+  // 跳转会员中心
+  goToMember() {
+    wx.navigateTo({
+      url: '/pages/member/member'
+    })
+  },
+
   // 提交预约
   async submitBooking() {
     if (this.data.selectedSlots.length === 0) {
       wx.showToast({
         title: '请选择时间段',
         icon: 'none'
+      })
+      return
+    }
+
+    // 检查预约权限
+    if (!this.data.canBook) {
+      this.showTrialTip()
+      return
+    }
+
+    // 检查额度
+    const duration = this.data.selectedSlots.length
+    if (duration > this.data.remainingQuota) {
+      wx.showModal({
+        title: '额度不足',
+        content: `您今日剩余预约额度为${this.data.remainingQuota}小时，已选${duration}小时`,
+        confirmText: '升级会员',
+        cancelText: '调整时段',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({
+              url: '/pages/member/member'
+            })
+          }
+        }
       })
       return
     }

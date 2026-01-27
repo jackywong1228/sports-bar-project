@@ -37,5 +37,10 @@ tmpclaude-*
 # Uploads
 uploads/
 
+# Security certificates
+backend/certs/*.pem
+backend/certs/*.key
+backend/certs/*.p12
+
 # Claude local settings
 .claude/

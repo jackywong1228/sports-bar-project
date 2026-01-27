@@ -21,9 +21,24 @@ app = FastAPI(
 )
 
 # CORS 配置
+# 根据环境配置允许的源
+allowed_origins = [
+    "http://localhost:5173",  # 本地前端开发
+    "http://localhost:8000",  # 本地后端
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+    "http://111.231.105.41",  # 生产环境IP
+    "https://yunlifang.cloud",  # 生产环境域名
+    "https://www.yunlifang.cloud",
+]
+
+# 如果处于调试模式，允许所有源（仅开发环境）
+if settings.DEBUG:
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

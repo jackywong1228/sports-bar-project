@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Numeric, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Numeric, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -39,3 +39,21 @@ class Venue(Base, TimestampMixin, SoftDeleteMixin):
     # 关系
     venue_type = relationship("VenueType", back_populates="venues")
     reservations = relationship("Reservation", back_populates="venue")
+
+
+class VenueTypeConfig(Base, TimestampMixin):
+    """场馆类型配置表（订阅会员制扩展）"""
+    __tablename__ = "venue_type_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    venue_type_id = Column(Integer, ForeignKey('venue_type.id'), nullable=False, comment='场馆类型ID')
+    is_golf = Column(Boolean, default=False, comment='是否为高尔夫场地')
+    min_level_code = Column(String(20), default='S', comment='最低可预约等级')
+
+    # 关系
+    venue_type = relationship("VenueType")
+
+    # 唯一约束
+    __table_args__ = (
+        UniqueConstraint('venue_type_id', name='uk_venue_type'),
+    )

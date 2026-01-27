@@ -27,9 +27,16 @@ class Reservation(Base, TimestampMixin, SoftDeleteMixin):
     coach_price = Column(Numeric(10, 2), default=0, comment="教练费用(金币)")
     total_price = Column(Numeric(10, 2), default=0, comment="总费用(金币)")
 
-    # 状态: pending待确认 confirmed已确认 in_progress进行中 completed已完成 cancelled已取消
+    # 状态: pending待确认 confirmed已确认 in_progress进行中 completed已完成 cancelled已取消 no_show爽约
     status = Column(String(20), default="pending", comment="预约状态")
     type = Column(String(20), default="normal", comment="类型: normal普通 activity活动")
+
+    # 核销相关字段
+    is_verified = Column(Boolean, default=False, comment="是否已核销")
+    verified_at = Column(DateTime, nullable=True, comment="核销时间")
+    verified_by = Column(String(50), nullable=True, comment="核销人（员工ID或设备ID）")
+    no_show = Column(Boolean, default=False, comment="是否爽约（预约时间已过未核销）")
+    no_show_processed = Column(Boolean, default=False, comment="爽约是否已处理（计入违约）")
 
     # 结算
     is_settled = Column(Boolean, default=False, comment="是否已结算")

@@ -23,6 +23,17 @@
     </view>
   </view>
 
+  <!-- 会员卡片 -->
+  <view class="member-card-wrapper" wx:if="{{isLoggedIn}}">
+    <member-card
+      level="{{memberLevel}}"
+      member-info="{{memberInfo}}"
+      show-detail="{{true}}"
+      clickable="{{true}}"
+      bind:tap="onMemberCardTap"
+    />
+  </view>
+
   <!-- 资产信息 -->
   <view class="asset-card" wx:if="{{isLoggedIn}}">
     <view class="asset-item" bindtap="goToWallet">

@@ -540,6 +540,43 @@ const uploadImage = (filePath) => {
   return upload('/upload/image', filePath, 'file')
 }
 
+// ==================== 会员权限检查 ====================
+
+/**
+ * 检查预约权限
+ * @param {Object} params { venue_id?, coach_id?, date?, duration? }
+ * @returns {Promise} { can_book, reason?, remaining_quota, daily_quota }
+ */
+const checkBookingPermission = (params = {}) => {
+  return get('/member/booking-permission', params)
+}
+
+/**
+ * 获取餐饮折扣信息
+ * @returns {Promise} { discount, level_name }
+ */
+const getFoodDiscount = () => {
+  return get('/member/food-discount')
+}
+
+/**
+ * 获取违规记录
+ * @param {Object} params { page?, page_size? }
+ * @returns {Promise} { total, items: [{ id, type, description, created_at }] }
+ */
+const getViolations = (params = {}) => {
+  return get('/member/violations', params)
+}
+
+/**
+ * 核销预约（教练/前台使用）
+ * @param {Object} data { reservation_id, verify_code? }
+ * @returns {Promise} { success, message }
+ */
+const verifyReservation = (data) => {
+  return post('/member/reservations/verify', data, { showLoading: true })
+}
+
 module.exports = {
   // 认证
   loginByPhone,
@@ -643,5 +680,11 @@ module.exports = {
   cancelOrder,
 
   // 上传
-  uploadImage
+  uploadImage,
+
+  // 会员权限检查
+  checkBookingPermission,
+  getFoodDiscount,
+  getViolations,
+  verifyReservation
 }

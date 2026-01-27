@@ -7,7 +7,42 @@ App({
     cartCount: 0,
     // 教练相关
     coachInfo: null,
-    coachToken: ''
+    coachToken: '',
+    // 会员等级与预约权限相关
+    memberLevel: 'TRIAL',  // TRIAL, S, SS, SSS
+    memberTheme: {
+      primary: '#999999',
+      gradient: 'linear-gradient(135deg, #999999 0%, #BBBBBB 100%)'
+    },
+    canBook: false,          // 是否可以自行预约
+    bookingQuota: 0,         // 每日预约额度（小时）
+    usedQuota: 0,            // 已使用额度
+    foodDiscount: 1,         // 餐饮折扣 (1=无折扣)
+    violations: []           // 违规记录
+  },
+
+  // 会员等级主题色配置
+  memberThemeConfig: {
+    TRIAL: {
+      primary: '#999999',
+      gradient: 'linear-gradient(135deg, #999999 0%, #BBBBBB 100%)',
+      name: '体验会员'
+    },
+    S: {
+      primary: '#4A90E2',
+      gradient: 'linear-gradient(135deg, #4A90E2 0%, #6BA8F0 100%)',
+      name: 'S级会员'
+    },
+    SS: {
+      primary: '#9B59B6',
+      gradient: 'linear-gradient(135deg, #9B59B6 0%, #B07CC8 100%)',
+      name: 'SS级会员'
+    },
+    SSS: {
+      primary: '#F39C12',
+      gradient: 'linear-gradient(135deg, #F39C12 0%, #F5B041 100%)',
+      name: 'SSS级会员'
+    }
   },
 
   onLaunch() {
@@ -48,9 +83,63 @@ App({
       success(res) {
         if (res.data.code === 200) {
           that.globalData.memberInfo = res.data.data
+          // 更新会员等级相关信息
+          const data = res.data.data
+          if (data.member_level) {
+            that.setMemberTheme(data.member_level)
+          }
+          // 更新预约权限信息
+          if (data.can_book !== undefined) {
+            that.globalData.canBook = data.can_book
+          }
+          if (data.booking_quota !== undefined) {
+            that.globalData.bookingQuota = data.booking_quota
+          }
+          if (data.used_quota !== undefined) {
+            that.globalData.usedQuota = data.used_quota
+          }
+          if (data.food_discount !== undefined) {
+            that.globalData.foodDiscount = data.food_discount
+          }
         }
       }
     })
+  },
+
+  // 设置会员主题
+  setMemberTheme(level) {
+    const theme = this.memberThemeConfig[level] || this.memberThemeConfig.TRIAL
+    this.globalData.memberLevel = level
+    this.globalData.memberTheme = {
+      primary: theme.primary,
+      gradient: theme.gradient,
+      name: theme.name
+    }
+    // 根据等级设置预约权限
+    this.globalData.canBook = level !== 'TRIAL'
+    // 设置每日预约额度
+    const quotaMap = {
+      TRIAL: 0,
+      S: 2,
+      SS: 4,
+      SSS: 8
+    }
+    this.globalData.bookingQuota = quotaMap[level] || 0
+  },
+
+  // 获取当前会员主题
+  getMemberTheme() {
+    return this.globalData.memberTheme
+  },
+
+  // 检查是否可以预约
+  checkCanBook() {
+    return this.globalData.canBook
+  },
+
+  // 获取剩余预约额度
+  getRemainingQuota() {
+    return Math.max(0, this.globalData.bookingQuota - this.globalData.usedQuota)
   },
 
   // 退出登录
@@ -59,6 +148,17 @@ App({
     this.globalData.token = ''
     this.globalData.memberInfo = null
     this.globalData.cartCount = 0
+    // 重置会员状态
+    this.globalData.memberLevel = 'TRIAL'
+    this.globalData.memberTheme = {
+      primary: '#999999',
+      gradient: 'linear-gradient(135deg, #999999 0%, #BBBBBB 100%)'
+    }
+    this.globalData.canBook = false
+    this.globalData.bookingQuota = 0
+    this.globalData.usedQuota = 0
+    this.globalData.foodDiscount = 1
+    this.globalData.violations = []
     wx.reLaunch({
       url: '/pages/index/index'
     })

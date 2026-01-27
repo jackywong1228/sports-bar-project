@@ -4,7 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, func
 
 from app.core.database import get_db
@@ -70,6 +70,22 @@ def coach_login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="教练账号已停用"
         )
+
+    # 如果提供了密码，则进行密码验证
+    if data.password:
+        # 检查教练是否设置了密码
+        if not coach.password:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="该账号未设置密码，请使用其他方式登录"
+            )
+
+        # 验证密码
+        if not verify_password(data.password, coach.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="密码错误"
+            )
 
     # 生成访问令牌
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -166,17 +182,24 @@ async def get_coach_phone(
     try:
         phone_info = await coach_wechat_service.get_phone_number(data.code)
         phone = phone_info.get("purePhoneNumber") or phone_info.get("phoneNumber")
+
+        if not phone:
+            raise HTTPException(status_code=400, detail="获取手机号失败")
+
+        # 绑定手机号
+        current_coach.phone = phone
+        db.commit()
+
+        return ResponseModel(message="绑定成功", data={"phone": phone})
     except WeChatAPIError as e:
+        db.rollback()
         raise HTTPException(status_code=400, detail=f"获取手机号失败: {e.errmsg}")
-
-    if not phone:
-        raise HTTPException(status_code=400, detail="获取手机号失败")
-
-    # 绑定手机号
-    current_coach.phone = phone
-    db.commit()
-
-    return ResponseModel(message="绑定成功", data={"phone": phone})
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"绑定手机号失败: {str(e)}")
 
 
 # ==================== 教练信息 ====================
@@ -214,7 +237,10 @@ def get_coach_reservations(
     db: Session = Depends(get_db)
 ):
     """获取教练的预约列表"""
-    query = db.query(Reservation).filter(
+    query = db.query(Reservation).options(
+        joinedload(Reservation.member),
+        joinedload(Reservation.venue)
+    ).filter(
         Reservation.coach_id == current_coach.id,
         Reservation.reservation_date == date,
         Reservation.is_deleted == False
@@ -227,15 +253,14 @@ def get_coach_reservations(
 
     result = []
     for r in reservations:
-        member = db.query(Member).filter(Member.id == r.member_id).first()
         result.append({
             "id": r.id,
             "reservation_date": str(r.reservation_date),
             "start_time": str(r.start_time),
             "end_time": str(r.end_time),
             "status": r.status,
-            "member_name": member.nickname if member else "未知",
-            "member_phone": member.phone if member else "",
+            "member_name": r.member.nickname if r.member else "未知",
+            "member_phone": r.member.phone if r.member else "",
             "venue_name": r.venue.name if r.venue else "",
             "coach_price": r.coach_price or 0,
             "remark": r.remark
@@ -307,7 +332,10 @@ def get_reservation_detail(
     db: Session = Depends(get_db)
 ):
     """获取预约详情"""
-    reservation = db.query(Reservation).filter(
+    reservation = db.query(Reservation).options(
+        joinedload(Reservation.member),
+        joinedload(Reservation.venue)
+    ).filter(
         Reservation.id == reservation_id,
         Reservation.coach_id == current_coach.id,
         Reservation.is_deleted == False
@@ -316,16 +344,14 @@ def get_reservation_detail(
     if not reservation:
         raise HTTPException(status_code=404, detail="预约不存在")
 
-    member = db.query(Member).filter(Member.id == reservation.member_id).first()
-
     return ResponseModel(data={
         "id": reservation.id,
         "reservation_date": str(reservation.reservation_date),
         "start_time": str(reservation.start_time),
         "end_time": str(reservation.end_time),
         "status": reservation.status,
-        "member_name": member.nickname if member else "未知",
-        "member_phone": member.phone if member else "",
+        "member_name": reservation.member.nickname if reservation.member else "未知",
+        "member_phone": reservation.member.phone if reservation.member else "",
         "venue_name": reservation.venue.name if reservation.venue else "",
         "coach_price": reservation.coach_price or 0,
         "venue_price": reservation.venue_price or 0,
@@ -343,22 +369,28 @@ def confirm_reservation(
     db: Session = Depends(get_db)
 ):
     """确认预约"""
-    reservation = db.query(Reservation).filter(
-        Reservation.id == reservation_id,
-        Reservation.coach_id == current_coach.id,
-        Reservation.is_deleted == False
-    ).first()
+    try:
+        reservation = db.query(Reservation).filter(
+            Reservation.id == reservation_id,
+            Reservation.coach_id == current_coach.id,
+            Reservation.is_deleted == False
+        ).first()
 
-    if not reservation:
-        raise HTTPException(status_code=404, detail="预约不存在")
+        if not reservation:
+            raise HTTPException(status_code=404, detail="预约不存在")
 
-    if reservation.status != "pending":
-        raise HTTPException(status_code=400, detail="预约状态不正确")
+        if reservation.status != "pending":
+            raise HTTPException(status_code=400, detail="预约状态不正确")
 
-    reservation.status = "confirmed"
-    db.commit()
+        reservation.status = "confirmed"
+        db.commit()
 
-    return ResponseModel(message="已确认预约")
+        return ResponseModel(message="已确认预约")
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"确认预约失败: {str(e)}")
 
 
 @router.post("/reservations/{reservation_id}/reject", response_model=ResponseModel)
@@ -368,23 +400,29 @@ def reject_reservation(
     db: Session = Depends(get_db)
 ):
     """拒绝预约"""
-    reservation = db.query(Reservation).filter(
-        Reservation.id == reservation_id,
-        Reservation.coach_id == current_coach.id,
-        Reservation.is_deleted == False
-    ).first()
+    try:
+        reservation = db.query(Reservation).filter(
+            Reservation.id == reservation_id,
+            Reservation.coach_id == current_coach.id,
+            Reservation.is_deleted == False
+        ).first()
 
-    if not reservation:
-        raise HTTPException(status_code=404, detail="预约不存在")
+        if not reservation:
+            raise HTTPException(status_code=404, detail="预约不存在")
 
-    if reservation.status != "pending":
-        raise HTTPException(status_code=400, detail="预约状态不正确")
+        if reservation.status != "pending":
+            raise HTTPException(status_code=400, detail="预约状态不正确")
 
-    reservation.status = "cancelled"
-    # TODO: 退款逻辑
-    db.commit()
+        reservation.status = "cancelled"
+        # TODO: 退款逻辑
+        db.commit()
 
-    return ResponseModel(message="已拒绝预约")
+        return ResponseModel(message="已拒绝预约")
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"拒绝预约失败: {str(e)}")
 
 
 # ==================== 排期管理 ====================
@@ -442,44 +480,50 @@ def update_coach_schedule(
     db: Session = Depends(get_db)
 ):
     """更新单个时间段排期"""
-    date_str = data.get("date")
-    time_slot = data.get("time")
-    new_status = data.get("status")
+    try:
+        date_str = data.get("date")
+        time_slot = data.get("time")
+        new_status = data.get("status")
 
-    # 检查是否已被预约
-    start_hour = int(time_slot.split(":")[0])
-    existing = db.query(Reservation).filter(
-        Reservation.coach_id == current_coach.id,
-        Reservation.reservation_date == date_str,
-        Reservation.start_time <= f"{start_hour:02d}:00:00",
-        Reservation.end_time > f"{start_hour:02d}:00:00",
-        Reservation.status.in_(["pending", "confirmed", "in_progress"]),
-        Reservation.is_deleted == False
-    ).first()
+        # 检查是否已被预约
+        start_hour = int(time_slot.split(":")[0])
+        existing = db.query(Reservation).filter(
+            Reservation.coach_id == current_coach.id,
+            Reservation.reservation_date == date_str,
+            Reservation.start_time <= f"{start_hour:02d}:00:00",
+            Reservation.end_time > f"{start_hour:02d}:00:00",
+            Reservation.status.in_(["pending", "confirmed", "in_progress"]),
+            Reservation.is_deleted == False
+        ).first()
 
-    if existing:
-        raise HTTPException(status_code=400, detail="该时间段已被预约")
+        if existing:
+            raise HTTPException(status_code=400, detail="该时间段已被预约")
 
-    # 更新或创建排期
-    schedule = db.query(CoachSchedule).filter(
-        CoachSchedule.coach_id == current_coach.id,
-        CoachSchedule.date == date_str,
-        CoachSchedule.time_slot == time_slot
-    ).first()
+        # 更新或创建排期
+        schedule = db.query(CoachSchedule).filter(
+            CoachSchedule.coach_id == current_coach.id,
+            CoachSchedule.date == date_str,
+            CoachSchedule.time_slot == time_slot
+        ).first()
 
-    if schedule:
-        schedule.status = new_status
-    else:
-        schedule = CoachSchedule(
-            coach_id=current_coach.id,
-            date=date_str,
-            time_slot=time_slot,
-            status=new_status
-        )
-        db.add(schedule)
+        if schedule:
+            schedule.status = new_status
+        else:
+            schedule = CoachSchedule(
+                coach_id=current_coach.id,
+                date=date_str,
+                time_slot=time_slot,
+                status=new_status
+            )
+            db.add(schedule)
 
-    db.commit()
-    return ResponseModel(message="更新成功")
+        db.commit()
+        return ResponseModel(message="更新成功")
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"更新排期失败: {str(e)}")
 
 
 @router.post("/schedule/batch", response_model=ResponseModel)
@@ -489,34 +533,38 @@ def batch_update_schedule(
     db: Session = Depends(get_db)
 ):
     """批量更新排期"""
-    start_date = data.get("start_date")
-    end_date = data.get("end_date")
-    new_status = data.get("status")
+    try:
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        new_status = data.get("status")
 
-    # 删除现有的非预约排期
-    db.query(CoachSchedule).filter(
-        CoachSchedule.coach_id == current_coach.id,
-        CoachSchedule.date >= start_date,
-        CoachSchedule.date <= end_date
-    ).delete()
+        # 删除现有的非预约排期
+        db.query(CoachSchedule).filter(
+            CoachSchedule.coach_id == current_coach.id,
+            CoachSchedule.date >= start_date,
+            CoachSchedule.date <= end_date
+        ).delete()
 
-    # 生成新的排期
-    current = datetime.strptime(start_date, "%Y-%m-%d").date()
-    end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        # 生成新的排期
+        current = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-    while current <= end:
-        for hour in range(8, 22):
-            schedule = CoachSchedule(
-                coach_id=current_coach.id,
-                date=current,
-                time_slot=f"{hour:02d}:00",
-                status=new_status
-            )
-            db.add(schedule)
-        current += timedelta(days=1)
+        while current <= end:
+            for hour in range(8, 22):
+                schedule = CoachSchedule(
+                    coach_id=current_coach.id,
+                    date=current,
+                    time_slot=f"{hour:02d}:00",
+                    status=new_status
+                )
+                db.add(schedule)
+            current += timedelta(days=1)
 
-    db.commit()
-    return ResponseModel(message="批量更新成功")
+        db.commit()
+        return ResponseModel(message="批量更新成功")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"批量更新排期失败: {str(e)}")
 
 
 # ==================== 钱包与收入 ====================
@@ -594,7 +642,10 @@ def get_income_list(
     db: Session = Depends(get_db)
 ):
     """获取收入记录列表"""
-    query = db.query(Reservation).filter(
+    query = db.query(Reservation).options(
+        joinedload(Reservation.member),
+        joinedload(Reservation.venue)
+    ).filter(
         Reservation.coach_id == current_coach.id,
         Reservation.status == "completed",
         Reservation.is_deleted == False
@@ -609,13 +660,12 @@ def get_income_list(
 
     result = []
     for r in reservations:
-        member = db.query(Member).filter(Member.id == r.member_id).first()
         result.append({
             "id": r.id,
             "course_date": str(r.reservation_date),
             "start_time": str(r.start_time),
             "end_time": str(r.end_time),
-            "member_name": member.nickname if member else "未知",
+            "member_name": r.member.nickname if r.member else "未知",
             "venue_name": r.venue.name if r.venue else "",
             "total_price": r.total_price or 0,
             "venue_price": r.venue_price or 0,
