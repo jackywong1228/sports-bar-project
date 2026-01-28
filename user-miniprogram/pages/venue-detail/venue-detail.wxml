@@ -79,11 +79,11 @@
   <view class="bottom-bar">
     <view class="bar-left">
       <view class="bar-item" bindtap="callPhone">
-        <image class="bar-icon" src="/assets/icons/phone.png"></image>
+        <text class="iconfont icon-phone bar-icon"></text>
         <text>电话</text>
       </view>
       <view class="bar-item" bindtap="navigateTo">
-        <image class="bar-icon" src="/assets/icons/location.png"></image>
+        <text class="iconfont icon-location bar-icon"></text>
         <text>导航</text>
       </view>
     </view>

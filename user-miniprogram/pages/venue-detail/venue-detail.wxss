@@ -171,9 +171,20 @@
 }
 
 .bar-icon {
-  width: 44rpx;
-  height: 44rpx;
+  font-size: 44rpx;
+  color: #666;
   margin-bottom: 4rpx;
+}
+
+/* 图标字体样式 - 使用文字替代 */
+.icon-phone::before {
+  content: "📞";
+  font-size: 40rpx;
+}
+
+.icon-location::before {
+  content: "📍";
+  font-size: 40rpx;
 }
 
 .bar-item text {

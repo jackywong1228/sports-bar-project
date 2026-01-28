@@ -18,7 +18,7 @@ from app.models import Member, Venue, VenueType, Coach, Reservation, CoinRecord,
 from app.models.checkin import GateCheckRecord, PointRuleConfig, Leaderboard
 from app.models.coach import CoachApplication
 from app.models.activity import Activity
-from app.models.message import Banner
+from app.models.message import Banner, Announcement
 from app.models.food import FoodCategory, FoodItem, FoodOrder, FoodOrderItem
 from app.models.mall import ProductCategory, Product
 from app.models.member import MemberCard, MemberLevel, MemberCardOrder
@@ -2782,3 +2782,56 @@ def get_food_discount(
     discount_info = discount_service.get_discount_info(current_member)
 
     return ResponseModel(data=discount_info)
+
+
+# ==================== 公告相关 ====================
+
+@router.get("/announcements", response_model=ResponseModel)
+def get_member_announcements(
+    limit: int = Query(5, ge=1, le=20, description="获取数量，最多20条"),
+    db: Session = Depends(get_db)
+):
+    """
+    获取会员端公告列表（无需认证）
+
+    返回已发布、未过期、面向会员的公告
+    """
+    now = datetime.now()
+
+    # 查询条件：
+    # 1. 未删除
+    # 2. 已发布
+    # 3. 目标为all或member
+    # 4. 在有效期内
+    query = db.query(Announcement).filter(
+        Announcement.is_deleted == False,
+        Announcement.status == "published",
+        Announcement.target.in_(["all", "member"])
+    )
+
+    # 过滤有效期
+    query = query.filter(
+        func.coalesce(Announcement.start_time <= now, True),
+        func.coalesce(Announcement.end_time >= now, True)
+    )
+
+    # 排序：置顶优先，发布时间倒序
+    items = query.order_by(
+        Announcement.is_top.desc(),
+        Announcement.publish_time.desc()
+    ).limit(limit).all()
+
+    # 构造返回数据
+    result = []
+    for item in items:
+        result.append({
+            "id": item.id,
+            "title": item.title,
+            "content": item.content,
+            "type": item.type,
+            "is_top": item.is_top,
+            "publish_time": item.publish_time.strftime("%Y-%m-%d %H:%M:%S") if item.publish_time else None,
+            "created_at": item.created_at.strftime("%Y-%m-%d %H:%M:%S") if item.created_at else None
+        })
+
+    return ResponseModel(data=result)
