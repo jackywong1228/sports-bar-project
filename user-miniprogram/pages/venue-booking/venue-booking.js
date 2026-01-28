@@ -51,7 +51,8 @@ Page({
   async checkMemberPermission() {
     try {
       const res = await api.checkBookingPermission({
-        date: this.data.selectedDate
+        venue_type_id: this.data.currentTypeId || 1,
+        booking_date: this.data.selectedDate
       })
       if (res.code === 200) {
         const data = res.data || {}
