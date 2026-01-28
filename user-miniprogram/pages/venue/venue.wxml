@@ -31,11 +31,6 @@
             <text class="venue-address">{{item.address || '暂无地址'}}</text>
           </view>
           <view class="venue-bottom">
-            <view class="venue-price">
-              <text class="price-symbol">¥</text>
-              <text class="price-value">{{item.price || 0}}</text>
-              <text class="price-unit">/小时</text>
-            </view>
             <view class="venue-status {{item.status === 1 ? 'available' : 'unavailable'}}">
               {{item.status === 1 ? '可预约' : '已满'}}
             </view>

@@ -20,12 +20,7 @@
         <text class="tag" wx:if="{{venue.type_name}}">{{venue.type_name}}</text>
       </view>
     </view>
-    <view class="venue-price">
-      <text class="price-label">价格：</text>
-      <text class="price-symbol">¥</text>
-      <text class="price-value">{{venue.price || 0}}</text>
-      <text class="price-unit">/小时</text>
-    </view>
+    <!-- 订阅会员免费预约，不显示价格 -->
     <view class="venue-desc" wx:if="{{venue.description}}">
       <text>{{venue.description}}</text>
     </view>
