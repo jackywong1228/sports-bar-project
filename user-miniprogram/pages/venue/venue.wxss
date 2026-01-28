@@ -1,17 +1,20 @@
+/* pages/venue/venue.wxss - 墨绿主题改造 */
+
 .container {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: #F5F7F5;
 }
 
-/* 类型筛选 */
+/* 类型筛选 - 统一墨绿风格 */
 .type-scroll {
   display: flex;
   white-space: nowrap;
-  background: #fff;
-  padding: 20rpx 30rpx;
+  background: #FFFFFF;
+  padding: 24rpx 30rpx;
   position: sticky;
   top: 0;
   z-index: 10;
+  box-shadow: 0 2rpx 8rpx rgba(26, 93, 58, 0.04);
 }
 
 .type-item {
@@ -20,13 +23,15 @@
   margin-right: 20rpx;
   border-radius: 30rpx;
   font-size: 28rpx;
-  color: #666;
-  background: #f5f5f5;
+  color: #6B7B6E;
+  background: #F5F7F5;
+  transition: all 0.2s;
 }
 
 .type-item.active {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4rpx 12rpx rgba(26, 93, 58, 0.3);
 }
 
 /* 场馆列表 */
@@ -35,10 +40,11 @@
 }
 
 .venue-card {
-  background: #fff;
+  background: #FFFFFF;
   border-radius: 16rpx;
   margin-bottom: 20rpx;
   overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(26, 93, 58, 0.08);
 }
 
 .venue-main {
@@ -62,8 +68,8 @@
 
 .venue-name {
   font-size: 30rpx;
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  color: #2C3E2D;
   margin-bottom: 8rpx;
 }
 
@@ -74,18 +80,21 @@
   margin-bottom: 8rpx;
 }
 
+/* 标签 - 统一墨绿色 */
 .tag {
   display: inline-block;
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
   font-size: 22rpx;
-  background: rgba(255, 107, 53, 0.1);
-  color: #FF6B35;
+  background: rgba(26, 93, 58, 0.1);
+  color: #1A5D3A;
+  font-weight: 500;
 }
 
+/* 热门标签 - 金色系 */
 .tag-hot {
-  background: rgba(238, 10, 36, 0.1);
-  color: #ee0a24;
+  background: linear-gradient(135deg, #F5E6C8 0%, #E8D5A8 100%);
+  color: #8B7333;
 }
 
 .venue-meta {
@@ -94,7 +103,7 @@
 
 .venue-address {
   font-size: 24rpx;
-  color: #999;
+  color: #9CA89D;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
@@ -108,8 +117,9 @@
   margin-top: 8rpx;
 }
 
+/* 价格 - 墨绿色 */
 .venue-price {
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .price-symbol {
@@ -123,9 +133,10 @@
 
 .price-unit {
   font-size: 22rpx;
-  color: #999;
+  color: #6B7B6E;
 }
 
+/* 状态标签 - 墨绿色系 */
 .venue-status {
   font-size: 24rpx;
   padding: 4rpx 12rpx;
@@ -133,29 +144,31 @@
 }
 
 .venue-status.available {
-  background: rgba(7, 193, 96, 0.1);
-  color: #07c160;
+  background: rgba(46, 125, 82, 0.1);
+  color: #2E7D52;
 }
 
 .venue-status.unavailable {
-  background: rgba(153, 153, 153, 0.1);
-  color: #999;
+  background: rgba(107, 123, 110, 0.1);
+  color: #6B7B6E;
 }
 
-/* 预约按钮 */
+/* 预约按钮 - 墨绿渐变 */
 .venue-action {
   padding: 0 20rpx 20rpx;
 }
 
 .btn-book {
   width: 100%;
-  height: 72rpx;
-  line-height: 72rpx;
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
-  color: #fff;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  color: #FFFFFF;
   font-size: 28rpx;
-  border-radius: 36rpx;
+  font-weight: 500;
+  border-radius: 40rpx;
   border: none;
+  box-shadow: 0 4rpx 16rpx rgba(26, 93, 58, 0.25);
 }
 
 .btn-book::after {
@@ -172,7 +185,7 @@
 
 .loading-text {
   font-size: 26rpx;
-  color: #999;
+  color: #6B7B6E;
 }
 
 /* 空状态 */
@@ -192,7 +205,7 @@
 
 .empty-text {
   font-size: 28rpx;
-  color: #999;
+  color: #6B7B6E;
 }
 
 /* 没有更多 */
@@ -200,5 +213,5 @@
   text-align: center;
   padding: 30rpx 0;
   font-size: 26rpx;
-  color: #999;
+  color: #9CA89D;
 }

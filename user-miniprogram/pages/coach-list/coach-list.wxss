@@ -1,16 +1,19 @@
+/* coach-list.wxss - UI改造：墨绿主题 */
+
 .container {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: #F5F7F5;
 }
 
 /* 类型筛选 */
 .type-bar {
   display: flex;
-  background: #fff;
-  padding: 20rpx 30rpx;
+  background: #FFFFFF;
+  padding: 24rpx 20rpx;
   position: sticky;
   top: 0;
   z-index: 10;
+  box-shadow: 0 2rpx 8rpx rgba(26, 93, 58, 0.04);
 }
 
 .type-item {
@@ -18,14 +21,17 @@
   text-align: center;
   padding: 16rpx 0;
   font-size: 28rpx;
-  color: #666;
+  color: #6B7B6E;
   border-radius: 30rpx;
   margin: 0 10rpx;
+  transition: all 0.2s;
+  background: #F5F7F5;
 }
 
 .type-item.active {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4rpx 12rpx rgba(26, 93, 58, 0.3);
 }
 
 /* 教练列表 */
@@ -35,10 +41,11 @@
 
 .coach-card {
   display: flex;
-  background: #fff;
+  background: #FFFFFF;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(26, 93, 58, 0.08);
 }
 
 .coach-avatar {
@@ -46,6 +53,7 @@
   height: 140rpx;
   border-radius: 12rpx;
   flex-shrink: 0;
+  border: 2rpx solid rgba(201, 169, 98, 0.2);
 }
 
 .coach-info {
@@ -63,8 +71,8 @@
 
 .coach-name {
   font-size: 32rpx;
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  color: #2C3E2D;
   margin-right: 16rpx;
 }
 
@@ -72,8 +80,9 @@
   display: flex;
 }
 
+/* 等级星星 - 金色 */
 .level-star {
-  color: #FFD700;
+  color: #C9A962;
   font-size: 24rpx;
 }
 
@@ -84,17 +93,18 @@
   margin-bottom: 12rpx;
 }
 
+/* 标签 - 墨绿色 */
 .tag {
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
   font-size: 22rpx;
-  background: rgba(255, 107, 53, 0.1);
-  color: #FF6B35;
+  background: rgba(26, 93, 58, 0.1);
+  color: #1A5D3A;
 }
 
 .coach-intro {
   font-size: 26rpx;
-  color: #999;
+  color: #6B7B6E;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -115,7 +125,7 @@
 
 .stat-item {
   font-size: 24rpx;
-  color: #999;
+  color: #6B7B6E;
   margin-right: 20rpx;
 }
 
@@ -123,15 +133,16 @@
   text-align: right;
 }
 
+/* 价格 - 墨绿色 */
 .price-value {
   font-size: 36rpx;
   font-weight: bold;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .price-unit {
   font-size: 22rpx;
-  color: #999;
+  color: #6B7B6E;
   margin-left: 4rpx;
 }
 
@@ -145,7 +156,7 @@
 
 .loading-text {
   font-size: 26rpx;
-  color: #999;
+  color: #6B7B6E;
 }
 
 /* 空状态 */
@@ -165,7 +176,7 @@
 
 .empty-text {
   font-size: 28rpx;
-  color: #999;
+  color: #6B7B6E;
 }
 
 /* 没有更多 */
@@ -173,5 +184,5 @@
   text-align: center;
   padding: 30rpx 0;
   font-size: 26rpx;
-  color: #999;
+  color: #9CA89D;
 }

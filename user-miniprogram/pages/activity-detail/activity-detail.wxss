@@ -54,7 +54,7 @@
 .activity-price .price {
   font-size: 40rpx;
   font-weight: bold;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .activity-price .free {
@@ -103,7 +103,7 @@
   color: #333;
   margin-bottom: 24rpx;
   padding-left: 16rpx;
-  border-left: 6rpx solid #FF6B35;
+  border-left: 6rpx solid #1A5D3A;
 }
 
 .detail-content,
@@ -147,7 +147,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
   border-radius: 6rpx;
 }
 
@@ -160,7 +160,7 @@
   width: 260rpx;
   height: 80rpx;
   line-height: 80rpx;
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
   color: #fff;
   font-size: 32rpx;
   border-radius: 40rpx;

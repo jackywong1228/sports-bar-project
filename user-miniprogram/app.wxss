@@ -1,5 +1,55 @@
 /* 全局样式 - 温网风格（墨绿+薰衣草紫） */
+
+/* ===== CSS 变量定义 ===== */
 page {
+  /* 主色调 - 墨绿系 */
+  --color-primary: #1A5D3A;
+  --color-primary-light: #2E7D52;
+  --color-primary-dark: #144A2E;
+  --color-primary-alpha: rgba(26, 93, 58, 0.1);
+
+  /* 辅助色 - 薰衣草紫 */
+  --color-secondary: #6B5B95;
+  --color-secondary-light: #8677A9;
+  --color-secondary-alpha: rgba(107, 91, 149, 0.1);
+
+  /* 点缀色 - 金色 */
+  --color-gold: #C9A962;
+  --color-gold-light: #D4B97A;
+  --color-gold-dark: #A68B3E;
+  --color-gold-alpha: rgba(201, 169, 98, 0.15);
+
+  /* 功能色 */
+  --color-success: #2E7D52;
+  --color-warning: #C9A962;
+  --color-danger: #C75050;
+  --color-info: #6B7B6E;
+
+  /* 中性色 */
+  --color-bg: #F5F7F5;
+  --color-card: #FFFFFF;
+  --color-text: #2C3E2D;
+  --color-text-secondary: #6B7B6E;
+  --color-text-muted: #9CA89D;
+  --color-border: #E8EDE9;
+  --color-border-light: #F0F4F1;
+
+  /* 圆角 */
+  --radius-sm: 8rpx;
+  --radius-md: 12rpx;
+  --radius-lg: 16rpx;
+  --radius-xl: 24rpx;
+  --radius-2xl: 32rpx;
+  --radius-full: 50%;
+  --radius-pill: 999rpx;
+
+  /* 阴影 */
+  --shadow-sm: 0 2rpx 8rpx rgba(26, 93, 58, 0.04);
+  --shadow-md: 0 4rpx 16rpx rgba(26, 93, 58, 0.08);
+  --shadow-lg: 0 8rpx 32rpx rgba(26, 93, 58, 0.12);
+  --shadow-btn: 0 6rpx 20rpx rgba(26, 93, 58, 0.3);
+
+  /* 基础样式 */
   background-color: #F5F7F5;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   font-size: 28rpx;
@@ -382,4 +432,159 @@ page {
 
 .gold-border {
   border: 2rpx solid #C9A962;
+}
+
+/* ===== 高端双语标题 ===== */
+.title-bilingual {
+  display: flex;
+  flex-direction: column;
+}
+
+.title-en {
+  font-size: 22rpx;
+  color: #C9A962;
+  letter-spacing: 4rpx;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.title-cn {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #2C3E2D;
+  margin-top: 4rpx;
+}
+
+/* ===== 金色强调元素 ===== */
+.gold-highlight {
+  color: #C9A962;
+}
+
+.gold-bg {
+  background: linear-gradient(135deg, #C9A962 0%, #D4B97A 100%);
+}
+
+.gold-border-accent {
+  border: 1rpx solid rgba(201, 169, 98, 0.3);
+}
+
+/* ===== 高端卡片 ===== */
+.card-luxury {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(26, 93, 58, 0.1);
+  border: 1rpx solid rgba(201, 169, 98, 0.15);
+}
+
+/* ===== 磨砂玻璃效果 ===== */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1rpx solid rgba(255, 255, 255, 0.2);
+}
+
+/* ===== 渐变文字 ===== */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #C9A962 0%, #D4B97A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== 高级按钮 ===== */
+.btn-luxury {
+  height: 100rpx;
+  line-height: 100rpx;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  color: #1A5D3A;
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 6rpx;
+  border-radius: 50rpx;
+  border: none;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.btn-luxury::after {
+  border: none;
+}
+
+/* 金色按钮 */
+.btn-gold {
+  height: 92rpx;
+  border-radius: 46rpx;
+  background: linear-gradient(135deg, #C9A962 0%, #D4B97A 100%);
+  color: #FFFFFF;
+  font-size: 32rpx;
+  font-weight: 500;
+  box-shadow: 0 6rpx 20rpx rgba(201, 169, 98, 0.3);
+}
+
+.btn-gold::after {
+  border: none;
+}
+
+/* ===== 图标容器 ===== */
+.icon-wrap {
+  width: 88rpx;
+  height: 88rpx;
+  background: rgba(26, 93, 58, 0.1);
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-wrap-gold {
+  background: rgba(201, 169, 98, 0.15);
+}
+
+/* ===== 分割线高级版 ===== */
+.divider-gradient {
+  height: 2rpx;
+  background: linear-gradient(90deg, transparent 0%, #E8EDE9 50%, transparent 100%);
+  margin: 32rpx 0;
+}
+
+/* ===== 价格展示 ===== */
+.price-display {
+  display: flex;
+  align-items: baseline;
+  color: #1A5D3A;
+}
+
+.price-display .symbol {
+  font-size: 26rpx;
+  font-weight: 500;
+}
+
+.price-display .amount {
+  font-size: 48rpx;
+  font-weight: bold;
+  margin: 0 4rpx;
+}
+
+.price-display .unit {
+  font-size: 24rpx;
+  color: #6B7B6E;
+}
+
+/* ===== 高端卡片变体 ===== */
+.card-premium {
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  border: 1rpx solid rgba(201, 169, 98, 0.3);
+  box-shadow: 0 4rpx 20rpx rgba(201, 169, 98, 0.15);
+}
+
+/* ===== 渐变背景扩展 ===== */
+.bg-gradient-gold {
+  background: linear-gradient(135deg, #C9A962 0%, #D4B97A 100%);
+}
+
+.bg-gradient-dark-green {
+  background: linear-gradient(135deg, #144A2E 0%, #1A5D3A 100%);
 }

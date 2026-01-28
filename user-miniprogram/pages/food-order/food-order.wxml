@@ -13,14 +13,14 @@
     <view class="title">取餐方式</view>
     <radio-group class="order-type-group" bindchange="onOrderTypeChange">
       <label class="order-type-item {{orderType === 'immediate' ? 'active' : ''}}">
-        <radio value="immediate" checked="{{orderType === 'immediate'}}" color="#FF6B35" />
+        <radio value="immediate" checked="{{orderType === 'immediate'}}" color="#1A5D3A" />
         <view class="type-content">
           <text class="type-name">立即取餐</text>
           <text class="type-desc">下单后尽快制作</text>
         </view>
       </label>
       <label class="order-type-item {{orderType === 'scheduled' ? 'active' : ''}}">
-        <radio value="scheduled" checked="{{orderType === 'scheduled'}}" color="#FF6B35" />
+        <radio value="scheduled" checked="{{orderType === 'scheduled'}}" color="#1A5D3A" />
         <view class="type-content">
           <text class="type-name">预约取餐</text>
           <text class="type-desc">提前点餐，到店即取</text>

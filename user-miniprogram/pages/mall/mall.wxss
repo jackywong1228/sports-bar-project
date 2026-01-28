@@ -4,5 +4,5 @@
 .goods-image { width: 100%; height: 280rpx; }
 .goods-info { padding: 16rpx; }
 .goods-name { font-size: 28rpx; color: #333; display: block; margin-bottom: 8rpx; }
-.goods-price { font-size: 30rpx; color: #FF6B35; font-weight: bold; }
+.goods-price { font-size: 30rpx; color: #1A5D3A; font-weight: bold; }
 .empty { text-align: center; padding: 100rpx 0; color: #999; }

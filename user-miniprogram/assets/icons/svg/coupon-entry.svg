@@ -1,0 +1,18 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 券包主体 - 带锯齿边的票券 -->
+  <path d="M6 14h36v6a4 4 0 0 0 0 8v6H6v-6a4 4 0 0 0 0-8V14z"
+        stroke="#1A5D3A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 左侧锯齿装饰 -->
+  <path d="M6 17v2M6 21v2M6 25v2M6 29v2"
+        stroke="#1A5D3A" stroke-width="2" stroke-linecap="round"/>
+  <!-- 右侧锯齿装饰 -->
+  <path d="M42 17v2M42 21v2M42 25v2M42 29v2"
+        stroke="#1A5D3A" stroke-width="2" stroke-linecap="round"/>
+  <!-- 中间分割虚线 -->
+  <path d="M16 14v4M16 22v4M16 30v4"
+        stroke="#1A5D3A" stroke-width="2" stroke-linecap="round"/>
+  <!-- 折扣符号 % -->
+  <circle cx="26" cy="20" r="2.5" stroke="#1A5D3A" stroke-width="2" fill="none"/>
+  <circle cx="34" cy="28" r="2.5" stroke="#1A5D3A" stroke-width="2" fill="none"/>
+  <path d="M35 18L25 30" stroke="#1A5D3A" stroke-width="2" stroke-linecap="round"/>
+</svg>

@@ -46,7 +46,7 @@
 .price-value {
   font-size: 36rpx;
   font-weight: bold;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .price-unit {
@@ -86,7 +86,7 @@
 }
 
 .venue-item.active {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
 }
 
 .venue-name {
@@ -117,7 +117,7 @@
 }
 
 .date-item.active {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
 }
 
 .date-week {
@@ -155,7 +155,7 @@
 }
 
 .time-item.selected {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
 }
 
 .time-item.disabled {
@@ -222,14 +222,14 @@
 .summary-price {
   font-size: 36rpx;
   font-weight: bold;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .btn-submit {
   width: 240rpx;
   height: 80rpx;
   line-height: 80rpx;
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
   color: #fff;
   font-size: 32rpx;
   border-radius: 40rpx;

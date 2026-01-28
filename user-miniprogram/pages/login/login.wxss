@@ -53,7 +53,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
   color: #fff;
 }
 
@@ -64,8 +64,8 @@
 
 .btn-outline {
   background: #fff;
-  border: 2rpx solid #FF6B35;
-  color: #FF6B35;
+  border: 2rpx solid #1A5D3A;
+  color: #1A5D3A;
 }
 
 .btn[disabled] {
@@ -118,5 +118,5 @@
 
 .link {
   font-size: 24rpx;
-  color: #FF6B35;
+  color: #1A5D3A;
 }

@@ -54,8 +54,8 @@
 .btn-logout {
   margin: 60rpx 30rpx;
   background: #fff;
-  color: #FF6B35;
-  border: 2rpx solid #FF6B35;
+  color: #1A5D3A;
+  border: 2rpx solid #1A5D3A;
   border-radius: 40rpx;
   font-size: 32rpx;
   height: 88rpx;

@@ -5,7 +5,7 @@
 
 /* 余额卡片 */
 .balance-card {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
   padding: 40rpx 30rpx;
   color: #fff;
 }
@@ -25,7 +25,7 @@
 
 .tab.active {
   background: #fff;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .balance-content {
@@ -53,7 +53,7 @@
 .btn-recharge {
   padding: 16rpx 48rpx;
   background: #fff;
-  color: #FF6B35;
+  color: #1A5D3A;
   font-size: 28rpx;
   border-radius: 30rpx;
   border: none;

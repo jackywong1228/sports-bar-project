@@ -145,16 +145,16 @@
   align-self: center;
 }
 
-/* 教练入口卡片 */
+/* 教练入口卡片 - 墨绿渐变 */
 .coach-entry-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #1890ff 0%, #36cfc9 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
   margin: 0 24rpx 20rpx;
   padding: 28rpx;
   border-radius: 16rpx;
-  box-shadow: 0 4rpx 20rpx rgba(24, 144, 255, 0.3);
+  box-shadow: 0 4rpx 20rpx rgba(26, 93, 58, 0.3);
 }
 
 .coach-entry-left {
@@ -331,16 +331,16 @@
   color: #6B7B6E;
 }
 
-/* 排行榜入口卡片 */
+/* 排行榜入口卡片 - 金色渐变 */
 .rank-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+  background: linear-gradient(135deg, #C9A962 0%, #D4B97A 100%);
   margin: 0 24rpx 20rpx;
   padding: 28rpx;
   border-radius: 16rpx;
-  box-shadow: 0 4rpx 20rpx rgba(255, 107, 107, 0.3);
+  box-shadow: 0 4rpx 20rpx rgba(201, 169, 98, 0.3);
 }
 
 .rank-card:active {

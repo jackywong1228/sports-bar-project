@@ -4,7 +4,7 @@
 }
 
 .header {
-  background: linear-gradient(135deg, #FF6B35, #FF8F65);
+  background: linear-gradient(135deg, #1A5D3A, #2E7D52);
   padding: 60rpx 30rpx;
   color: #fff;
 }
@@ -54,15 +54,15 @@
 }
 
 .card.recommended {
-  border-color: #FF6B35;
-  background: linear-gradient(135deg, #fff5f0, #fff);
+  border-color: #1A5D3A;
+  background: linear-gradient(135deg, rgba(26, 93, 58, 0.1), #fff);
 }
 
 .card-badge {
   position: absolute;
   top: 0;
   right: 30rpx;
-  background: linear-gradient(135deg, #FF6B35, #FF8F65);
+  background: linear-gradient(135deg, #1A5D3A, #2E7D52);
   color: #fff;
   font-size: 22rpx;
   padding: 6rpx 16rpx;
@@ -84,8 +84,8 @@
 
 .card-level {
   font-size: 24rpx;
-  color: #FF6B35;
-  background: rgba(255, 107, 53, 0.1);
+  color: #1A5D3A;
+  background: rgba(26, 93, 58, 0.1);
   padding: 6rpx 16rpx;
   border-radius: 20rpx;
 }
@@ -106,7 +106,7 @@
 .card-price .price {
   font-size: 44rpx;
   font-weight: bold;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .card-price .original-price {
@@ -129,8 +129,8 @@
 
 .card-info .bonus {
   font-size: 24rpx;
-  color: #FF6B35;
-  background: rgba(255, 107, 53, 0.1);
+  color: #1A5D3A;
+  background: rgba(26, 93, 58, 0.1);
   padding: 4rpx 12rpx;
   border-radius: 4rpx;
 }
@@ -140,7 +140,7 @@
   height: 80rpx;
   line-height: 80rpx;
   text-align: center;
-  background: linear-gradient(135deg, #FF6B35, #FF8F65);
+  background: linear-gradient(135deg, #1A5D3A, #2E7D52);
   color: #fff;
   font-size: 30rpx;
   font-weight: 500;
@@ -148,7 +148,7 @@
 }
 
 .card.recommended .card-btn {
-  background: linear-gradient(135deg, #FF6B35, #FF4500);
+  background: linear-gradient(135deg, #1A5D3A, #145030);
 }
 
 .empty {

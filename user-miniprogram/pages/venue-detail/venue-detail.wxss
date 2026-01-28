@@ -43,8 +43,8 @@
   padding: 6rpx 16rpx;
   border-radius: 6rpx;
   font-size: 22rpx;
-  background: rgba(255, 107, 53, 0.1);
-  color: #FF6B35;
+  background: rgba(26, 93, 58, 0.1);
+  color: #1A5D3A;
 }
 
 .venue-price {
@@ -58,13 +58,13 @@
 
 .price-symbol {
   font-size: 24rpx;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .price-value {
   font-size: 40rpx;
   font-weight: bold;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .price-unit {
@@ -91,7 +91,7 @@
   color: #333;
   margin-bottom: 24rpx;
   padding-left: 16rpx;
-  border-left: 6rpx solid #FF6B35;
+  border-left: 6rpx solid #1A5D3A;
 }
 
 .info-item {
@@ -185,7 +185,7 @@
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
   color: #fff;
   font-size: 32rpx;
   border-radius: 40rpx;

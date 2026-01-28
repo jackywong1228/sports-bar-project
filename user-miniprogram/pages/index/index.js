@@ -3,12 +3,21 @@ const uiConfig = require('../../utils/ui-config')
 
 Page({
   data: {
+    // Hero区域数据
+    heroImage: '/assets/images/banner1.jpg', // 默认背景图（使用banner1作为备用）
+    showScrollHint: true,
+
+    // 公告数据
+    announcements: [],
+
+    // 原有数据
     banners: [],
     quickEntries: [],
     hotVenues: [],
     hotActivities: [],
     hotCoaches: [],
     loading: true,
+
     // UI配置相关
     visibleBlocks: ['banner', 'quick_entry', 'hot_venues', 'hot_activities', 'hot_coaches'],
     uiConfigLoaded: false
@@ -29,6 +38,13 @@ Page({
     this.loadData(true).then(() => {
       wx.stopPullDownRefresh()
     })
+  },
+
+  onPageScroll(e) {
+    // 滚动时隐藏下滑提示
+    if (e.scrollTop > 50 && this.data.showScrollHint) {
+      this.setData({ showScrollHint: false })
+    }
   },
 
   // 加载UI配置
@@ -106,6 +122,12 @@ Page({
     try {
       const promises = []
 
+      // 加载公告
+      promises.push(this.loadAnnouncements())
+
+      // 加载Hero背景图
+      promises.push(this.loadHeroImage())
+
       // 根据可见区块加载对应数据
       if (this.isBlockVisible('banner')) {
         promises.push(this.loadBanners())
@@ -125,6 +147,15 @@ Page({
       let resultIndex = 0
       const updateData = { loading: false }
 
+      // 公告
+      updateData.announcements = results[resultIndex++] || []
+
+      // Hero背景图
+      const heroImage = results[resultIndex++]
+      if (heroImage) {
+        updateData.heroImage = heroImage
+      }
+
       if (this.isBlockVisible('banner')) {
         updateData.banners = results[resultIndex++] || []
       }
@@ -142,6 +173,31 @@ Page({
     } catch (err) {
       console.error('加载数据失败:', err)
       this.setData({ loading: false })
+    }
+  },
+
+  // 加载公告
+  async loadAnnouncements() {
+    try {
+      const res = await app.request({ url: '/member/announcements?limit=5' })
+      return res.data || []
+    } catch (err) {
+      console.log('加载公告失败:', err)
+      return []
+    }
+  },
+
+  // 加载Hero背景图
+  async loadHeroImage() {
+    try {
+      // 尝试从轮播图配置中获取第一张作为Hero背景
+      const res = await app.request({ url: '/member/banners?position=hero' })
+      if (res.data && res.data.length > 0) {
+        return res.data[0].image
+      }
+      return null
+    } catch (err) {
+      return null
     }
   },
 
@@ -189,6 +245,14 @@ Page({
     }
   },
 
+  // 公告点击
+  onAnnouncementTap(e) {
+    const item = e.currentTarget.dataset.item
+    if (item && item.url) {
+      wx.navigateTo({ url: item.url })
+    }
+  },
+
   // 轮播图点击
   onBannerTap(e) {
     const url = e.currentTarget.dataset.url
@@ -210,6 +274,13 @@ Page({
 
     // 根据链接类型跳转
     this.handleQuickEntryNav(url, linktype)
+  },
+
+  // 跳转到场馆预约（主CTA按钮）
+  goToVenue() {
+    wx.switchTab({
+      url: '/pages/venue/venue'
+    })
   },
 
   // 查看更多场馆

@@ -94,7 +94,7 @@
 }
 
 .info-value.highlight {
-  color: #FF6B35;
+  color: #1A5D3A;
   font-weight: 500;
 }
 
@@ -155,15 +155,15 @@
 
 .creator-tag {
   font-size: 22rpx;
-  color: #FF6B35;
-  background: #FFF5F0;
+  color: #1A5D3A;
+  background: rgba(26, 93, 58, 0.1);
   padding: 4rpx 12rpx;
   border-radius: 12rpx;
 }
 
 .contact-btn {
   padding: 12rpx 24rpx;
-  background: #FF6B35;
+  background: #1A5D3A;
   color: #fff;
   font-size: 26rpx;
   border-radius: 30rpx;
@@ -235,7 +235,7 @@
   flex: 1.5;
   height: 88rpx;
   line-height: 88rpx;
-  background: linear-gradient(135deg, #FF6B35, #ff8f65);
+  background: linear-gradient(135deg, #1A5D3A, #2E7D52);
   color: #fff;
   font-size: 30rpx;
   font-weight: 500;

@@ -10,29 +10,95 @@ module.exports = {
 }
 </wxs>
 
-<view class="container">
-  <!-- 轮播图 -->
-  <block wx:if="{{utils.includes(visibleBlocks, 'banner')}}">
-    <swiper class="banner-swiper" indicator-dots autoplay circular>
-      <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerTap" data-url="{{item.url}}">
-        <image class="banner-image" src="{{item.image}}" mode="aspectFill"></image>
+<!-- 沉浸式首屏 Hero Section -->
+<view class="hero-container">
+  <!-- 沉浸式背景 -->
+  <view class="hero-background">
+    <image
+      class="hero-bg-image"
+      src="{{heroImage}}"
+      mode="aspectFill"
+    ></image>
+    <view class="hero-overlay"></view>
+  </view>
+
+  <!-- 主内容区 -->
+  <view class="hero-content">
+    <!-- 品牌标题 -->
+    <view class="brand-section">
+      <text class="brand-title-en">SPORTS</text>
+      <text class="brand-title-en brand-title-sub">CLUB</text>
+      <view class="brand-divider"></view>
+      <text class="brand-slogan">运动 · 健康 · 社交</text>
+    </view>
+
+    <!-- 主CTA按钮 -->
+    <view class="hero-cta">
+      <button class="btn-hero" bindtap="goToVenue">立即预约</button>
+    </view>
+
+    <!-- 底部快捷入口 -->
+    <view class="hero-shortcuts">
+      <view class="shortcut-item" bindtap="goToVenue">
+        <view class="shortcut-icon-wrap">
+          <view class="shortcut-icon-inner">
+            <text class="iconfont icon-venue"></text>
+          </view>
+        </view>
+        <text class="shortcut-text">场馆预约</text>
+        <text class="shortcut-text-en">VENUE</text>
+      </view>
+      <view class="shortcut-item" bindtap="viewMoreCoaches">
+        <view class="shortcut-icon-wrap">
+          <view class="shortcut-icon-inner">
+            <text class="iconfont icon-coach"></text>
+          </view>
+        </view>
+        <text class="shortcut-text">私教课程</text>
+        <text class="shortcut-text-en">COACH</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 下滑提示 -->
+  <view class="scroll-hint" wx:if="{{showScrollHint}}">
+    <text class="scroll-hint-text">上滑查看更多</text>
+    <view class="scroll-hint-arrow"></view>
+  </view>
+</view>
+
+<!-- 内容区域（下滑展示） -->
+<view class="content-container">
+  <!-- 公告轮播 -->
+  <view class="announcement-bar" wx:if="{{announcements.length > 0}}">
+    <swiper class="announcement-swiper" autoplay circular vertical interval="{{3000}}">
+      <swiper-item wx:for="{{announcements}}" wx:key="id">
+        <view class="announcement-item" bindtap="onAnnouncementTap" data-item="{{item}}">
+          <text class="announcement-tag">公告</text>
+          <text class="announcement-text">{{item.title}}</text>
+          <text class="announcement-arrow">></text>
+        </view>
       </swiper-item>
     </swiper>
-  </block>
+  </view>
 
-  <!-- 快捷入口 -->
+  <!-- 快捷入口网格 -->
   <block wx:if="{{utils.includes(visibleBlocks, 'quick_entry')}}">
-    <view class="quick-entries">
-      <view
-        class="entry-item"
-        wx:for="{{quickEntries}}"
-        wx:key="text"
-        bindtap="onEntryTap"
-        data-url="{{item.url}}"
-        data-linktype="{{item.linkType}}"
-      >
-        <image class="entry-icon" src="{{item.icon}}" mode="aspectFit"></image>
-        <text class="entry-text">{{item.text}}</text>
+    <view class="quick-grid-section">
+      <view class="quick-grid">
+        <view
+          class="quick-grid-item"
+          wx:for="{{quickEntries}}"
+          wx:key="text"
+          bindtap="onEntryTap"
+          data-url="{{item.url}}"
+          data-linktype="{{item.linkType}}"
+        >
+          <view class="quick-icon-wrap">
+            <image class="quick-icon" src="{{item.icon}}" mode="aspectFit"></image>
+          </view>
+          <text class="quick-text">{{item.text}}</text>
+        </view>
       </view>
     </view>
   </block>
@@ -41,30 +107,29 @@ module.exports = {
   <block wx:if="{{utils.includes(visibleBlocks, 'hot_venues') || utils.includes(visibleBlocks, 'list')}}">
     <view class="section">
       <view class="section-header">
-        <text class="section-title">热门场馆</text>
+        <view class="section-title-wrap">
+          <text class="section-title-en">POPULAR</text>
+          <text class="section-title">热门场馆</text>
+        </view>
         <view class="section-more" bindtap="viewMoreVenues">
-          <text>更多</text>
-          <text class="arrow">></text>
+          <text>查看全部</text>
+          <text class="more-arrow">→</text>
         </view>
       </view>
+      <!-- 场馆卡片列表 -->
       <scroll-view class="venue-scroll" scroll-x enable-flex>
         <view
-          class="venue-card"
+          class="venue-card-premium"
           wx:for="{{hotVenues}}"
           wx:key="id"
           bindtap="goToVenueDetail"
           data-id="{{item.id}}"
         >
-          <image class="venue-image" src="{{item.image || '/assets/images/venue-default.jpg'}}" mode="aspectFill"></image>
-          <view class="venue-info">
-            <text class="venue-name">{{item.name}}</text>
-            <view class="venue-tags">
-              <text class="tag tag-primary" wx:if="{{item.type_name}}">{{item.type_name}}</text>
-            </view>
-            <view class="venue-price">
-              <text class="price-symbol">¥</text>
-              <text class="price-value">{{item.price || 0}}</text>
-              <text class="price-unit">/小时</text>
+          <image class="venue-card-image" src="{{item.image || '/assets/images/venue-default.jpg'}}" mode="aspectFill"></image>
+          <view class="venue-card-info">
+            <text class="venue-card-name">{{item.name}}</text>
+            <view class="venue-card-meta">
+              <text class="venue-card-type">{{item.type_name}}</text>
             </view>
           </view>
         </view>
@@ -75,85 +140,81 @@ module.exports = {
     </view>
   </block>
 
-  <!-- 热门活动 -->
-  <block wx:if="{{utils.includes(visibleBlocks, 'hot_activities') || utils.includes(visibleBlocks, 'scroll')}}">
-    <view class="section">
-      <view class="section-header">
-        <text class="section-title">热门活动</text>
-        <view class="section-more" bindtap="viewMoreActivities">
-          <text>更多</text>
-          <text class="arrow">></text>
-        </view>
-      </view>
-      <view class="activity-list">
-        <view
-          class="activity-card"
-          wx:for="{{hotActivities}}"
-          wx:key="id"
-          bindtap="goToActivityDetail"
-          data-id="{{item.id}}"
-        >
-          <image class="activity-image" src="{{item.image || '/assets/images/activity-default.jpg'}}" mode="aspectFill"></image>
-          <view class="activity-info">
-            <text class="activity-title">{{item.title}}</text>
-            <view class="activity-meta">
-              <text class="activity-time">{{item.start_date}} {{item.start_time}}</text>
-            </view>
-            <view class="activity-bottom">
-              <view class="activity-price">
-                <text class="price" wx:if="{{item.price > 0}}">¥{{item.price}}</text>
-                <text class="free" wx:else>免费</text>
-              </view>
-              <view class="activity-status">
-                <text class="status-text">{{item.enrolled || 0}}/{{item.max_participants || '不限'}}人</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-      <view class="empty-hint" wx:if="{{hotActivities.length === 0 && !loading}}">
-        <text>暂无活动数据</text>
-      </view>
-    </view>
-  </block>
-
   <!-- 推荐教练 -->
   <block wx:if="{{utils.includes(visibleBlocks, 'hot_coaches')}}">
     <view class="section">
       <view class="section-header">
-        <text class="section-title">推荐教练</text>
+        <view class="section-title-wrap">
+          <text class="section-title-en">COACHES</text>
+          <text class="section-title">推荐教练</text>
+        </view>
         <view class="section-more" bindtap="viewMoreCoaches">
-          <text>更多</text>
-          <text class="arrow">></text>
+          <text>查看全部</text>
+          <text class="more-arrow">→</text>
         </view>
       </view>
-      <view class="coach-list">
+      <!-- 教练网格 -->
+      <view class="coach-grid">
         <view
-          class="coach-card"
+          class="coach-card-premium"
           wx:for="{{hotCoaches}}"
           wx:key="id"
           bindtap="goToCoachDetail"
           data-id="{{item.id}}"
         >
           <image class="coach-avatar" src="{{item.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
-          <view class="coach-info">
-            <text class="coach-name">{{item.name}}</text>
-            <view class="coach-tags">
-              <text class="tag tag-primary">{{item.type_name || '教练'}}</text>
-            </view>
-            <view class="coach-rating">
-              <text class="rating-star">★</text>
-              <text class="rating-value">{{item.rating || 5.0}}</text>
-            </view>
-          </view>
-          <view class="coach-price">
-            <text class="price-value">{{item.price || 0}}</text>
-            <text class="price-unit">金币/时</text>
+          <text class="coach-name">{{item.name}}</text>
+          <text class="coach-specialty">{{item.type_name || '教练'}}</text>
+          <view class="coach-rating">
+            <text class="rating-star">★</text>
+            <text class="rating-value">{{item.rating || 5.0}}</text>
           </view>
         </view>
       </view>
       <view class="empty-hint" wx:if="{{hotCoaches.length === 0 && !loading}}">
         <text>暂无教练数据</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- 热门活动 -->
+  <block wx:if="{{utils.includes(visibleBlocks, 'hot_activities') || utils.includes(visibleBlocks, 'scroll')}}">
+    <view class="section">
+      <view class="section-header">
+        <view class="section-title-wrap">
+          <text class="section-title-en">EVENTS</text>
+          <text class="section-title">热门活动</text>
+        </view>
+        <view class="section-more" bindtap="viewMoreActivities">
+          <text>查看全部</text>
+          <text class="more-arrow">→</text>
+        </view>
+      </view>
+      <!-- 活动卡片 -->
+      <view
+        class="activity-card-premium"
+        wx:for="{{hotActivities}}"
+        wx:key="id"
+        bindtap="goToActivityDetail"
+        data-id="{{item.id}}"
+      >
+        <image class="activity-card-image" src="{{item.image || '/assets/images/activity-default.jpg'}}" mode="aspectFill"></image>
+        <view class="activity-card-content">
+          <text class="activity-card-title">{{item.title}}</text>
+          <view class="activity-card-info">
+            <text class="activity-card-time">{{item.start_date}} {{item.start_time}}</text>
+            <view class="activity-card-price">
+              <text wx:if="{{item.price > 0}}">¥{{item.price}}</text>
+              <text wx:else class="free-tag">免费</text>
+            </view>
+          </view>
+          <view class="activity-card-status">
+            <text class="status-text">{{item.enrolled || 0}}/{{item.max_participants || '不限'}}人</text>
+          </view>
+        </view>
+      </view>
+      <view class="empty-hint" wx:if="{{hotActivities.length === 0 && !loading}}">
+        <text>暂无活动数据</text>
       </view>
     </view>
   </block>

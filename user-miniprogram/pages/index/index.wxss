@@ -1,35 +1,284 @@
-/* 首页样式 - 温网风格（墨绿+薰衣草紫） */
-.container {
-  min-height: 100vh;
-  background: #F5F7F5;
-}
+/* 首页样式 - 高端沉浸式设计 */
 
-/* 轮播图 */
-.banner-swiper {
+/* ===== 沉浸式首屏 Hero Section ===== */
+.hero-container {
+  position: relative;
   width: 100%;
-  height: 360rpx;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.banner-image {
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
 }
 
-/* 快捷入口 */
-.quick-entries {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 28rpx 20rpx;
-  background: #FFFFFF;
-  margin: 0 24rpx;
-  margin-top: -30rpx;
-  border-radius: 16rpx;
+.hero-bg-image {
+  width: 100%;
+  height: 100%;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(26, 93, 58, 0.2) 0%,
+    rgba(26, 93, 58, 0.5) 40%,
+    rgba(20, 74, 46, 0.85) 100%
+  );
+}
+
+.hero-content {
   position: relative;
   z-index: 10;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0 60rpx;
+  padding-bottom: 200rpx;
+}
+
+/* 品牌标题 */
+.brand-section {
+  text-align: center;
+  margin-bottom: 80rpx;
+}
+
+.brand-title-en {
+  display: block;
+  font-size: 96rpx;
+  font-weight: 300;
+  color: #FFFFFF;
+  letter-spacing: 24rpx;
+  text-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
+  font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.brand-title-sub {
+  font-size: 72rpx;
+  letter-spacing: 20rpx;
+  margin-top: -10rpx;
+}
+
+.brand-divider {
+  width: 80rpx;
+  height: 2rpx;
+  background: linear-gradient(90deg, transparent, rgba(201, 169, 98, 0.8), transparent);
+  margin: 32rpx auto;
+}
+
+.brand-slogan {
+  display: block;
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 12rpx;
+  margin-top: 16rpx;
+}
+
+/* 主CTA按钮 */
+.hero-cta {
+  margin-bottom: 80rpx;
+}
+
+.btn-hero {
+  width: 400rpx;
+  height: 100rpx;
+  line-height: 100rpx;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  color: #1A5D3A;
+  font-size: 34rpx;
+  font-weight: 600;
+  letter-spacing: 8rpx;
+  border-radius: 50rpx;
+  border: none;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+}
+
+.btn-hero::after {
+  border: none;
+}
+
+/* 底部快捷入口 */
+.hero-shortcuts {
+  display: flex;
+  gap: 80rpx;
+}
+
+.shortcut-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.shortcut-item:active {
+  opacity: 0.8;
+  transform: scale(0.95);
+}
+
+.shortcut-icon-wrap {
+  width: 100rpx;
+  height: 100rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 16rpx;
+}
+
+.shortcut-icon-inner {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shortcut-icon-inner .iconfont {
+  font-size: 44rpx;
+  color: #FFFFFF;
+}
+
+/* 图标字体样式 - 使用文字替代 */
+.icon-venue::before {
+  content: "馆";
+  font-size: 36rpx;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+}
+
+.icon-coach::before {
+  content: "练";
+  font-size: 36rpx;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+}
+
+.shortcut-text {
+  font-size: 26rpx;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.shortcut-text-en {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 4rpx;
+  margin-top: 4rpx;
+}
+
+/* 下滑提示 */
+.scroll-hint {
+  position: absolute;
+  bottom: 180rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  animation: bounce 2s infinite;
+}
+
+.scroll-hint-text {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.6);
+  display: block;
+}
+
+.scroll-hint-arrow {
+  width: 24rpx;
+  height: 24rpx;
+  margin: 12rpx auto 0;
+  border-left: 2rpx solid rgba(255, 255, 255, 0.6);
+  border-bottom: 2rpx solid rgba(255, 255, 255, 0.6);
+  transform: rotate(-45deg);
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-16rpx);
+  }
+  60% {
+    transform: translateX(-50%) translateY(-8rpx);
+  }
+}
+
+/* ===== 内容区域 ===== */
+.content-container {
+  background: #F5F7F5;
+  padding-top: 24rpx;
+  min-height: 100vh;
+}
+
+/* 公告栏 */
+.announcement-bar {
+  background: linear-gradient(135deg, rgba(26, 93, 58, 0.08) 0%, rgba(107, 91, 149, 0.08) 100%);
+  margin: 0 24rpx 24rpx;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+}
+
+.announcement-swiper {
+  height: 72rpx;
+}
+
+.announcement-item {
+  display: flex;
+  align-items: center;
+  height: 72rpx;
+}
+
+.announcement-tag {
+  background: #1A5D3A;
+  color: #FFFFFF;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.announcement-text {
+  font-size: 26rpx;
+  color: #2C3E2D;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.announcement-arrow {
+  color: #6B7B6E;
+  font-size: 24rpx;
+  margin-left: 12rpx;
+}
+
+/* 快捷入口网格 */
+.quick-grid-section {
+  background: #FFFFFF;
+  margin: 0 24rpx 24rpx;
+  border-radius: 16rpx;
+  padding: 28rpx 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(26, 93, 58, 0.08);
 }
 
-.entry-item {
+.quick-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.quick-grid-item {
   width: 25%;
   display: flex;
   flex-direction: column;
@@ -37,58 +286,65 @@
   padding: 16rpx 0;
 }
 
-.entry-item:active {
+.quick-grid-item:active {
   opacity: 0.7;
 }
 
-.entry-icon {
-  width: 80rpx;
-  height: 80rpx;
+.quick-icon-wrap {
+  width: 88rpx;
+  height: 88rpx;
+  background: rgba(26, 93, 58, 0.08);
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 12rpx;
 }
 
-.entry-text {
+.quick-icon {
+  width: 48rpx;
+  height: 48rpx;
+}
+
+.quick-text {
   font-size: 24rpx;
   color: #2C3E2D;
   font-weight: 500;
 }
 
-/* 板块 */
+/* 区块 */
 .section {
-  margin-top: 24rpx;
-  padding: 28rpx;
   background: #FFFFFF;
-  border-radius: 16rpx;
-  margin-left: 24rpx;
-  margin-right: 24rpx;
-  box-shadow: 0 2rpx 12rpx rgba(26, 93, 58, 0.05);
+  margin: 0 24rpx 24rpx;
+  padding: 32rpx;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(26, 93, 58, 0.06);
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24rpx;
+  align-items: flex-end;
+  margin-bottom: 28rpx;
+}
+
+.section-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-title-en {
+  font-size: 22rpx;
+  color: #C9A962;
+  letter-spacing: 4rpx;
+  font-weight: 600;
+  margin-bottom: 4rpx;
 }
 
 .section-title {
-  font-size: 32rpx;
+  font-size: 36rpx;
   font-weight: 600;
   color: #2C3E2D;
-  position: relative;
-  padding-left: 16rpx;
-}
-
-.section-title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4rpx;
-  height: 24rpx;
-  background: linear-gradient(180deg, #1A5D3A 0%, #6B5B95 100%);
-  border-radius: 2rpx;
 }
 
 .section-more {
@@ -102,116 +358,185 @@
   color: #1A5D3A;
 }
 
-.arrow {
-  margin-left: 6rpx;
+.more-arrow {
+  margin-left: 8rpx;
   color: #1A5D3A;
 }
 
-/* 场馆横向滚动 */
+/* 场馆卡片 - 高端版 */
 .venue-scroll {
-  display: flex;
   white-space: nowrap;
-  margin: 0 -28rpx;
-  padding: 0 28rpx;
+  margin: 0 -32rpx;
+  padding: 0 32rpx;
 }
 
-.venue-card {
+.venue-card-premium {
   display: inline-block;
-  width: 280rpx;
-  margin-right: 20rpx;
-  border-radius: 12rpx;
+  width: 320rpx;
+  margin-right: 24rpx;
+  border-radius: 16rpx;
   overflow: hidden;
   background: #FFFFFF;
-  box-shadow: 0 2rpx 12rpx rgba(26, 93, 58, 0.08);
+  box-shadow: 0 4rpx 16rpx rgba(26, 93, 58, 0.1);
   border: 1rpx solid #E8EDE9;
 }
 
-.venue-card:active {
+.venue-card-premium:active {
   transform: scale(0.98);
 }
 
-.venue-image {
-  width: 280rpx;
-  height: 180rpx;
+.venue-card-image {
+  width: 320rpx;
+  height: 200rpx;
 }
 
-.venue-info {
-  padding: 16rpx;
+.venue-card-info {
+  padding: 20rpx;
 }
 
-.venue-name {
-  font-size: 28rpx;
+.venue-card-name {
+  font-size: 30rpx;
   font-weight: 600;
   color: #2C3E2D;
   display: block;
+  margin-bottom: 12rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.venue-tags {
-  margin-top: 8rpx;
+.venue-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.venue-price {
-  margin-top: 12rpx;
+.venue-card-type {
+  font-size: 22rpx;
+  color: #1A5D3A;
+  background: rgba(26, 93, 58, 0.1);
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+}
+
+.venue-card-price {
   color: #1A5D3A;
 }
 
-.price-symbol {
+.venue-card-price .price-symbol {
   font-size: 22rpx;
 }
 
-.price-value {
-  font-size: 32rpx;
+.venue-card-price .price-value {
+  font-size: 36rpx;
   font-weight: bold;
 }
 
-.price-unit {
+.venue-card-price .price-unit {
   font-size: 22rpx;
   color: #6B7B6E;
-  margin-left: 4rpx;
 }
 
-/* 活动列表 */
-.activity-list {
+/* 教练网格 - 高端版 */
+.coach-grid {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 20rpx;
 }
 
-.activity-card {
-  display: flex;
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #F0F4F1;
+.coach-card-premium {
+  width: calc(50% - 10rpx);
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  text-align: center;
+  border: 1rpx solid #E8EDE9;
+  box-shadow: 0 2rpx 12rpx rgba(26, 93, 58, 0.06);
 }
 
-.activity-card:last-child {
-  border-bottom: none;
-}
-
-.activity-card:active {
+.coach-card-premium:active {
+  transform: scale(0.98);
   background: rgba(26, 93, 58, 0.02);
-  margin: 0 -28rpx;
-  padding-left: 28rpx;
-  padding-right: 28rpx;
 }
 
-.activity-image {
-  width: 200rpx;
-  height: 140rpx;
-  border-radius: 10rpx;
+.coach-card-premium .coach-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  margin-bottom: 16rpx;
+  border: 3rpx solid rgba(201, 169, 98, 0.3);
+}
+
+.coach-card-premium .coach-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2C3E2D;
+  margin-bottom: 8rpx;
+}
+
+.coach-card-premium .coach-specialty {
+  display: block;
+  font-size: 24rpx;
+  color: #6B7B6E;
+  margin-bottom: 12rpx;
+}
+
+.coach-card-premium .coach-rating {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(201, 169, 98, 0.1);
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.coach-card-premium .rating-star {
+  color: #C9A962;
+  font-size: 24rpx;
+  margin-right: 6rpx;
+}
+
+.coach-card-premium .rating-value {
+  font-size: 24rpx;
+  color: #A68B3E;
+  font-weight: 500;
+}
+
+/* 活动卡片 - 高端版 */
+.activity-card-premium {
+  display: flex;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  overflow: hidden;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(26, 93, 58, 0.06);
+  border: 1rpx solid #E8EDE9;
+}
+
+.activity-card-premium:last-child {
+  margin-bottom: 0;
+}
+
+.activity-card-premium:active {
+  transform: scale(0.99);
+  background: rgba(26, 93, 58, 0.02);
+}
+
+.activity-card-image {
+  width: 240rpx;
+  height: 180rpx;
   flex-shrink: 0;
 }
 
-.activity-info {
+.activity-card-content {
   flex: 1;
-  margin-left: 20rpx;
+  padding: 20rpx;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
-.activity-title {
+.activity-card-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #2C3E2D;
@@ -222,120 +547,57 @@
   line-height: 1.4;
 }
 
-.activity-meta {
-  margin-top: 8rpx;
-}
-
-.activity-time {
-  font-size: 24rpx;
-  color: #6B7B6E;
-}
-
-.activity-bottom {
+.activity-card-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 8rpx;
+  margin-top: 12rpx;
 }
 
-.activity-price .price {
-  font-size: 30rpx;
+.activity-card-time {
+  font-size: 24rpx;
+  color: #6B7B6E;
+}
+
+.activity-card-price {
+  font-size: 28rpx;
   font-weight: bold;
   color: #1A5D3A;
 }
 
-.activity-price .free {
-  font-size: 26rpx;
+.activity-card-price .free-tag {
   color: #2E7D52;
-  font-weight: 600;
+  font-weight: 500;
 }
 
-.activity-status {
-  font-size: 24rpx;
-  color: #6B7B6E;
-}
-
-/* 教练列表 */
-.coach-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.coach-card {
-  display: flex;
-  align-items: center;
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #F0F4F1;
-}
-
-.coach-card:last-child {
-  border-bottom: none;
-}
-
-.coach-card:active {
-  background: rgba(26, 93, 58, 0.02);
-  margin: 0 -28rpx;
-  padding-left: 28rpx;
-  padding-right: 28rpx;
-}
-
-.coach-avatar {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  flex-shrink: 0;
-  border: 3rpx solid rgba(26, 93, 58, 0.1);
-}
-
-.coach-info {
-  flex: 1;
-  margin-left: 20rpx;
-}
-
-.coach-name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #2C3E2D;
-}
-
-.coach-tags {
+.activity-card-status {
   margin-top: 8rpx;
 }
 
-.coach-rating {
-  margin-top: 8rpx;
-  display: flex;
-  align-items: center;
-}
-
-.rating-star {
-  color: #C9A962;
-  font-size: 24rpx;
-}
-
-.rating-value {
-  font-size: 24rpx;
-  color: #6B7B6E;
-  margin-left: 4rpx;
-}
-
-.coach-price {
-  text-align: right;
-}
-
-.coach-price .price-value {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #1A5D3A;
-}
-
-.coach-price .price-unit {
-  display: block;
+.activity-card-status .status-text {
   font-size: 22rpx;
-  color: #6B7B6E;
+  color: #9CA89D;
 }
 
-/* 标签 */
+/* 空提示 */
+.empty-hint {
+  text-align: center;
+  padding: 50rpx 0;
+  color: #9CA89D;
+  font-size: 26rpx;
+}
+
+/* 底部安全区 */
+.safe-bottom {
+  height: 120rpx;
+}
+
+/* ===== 兼容旧样式 ===== */
+.container {
+  min-height: 100vh;
+  background: #F5F7F5;
+}
+
 .tag {
   display: inline-block;
   padding: 4rpx 12rpx;
@@ -360,15 +622,17 @@
   color: #2E7D52;
 }
 
-/* 空提示 */
-.empty-hint {
-  text-align: center;
-  padding: 50rpx 0;
-  color: #9CA89D;
-  font-size: 26rpx;
+.price-symbol {
+  font-size: 22rpx;
 }
 
-/* 底部安全区 */
-.safe-bottom {
-  height: 30rpx;
+.price-value {
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.price-unit {
+  font-size: 22rpx;
+  color: #6B7B6E;
+  margin-left: 4rpx;
 }

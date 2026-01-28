@@ -34,8 +34,8 @@
 }
 
 .package-item.active {
-  background: rgba(255, 107, 53, 0.1);
-  border-color: #FF6B35;
+  background: rgba(26, 93, 58, 0.1);
+  border-color: #1A5D3A;
 }
 
 .package-coins {
@@ -47,14 +47,14 @@
 
 .package-bonus {
   font-size: 22rpx;
-  color: #FF6B35;
+  color: #1A5D3A;
   margin-bottom: 8rpx;
 }
 
 .package-price {
   font-size: 32rpx;
   font-weight: bold;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 /* 自定义输入 */
@@ -110,7 +110,7 @@
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F65 100%);
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
   color: #fff;
   font-size: 32rpx;
   border-radius: 44rpx;

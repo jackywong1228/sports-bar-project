@@ -35,7 +35,7 @@
 }
 
 .item-price {
-  color: #FF6B35;
+  color: #1A5D3A;
   font-weight: 500;
 }
 
@@ -57,8 +57,8 @@
 }
 
 .order-type-item.active {
-  background: #FFF5F0;
-  border-color: #FF6B35;
+  background: rgba(26, 93, 58, 0.1);
+  border-color: #1A5D3A;
 }
 
 .type-content {
@@ -107,7 +107,7 @@
   display: flex;
   align-items: center;
   font-size: 28rpx;
-  color: #FF6B35;
+  color: #1A5D3A;
 }
 
 .arrow {
@@ -179,7 +179,7 @@
 
 .price {
   font-size: 36rpx;
-  color: #FF6B35;
+  color: #1A5D3A;
   font-weight: bold;
 }
 
@@ -193,7 +193,7 @@
   width: 240rpx;
   height: 80rpx;
   line-height: 80rpx;
-  background: #FF6B35;
+  background: #1A5D3A;
   color: #fff;
   border-radius: 40rpx;
   font-size: 30rpx;

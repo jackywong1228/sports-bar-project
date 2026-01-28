@@ -1,0 +1,17 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 中心人物（稍大，代表核心） -->
+  <circle cx="24" cy="14" r="4" stroke="#1A5D3A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M18 26c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#1A5D3A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 左侧人物 -->
+  <circle cx="10" cy="28" r="3.5" stroke="#1A5D3A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M5 38c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#1A5D3A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 右侧人物 -->
+  <circle cx="38" cy="28" r="3.5" stroke="#1A5D3A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M33 38c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#1A5D3A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 连接线（表达社交连接） -->
+  <path d="M16 20l-3 5" stroke="#1A5D3A" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 2"/>
+  <path d="M32 20l3 5" stroke="#1A5D3A" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 2"/>
+</svg>
