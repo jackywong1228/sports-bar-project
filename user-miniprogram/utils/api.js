@@ -91,7 +91,7 @@ const getAnnouncements = () => {
  * 获取场馆类型
  */
 const getVenueTypes = () => {
-  return get('/venues/types')
+  return get('/member/venue-types')
 }
 
 /**

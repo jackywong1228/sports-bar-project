@@ -453,13 +453,6 @@ def get_activity_detail(activity_id: int, db: Session = Depends(get_db)):
 
 # ==================== 场馆相关 ====================
 
-@router.get("/venue-types", response_model=ResponseModel)
-def get_venue_types(db: Session = Depends(get_db)):
-    """获取场馆类型"""
-    types = db.query(VenueType).filter(VenueType.status == True).all()
-    return ResponseModel(data=[{"id": t.id, "name": t.name} for t in types])
-
-
 @router.get("/venues", response_model=ResponseModel)
 def get_venues(
     type_id: Optional[int] = None,
