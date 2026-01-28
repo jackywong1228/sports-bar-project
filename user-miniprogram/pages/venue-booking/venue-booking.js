@@ -36,8 +36,10 @@ Page({
     this.setData({ calendarHeight })
 
     this.initDates()
-    this.loadVenueTypes(options.type_id)
-    this.checkMemberPermission()
+    // 先加载场馆类型，完成后再检查权限
+    this.loadVenueTypes(options.type_id).then(() => {
+      this.checkMemberPermission()
+    })
   },
 
   onShow() {
