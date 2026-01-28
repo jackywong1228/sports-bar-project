@@ -57,6 +57,7 @@ Component({
       }
     },
     currentTheme: null,
+    currentLevel: 'TRIAL',  // 实际使用的等级（优先从memberInfo获取）
     quotaInfo: {
       daily: 0,
       used: 0,
@@ -66,27 +67,44 @@ Component({
 
   observers: {
     'level': function(newLevel) {
-      this.updateTheme(newLevel)
+      // 只有在 memberInfo 没有提供等级时才使用 level 属性
+      if (!this.data.memberInfo || (!this.data.memberInfo.member_level && !this.data.memberInfo.level_code)) {
+        this.updateTheme(newLevel)
+      }
     },
     'memberInfo': function(info) {
       if (info) {
         this.updateQuotaInfo(info)
+        // 如果 memberInfo 中包含 level_code 或 member_level，优先使用
+        const levelFromInfo = info.member_level || info.level_code
+        if (levelFromInfo) {
+          this.updateTheme(levelFromInfo)
+        } else {
+          // 否则使用传入的 level 属性
+          this.updateTheme(this.data.level)
+        }
       }
     }
   },
 
   lifetimes: {
     attached() {
-      this.updateTheme(this.data.level)
+      // 优先从 memberInfo 获取等级
+      const memberInfo = this.data.memberInfo
+      const levelFromInfo = memberInfo && (memberInfo.member_level || memberInfo.level_code)
+      const initialLevel = levelFromInfo || this.data.level || 'TRIAL'
+      this.updateTheme(initialLevel)
     }
   },
 
   methods: {
     // 更新主题
     updateTheme(level) {
-      const theme = this.data.themeConfig[level] || this.data.themeConfig.TRIAL
+      const validLevel = level || 'TRIAL'
+      const theme = this.data.themeConfig[validLevel] || this.data.themeConfig.TRIAL
       this.setData({
-        currentTheme: theme
+        currentTheme: theme,
+        currentLevel: validLevel
       })
     },
 
@@ -98,7 +116,8 @@ Component({
         SS: 4,
         SSS: 8
       }
-      const level = info.member_level || this.data.level
+      // 优先使用 member_level 或 level_code
+      const level = info.member_level || info.level_code || this.data.level
       const daily = info.booking_quota || quotaMap[level] || 0
       const used = info.used_quota || 0
 

@@ -39,19 +39,25 @@ Page({
   // 检查登录状态
   checkLoginStatus() {
     const isLoggedIn = !!app.globalData.token
+    const memberInfo = app.globalData.memberInfo
+    // 优先从 memberInfo 获取会员等级，确保与后端数据一致
+    const memberLevel = this.getMemberLevelFromInfo(memberInfo) || app.globalData.memberLevel || 'TRIAL'
+
     this.setData({
       isLoggedIn,
-      memberInfo: app.globalData.memberInfo,
-      memberLevel: app.globalData.memberLevel || 'TRIAL',
+      memberInfo: memberInfo,
+      memberLevel: memberLevel,
       memberTheme: app.globalData.memberTheme
     })
 
-    if (isLoggedIn && !app.globalData.memberInfo) {
+    if (isLoggedIn && !memberInfo) {
       app.getMemberInfo()
       setTimeout(() => {
+        const updatedInfo = app.globalData.memberInfo
+        const updatedLevel = this.getMemberLevelFromInfo(updatedInfo) || app.globalData.memberLevel || 'TRIAL'
         this.setData({
-          memberInfo: app.globalData.memberInfo,
-          memberLevel: app.globalData.memberLevel || 'TRIAL',
+          memberInfo: updatedInfo,
+          memberLevel: updatedLevel,
           memberTheme: app.globalData.memberTheme
         })
       }, 500)
@@ -62,6 +68,13 @@ Page({
       this.checkCoachStatus()
       this.loadCheckinStats()
     }
+  },
+
+  // 从会员信息中获取等级代码
+  getMemberLevelFromInfo(memberInfo) {
+    if (!memberInfo) return null
+    // 优先使用 member_level，其次是 level_code
+    return memberInfo.member_level || memberInfo.level_code || null
   },
 
   // 加载打卡统计

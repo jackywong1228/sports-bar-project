@@ -85,9 +85,9 @@ App({
           that.globalData.memberInfo = res.data.data
           // 更新会员等级相关信息
           const data = res.data.data
-          if (data.member_level) {
-            that.setMemberTheme(data.member_level)
-          }
+          // 优先使用 member_level 或 level_code
+          const levelCode = data.member_level || data.level_code || 'TRIAL'
+          that.setMemberTheme(levelCode)
           // 更新预约权限信息
           if (data.can_book !== undefined) {
             that.globalData.canBook = data.can_book

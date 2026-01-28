@@ -324,17 +324,21 @@ def get_member_profile(
     level_info = {
         "level_id": None,
         "level_name": None,
+        "level_code": "TRIAL",
         "level_icon": None,
         "level_type": "normal",
-        "level_discount": 1.0
+        "level_discount": 1.0,
+        "member_level": "TRIAL"
     }
     if current_member.level:
         level_info = {
             "level_id": current_member.level.id,
             "level_name": current_member.level.name,
+            "level_code": current_member.level.level_code or "TRIAL",
             "level_icon": current_member.level.icon,
             "level_type": current_member.level.type or "normal",
-            "level_discount": float(current_member.level.discount) if current_member.level.discount else 1.0
+            "level_discount": float(current_member.level.discount) if current_member.level.discount else 1.0,
+            "member_level": current_member.level.level_code or "TRIAL"
         }
 
     return ResponseModel(data={
