@@ -927,6 +927,94 @@ def get_member_reservations(
     return ResponseModel(data=result)
 
 
+# ==================== 统一订单查询 ====================
+
+@router.get("/orders", response_model=ResponseModel)
+def get_member_orders(
+    status: Optional[str] = None,
+    type: Optional[str] = None,  # reservation, food, all
+    page: int = 1,
+    limit: int = 10,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取会员所有订单（统一接口）
+
+    聚合预约订单和餐饮订单，按时间倒序排列
+    """
+    all_orders = []
+
+    # 获取预约订单
+    if type in (None, "all", "reservation"):
+        res_query = db.query(Reservation).filter(
+            Reservation.member_id == current_member.id,
+            Reservation.is_deleted == False
+        )
+        if status and status != "all":
+            res_query = res_query.filter(Reservation.status == status)
+
+        reservations = res_query.all()
+        for r in reservations:
+            all_orders.append({
+                "id": r.id,
+                "order_no": r.reservation_no,
+                "type": "reservation",
+                "type_name": "场馆预约" if not r.coach_id else "教练预约",
+                "title": r.venue.name if r.venue else (r.coach.name if r.coach else "预约"),
+                "image": r.venue.image if r.venue else None,
+                "amount": float(r.total_price or 0),
+                "status": r.status,
+                "status_text": {
+                    "pending": "待确认",
+                    "confirmed": "已确认",
+                    "completed": "已完成",
+                    "cancelled": "已取消"
+                }.get(r.status, r.status),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "detail": f"{r.reservation_date} {r.start_time}-{r.end_time}"
+            })
+
+    # 获取餐饮订单
+    if type in (None, "all", "food"):
+        food_query = db.query(FoodOrder).filter(FoodOrder.member_id == current_member.id)
+        if status and status != "all":
+            food_query = food_query.filter(FoodOrder.status == status)
+
+        food_orders = food_query.all()
+        for o in food_orders:
+            items = db.query(FoodOrderItem).filter(FoodOrderItem.order_id == o.id).all()
+            item_names = [i.food_name for i in items[:3]]
+            all_orders.append({
+                "id": o.id,
+                "order_no": o.order_no,
+                "type": "food",
+                "type_name": "餐饮订单",
+                "title": "、".join(item_names) + ("..." if len(items) > 3 else ""),
+                "image": items[0].food_image if items else None,
+                "amount": float(o.total_amount),
+                "status": o.status,
+                "status_text": {
+                    "pending": "待支付",
+                    "paid": "已支付",
+                    "preparing": "制作中",
+                    "completed": "已完成",
+                    "cancelled": "已取消"
+                }.get(o.status, o.status),
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+                "detail": f"共{len(items)}件商品"
+            })
+
+    # 按创建时间倒序排序
+    all_orders.sort(key=lambda x: x["created_at"] or "", reverse=True)
+
+    # 分页
+    start = (page - 1) * limit
+    end = start + limit
+    paged_orders = all_orders[start:end]
+
+    return ResponseModel(data=paged_orders)
+
+
 # ==================== 金币/积分记录 ====================
 
 @router.get("/coin-records", response_model=ResponseModel)
