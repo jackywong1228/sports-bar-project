@@ -26,8 +26,10 @@ module.exports = {
   <view class="hero-content">
     <!-- 品牌标题 -->
     <view class="brand-section">
-      <text class="brand-title-en">SPORTS</text>
-      <text class="brand-title-en brand-title-sub">CLUB</text>
+      <view class="brand-title-row">
+        <text class="brand-title-main">3S</text>
+        <text class="brand-title-name">BALLHUB</text>
+      </view>
       <view class="brand-divider"></view>
       <text class="brand-slogan">运动 · 健康 · 社交</text>
     </view>

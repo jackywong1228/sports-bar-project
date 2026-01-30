@@ -34,11 +34,18 @@ Page({
 
   // 加载场馆类型
   async loadVenueTypes() {
+    console.log('[DEBUG] loadVenueTypes 开始')
+    console.log('[DEBUG] baseUrl:', app.globalData.baseUrl)
+    console.log('[DEBUG] 完整请求URL:', app.globalData.baseUrl + '/member/venue-types')
+
     try {
       const res = await app.request({ url: '/member/venue-types' })
+      console.log('[DEBUG] loadVenueTypes 成功:', res)
       const types = [{ id: 0, name: '全部' }, ...(res.data || [])]
       this.setData({ venueTypes: types })
     } catch (err) {
+      console.error('[DEBUG] loadVenueTypes 失败:', err)
+      console.error('[DEBUG] 错误详情:', JSON.stringify(err))
       this.setData({
         venueTypes: [
           { id: 0, name: '全部' },

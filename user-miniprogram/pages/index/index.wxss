@@ -47,26 +47,35 @@
   padding-bottom: 200rpx;
 }
 
-/* 品牌标题 */
+/* 品牌标题 - 高端运动俱乐部风格 */
 .brand-section {
   text-align: center;
   margin-bottom: 80rpx;
 }
 
-.brand-title-en {
-  display: block;
-  font-size: 96rpx;
-  font-weight: 300;
-  color: #FFFFFF;
-  letter-spacing: 24rpx;
-  text-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
-  font-family: 'Georgia', 'Times New Roman', serif;
+.brand-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 16rpx;
 }
 
-.brand-title-sub {
+.brand-title-main {
   font-size: 72rpx;
-  letter-spacing: 20rpx;
-  margin-top: -10rpx;
+  font-weight: 800;
+  color: #C9A962;
+  letter-spacing: 4rpx;
+  text-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+}
+
+.brand-title-name {
+  font-size: 56rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  letter-spacing: 4rpx;
+  text-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
 }
 
 .brand-divider {

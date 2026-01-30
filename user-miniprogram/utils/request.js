@@ -137,12 +137,18 @@ const request = (options) => {
           })
       },
       fail: (err) => {
+        // 详细记录网络错误
+        console.error('[REQUEST FAIL] URL:', config.url)
+        console.error('[REQUEST FAIL] Error:', JSON.stringify(err))
+        console.error('[REQUEST FAIL] errMsg:', err.errMsg)
+        console.error('[REQUEST FAIL] errno:', err.errno)
+
         let message = '网络错误'
         if (err.errMsg) {
           if (err.errMsg.includes('timeout')) {
             message = '请求超时'
           } else if (err.errMsg.includes('fail')) {
-            message = '网络连接失败'
+            message = '网络连接失败: ' + err.errMsg
           }
         }
 
@@ -153,7 +159,7 @@ const request = (options) => {
             duration: 2000
           })
         }
-        reject({ code: -1, message })
+        reject({ code: -1, message, errMsg: err.errMsg, errno: err.errno })
       },
       complete: () => {
         // 隐藏加载提示
