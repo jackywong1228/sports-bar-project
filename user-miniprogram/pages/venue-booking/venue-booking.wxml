@@ -14,17 +14,22 @@
     <text class="quota-text">今日剩余预约额度：{{remainingQuota}}小时</text>
   </view>
 
-  <!-- 场馆类型选择 -->
-  <scroll-view class="type-tabs" scroll-x enable-flex>
-    <view
-      class="type-tab {{currentTypeId === item.id ? 'active' : ''}}"
-      wx:for="{{venueTypes}}"
-      wx:key="id"
-      bindtap="selectType"
-      data-id="{{item.id}}"
-    >
-      <text>{{item.name}}</text>
-      <text class="venue-count" wx:if="{{item.venue_count}}">({{item.venue_count}})</text>
+  <!-- 场馆类型选择 - 卡片式设计 -->
+  <scroll-view class="type-cards-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="type-cards">
+      <view
+        class="type-card {{currentTypeId === item.id ? 'active' : ''}}"
+        wx:for="{{venueTypes}}"
+        wx:key="id"
+        bindtap="selectType"
+        data-id="{{item.id}}"
+      >
+        <view class="type-card-icon">
+          <text class="type-icon-text">{{item.icon || '🏀'}}</text>
+        </view>
+        <text class="type-card-name">{{item.name}}</text>
+        <text class="type-card-count" wx:if="{{item.venue_count}}">{{item.venue_count}}个场地</text>
+      </view>
     </view>
   </scroll-view>
 

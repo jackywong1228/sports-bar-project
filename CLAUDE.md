@@ -120,7 +120,7 @@ vue-tsc -b                       # 仅运行类型检查
 - **API 定义**: `utils/api.js`（会员端）+ `utils/coach-api.js`（教练端）
 - **全局状态**: 通过 `app.globalData` 管理，包括会员等级主题色
 - **页面命名**: 教练端页面统一使用 `coach-*` 前缀
-- **Base URL**: `app.globalData.baseUrl`，生产指向 `http://111.231.105.41/api/v1`
+- **Base URL**: `app.globalData.baseUrl`，生产指向 `https://yunlifang.cloud/api/v1`
 
 ## 数据库配置
 
@@ -200,26 +200,45 @@ WECHAT_PRIVATE_KEY_PATH=certs/apiclient_key.pem
 
 ## 服务器运维
 
-```bash
-ssh root@111.231.105.41
+生产服务器: `yunlifang.cloud` (111.231.105.41)
 
-# 更新代码
+```bash
+ssh root@yunlifang.cloud
+
+# 更新代码并重启
 cd /var/www/sports-bar-project && git pull && systemctl restart sports-bar
 
 # 重新构建前端
 cd /var/www/sports-bar-project/admin-frontend && npm run build
 
 # 查看日志
-journalctl -u sports-bar -f
-tail -f /var/log/nginx/error.log
+journalctl -u sports-bar -f      # 后端日志
+tail -f /var/log/nginx/error.log # Nginx 错误日志
 
 # 服务管理
-systemctl restart sports-bar
-systemctl restart nginx
+systemctl restart sports-bar     # 重启后端
+systemctl restart nginx          # 重启 Nginx
 ```
+
+## 常见问题排查
+
+### 后端 401/403 错误
+- 检查 token 是否过期或格式错误
+- 确认使用正确的认证体系（管理员/会员/教练三套独立）
+- 会员端接口必须用 `get_current_member()`，教练端用 `get_current_coach()`
+
+### 数据库查询无结果
+- 检查是否遗漏 `is_deleted == False` 过滤条件
+- 软删除的数据仍在数据库中，但查询时必须排除
+
+### 小程序请求失败
+- 确认 `app.globalData.baseUrl` 配置正确
+- 检查微信公众平台的服务器域名配置
+- 开发时可在开发者工具中关闭"不校验合法域名"
 
 ## 更多文档
 
-- [部署指南](docs/deployment.md)
+- [部署指南](docs/deployment.md) - 云服务器和微信云托管部署
 - [API 文档](docs/api.md)
 - [会员制度](docs/membership.md)
+- [UI 设计规范](user-miniprogram/docs/UI-REDESIGN-SPEC.md)
