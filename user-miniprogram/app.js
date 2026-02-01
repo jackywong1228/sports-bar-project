@@ -69,29 +69,17 @@ App({
   // 测试网络连接
   testNetworkConnection() {
     const testUrl = `${this.globalData.baseUrl}/member/venue-types`
-    console.log('[NETWORK TEST] 开始测试:', testUrl)
+    console.log('[NETWORK TEST] 测试:', testUrl)
 
     wx.request({
       url: testUrl,
       method: 'GET',
       timeout: 10000,
       success: (res) => {
-        console.log('[NETWORK TEST] 成功!')
-        console.log('[NETWORK TEST] statusCode:', res.statusCode)
-        console.log('[NETWORK TEST] data:', JSON.stringify(res.data).substring(0, 200))
+        console.log('[NETWORK TEST] 成功, statusCode:', res.statusCode)
       },
       fail: (err) => {
-        console.error('[NETWORK TEST] 失败!')
-        console.error('[NETWORK TEST] errMsg:', err.errMsg)
-        console.error('[NETWORK TEST] errno:', err.errno)
-        console.error('[NETWORK TEST] 完整错误:', JSON.stringify(err))
-
-        // 尝试获取网络状态
-        wx.getNetworkType({
-          success: (netRes) => {
-            console.log('[NETWORK TEST] 当前网络类型:', netRes.networkType)
-          }
-        })
+        console.error('[NETWORK TEST] 失败:', err.errMsg)
       }
     })
   },
