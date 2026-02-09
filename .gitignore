@@ -41,6 +41,10 @@ uploads/
 backend/certs/*.pem
 backend/certs/*.key
 backend/certs/*.p12
+*.csr
+yunlifang.cloud.key
+yunlifang.cloud_bundle.crt
+yunlifang.cloud_bundle.pem
 
 # Claude local settings
 .claude/

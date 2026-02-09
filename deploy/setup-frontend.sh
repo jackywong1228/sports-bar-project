@@ -18,10 +18,15 @@ cd ${PROJECT_DIR}/admin-frontend
 echo -e "\n${YELLOW}[1/3] 安装 npm 依赖...${NC}"
 npm install
 
-echo -e "\n${YELLOW}[2/3] 创建生产环境配置...${NC}"
-cat > .env.production << 'EOF'
-VITE_API_BASE_URL=https://yunlifang.cloud/api/v1
+echo -e "\n${YELLOW}[2/3] 检查生产环境配置...${NC}"
+if [ ! -f .env.production ]; then
+    cat > .env.production << 'EOF'
+VITE_API_BASE_URL=/api/v1
 EOF
+    echo -e "${GREEN}.env.production 已创建${NC}"
+else
+    echo -e "${YELLOW}.env.production 已存在，跳过${NC}"
+fi
 
 echo -e "\n${YELLOW}[3/3] 构建前端...${NC}"
 npm run build

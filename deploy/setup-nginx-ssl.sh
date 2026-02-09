@@ -1,5 +1,6 @@
 #!/bin/bash
-# Sports Bar Nginx 和 SSL 配置脚本
+# Sports Bar Nginx + SSL 配置脚本
+# 使用已购买的 SSL 证书（非 Let's Encrypt）
 
 set -e
 
@@ -15,36 +16,38 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  配置 Nginx 和 SSL 证书${NC}"
 echo -e "${GREEN}========================================${NC}"
 
-echo -e "\n${YELLOW}[1/4] 配置 Nginx...${NC}"
-cp ${PROJECT_DIR}/deploy/nginx-sports-bar.conf /etc/nginx/sites-available/sports-bar
+echo -e "\n${YELLOW}[1/5] 部署 SSL 证书...${NC}"
+mkdir -p /etc/nginx/ssl
 
-# 删除默认配置（如果存在）
+if [ -f ${PROJECT_DIR}/yunlifang.cloud_bundle.crt ] && [ -f ${PROJECT_DIR}/yunlifang.cloud.key ]; then
+    cp ${PROJECT_DIR}/yunlifang.cloud_bundle.crt /etc/nginx/ssl/
+    cp ${PROJECT_DIR}/yunlifang.cloud.key /etc/nginx/ssl/
+    chmod 600 /etc/nginx/ssl/yunlifang.cloud.key
+    echo -e "${GREEN}SSL 证书已部署${NC}"
+else
+    echo -e "${RED}错误: SSL 证书文件不存在!${NC}"
+    echo -e "请确保以下文件在 ${PROJECT_DIR}/ 目录:"
+    echo -e "  - yunlifang.cloud_bundle.crt"
+    echo -e "  - yunlifang.cloud.key"
+    exit 1
+fi
+
+echo -e "\n${YELLOW}[2/5] 配置 Nginx...${NC}"
+cp ${PROJECT_DIR}/nginx-ssl.conf /etc/nginx/sites-available/sports-bar
+
+echo -e "\n${YELLOW}[3/5] 启用站点配置...${NC}"
 rm -f /etc/nginx/sites-enabled/default
-
-# 启用新配置
 ln -sf /etc/nginx/sites-available/sports-bar /etc/nginx/sites-enabled/
 
-echo -e "\n${YELLOW}[2/4] 测试 Nginx 配置...${NC}"
+echo -e "\n${YELLOW}[4/5] 测试 Nginx 配置...${NC}"
 nginx -t
 
-echo -e "\n${YELLOW}[3/4] 重启 Nginx...${NC}"
+echo -e "\n${YELLOW}[5/5] 重启 Nginx...${NC}"
 systemctl restart nginx
 
-echo -e "\n${YELLOW}[4/4] 配置 SSL 证书...${NC}"
-echo -e "${YELLOW}请确保域名 ${DOMAIN} 已解析到服务器 IP${NC}"
-echo -e "${YELLOW}正在申请 Let's Encrypt 证书...${NC}"
-
-certbot --nginx -d ${DOMAIN} -d www.${DOMAIN} --non-interactive --agree-tos --email admin@${DOMAIN} || {
-    echo -e "${RED}SSL 证书申请失败，可能是域名未解析${NC}"
-    echo -e "${YELLOW}请手动执行: certbot --nginx -d ${DOMAIN}${NC}"
-}
-
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}  配置完成!${NC}"
+echo -e "${GREEN}  Nginx + SSL 配置完成!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n访问地址:"
 echo -e "  管理后台: https://${DOMAIN}"
-echo -e "  API文档: https://${DOMAIN}/api/v1/docs"
-echo -e "\n默认管理员账号:"
-echo -e "  用户名: admin"
-echo -e "  密码: admin123"
+echo -e "  API文档:  https://${DOMAIN}/api/v1/docs"

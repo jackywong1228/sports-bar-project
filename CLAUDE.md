@@ -82,7 +82,7 @@ vue-tsc -b                       # 仅运行类型检查
 - **表名约定**: 小写下划线，如 `__tablename__ = "member"`
 - **列注释**: 所有 Column 使用 `comment` 参数说明用途
 - **配置管理**: `backend/app/core/config.py` 使用 pydantic-settings 从 `.env` 加载
-- **数据库迁移**: Alembic（`backend/alembic/`），首次初始化用 `init_data.py`
+- **数据库建表**: 使用 `Base.metadata.create_all()` 自动建表，首次初始化用 `init_data.py`（Alembic 目录存在但未配置迁移脚本）
 - **CORS**: DEBUG=True 时允许所有源，生产环境有白名单（见 `main.py`）
 
 ### 前端关键文件
