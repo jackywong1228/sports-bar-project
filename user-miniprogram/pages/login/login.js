@@ -1,16 +1,20 @@
 const app = getApp()
 const api = require('../../utils/api')
 const wxApi = require('../../utils/wx-api')
+const { upload } = require('../../utils/request')
 
 Page({
   data: {
     phone: '',
     isLoading: false,
-    needBindPhone: false  // 是否需要绑定手机号
+    needBindPhone: false,
+    needCompleteProfile: false,
+    tempAvatar: '',
+    tempNickname: '',
+    isSaving: false
   },
 
   onLoad(options) {
-    // 检查是否已登录
     if (app.globalData.token) {
       wx.navigateBack()
     }
@@ -50,7 +54,6 @@ Page({
     this.setData({ isLoading: true })
 
     try {
-      // 获取微信登录code
       const loginRes = await wxApi.login()
 
       if (!loginRes.code) {
@@ -58,7 +61,6 @@ Page({
         return
       }
 
-      // 调用后端接口
       const res = await api.wxLogin(loginRes.code)
       this.handleLoginSuccess(res.data)
 
@@ -77,7 +79,6 @@ Page({
       return
     }
 
-    // 如果已经登录，直接绑定手机号
     if (app.globalData.token) {
       this.setData({ isLoading: true })
 
@@ -95,7 +96,6 @@ Page({
         this.setData({ isLoading: false })
       }
     } else {
-      // 先微信登录再绑定手机号
       this.wxLoginThenBindPhone(e.detail.code)
     }
   },
@@ -105,7 +105,6 @@ Page({
     this.setData({ isLoading: true })
 
     try {
-      // 先微信登录
       const loginRes = await wxApi.login()
 
       if (!loginRes.code) {
@@ -114,9 +113,8 @@ Page({
       }
 
       const res = await api.wxLogin(loginRes.code)
-      this.handleLoginSuccess(res.data, false)  // 不跳转
+      this.handleLoginSuccess(res.data, false)
 
-      // 再绑定手机号
       const phoneRes = await api.getPhoneNumber(phoneCode)
       app.globalData.memberInfo.phone = phoneRes.data.phone
 
@@ -149,6 +147,13 @@ Page({
       return
     }
 
+    // 检查是否需要完善资料（昵称为默认值）
+    const nickname = data.member_info.nickname || ''
+    if (nickname === '微信用户' || nickname.startsWith('用户')) {
+      this.setData({ needCompleteProfile: true })
+      return
+    }
+
     if (navigate) {
       wxApi.showToast('登录成功', 'success')
       setTimeout(() => {
@@ -159,6 +164,85 @@ Page({
 
   // 跳过绑定手机号
   skipBindPhone() {
+    wxApi.showToast('登录成功', 'success')
+    setTimeout(() => {
+      wx.navigateBack()
+    }, 1000)
+  },
+
+  // ==================== 完善资料相关 ====================
+
+  // 选择头像回调
+  onChooseAvatar(e) {
+    const tempFilePath = e.detail.avatarUrl
+    this.setData({ tempAvatar: tempFilePath })
+  },
+
+  // 昵称输入回调
+  onNicknameChange(e) {
+    this.setData({ tempNickname: e.detail.value })
+  },
+
+  // 保存资料
+  async saveProfile() {
+    const { tempAvatar, tempNickname } = this.data
+
+    if (!tempAvatar && !tempNickname) {
+      wxApi.showToast('请至少设置头像或昵称')
+      return
+    }
+
+    this.setData({ isSaving: true })
+
+    try {
+      let avatarUrl = ''
+
+      // 上传头像
+      if (tempAvatar) {
+        const uploadRes = await upload('/upload/member-image', tempAvatar, 'file')
+        if (uploadRes.data && uploadRes.data.url) {
+          avatarUrl = uploadRes.data.url
+        }
+      }
+
+      // 更新资料到后端
+      const profileData = {}
+      if (avatarUrl) {
+        profileData.avatar = avatarUrl
+      }
+      if (tempNickname) {
+        profileData.nickname = tempNickname
+      }
+
+      if (Object.keys(profileData).length > 0) {
+        await api.updateUserProfile(profileData)
+
+        // 更新本地缓存
+        if (app.globalData.memberInfo) {
+          if (profileData.avatar) {
+            app.globalData.memberInfo.avatar = profileData.avatar
+          }
+          if (profileData.nickname) {
+            app.globalData.memberInfo.nickname = profileData.nickname
+          }
+        }
+      }
+
+      wxApi.showToast('保存成功', 'success')
+      setTimeout(() => {
+        wx.navigateBack()
+      }, 1000)
+
+    } catch (err) {
+      console.error('保存资料失败:', err)
+      wxApi.showToast(err.message || '保存失败')
+    } finally {
+      this.setData({ isSaving: false })
+    }
+  },
+
+  // 跳过完善资料
+  skipProfile() {
     wxApi.showToast('登录成功', 'success')
     setTimeout(() => {
       wx.navigateBack()

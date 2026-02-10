@@ -9,6 +9,9 @@ Page({
     // 会员等级相关
     memberLevel: 'TRIAL',
     memberTheme: null,
+    // 编辑相关
+    isEditingNickname: false,
+    editNickname: '',
     checkinStats: {
       month_count: 0,
       month_duration: 0,
@@ -238,5 +241,84 @@ Page({
     wx.navigateTo({
       url: '/pages/member/member'
     })
+  },
+
+  // ==================== 资料编辑 ====================
+
+  // 选择头像
+  async onChooseAvatar(e) {
+    const tempFilePath = e.detail.avatarUrl
+    if (!tempFilePath) return
+
+    wx.showLoading({ title: '上传中...' })
+
+    try {
+      const { upload } = require('../../utils/request')
+      const uploadRes = await upload('/upload/member-image', tempFilePath, 'file')
+      if (uploadRes.data && uploadRes.data.url) {
+        const avatarUrl = uploadRes.data.url
+        await api.updateUserProfile({ avatar: avatarUrl })
+
+        // 更新本地数据（创建新对象避免直接修改 this.data）
+        const memberInfo = { ...this.data.memberInfo, avatar: avatarUrl }
+        app.globalData.memberInfo = memberInfo
+        this.setData({ memberInfo })
+
+        wx.showToast({ title: '头像更新成功', icon: 'success' })
+      }
+    } catch (err) {
+      console.error('更新头像失败:', err)
+      wx.showToast({ title: '更新失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
+  },
+
+  // 打开昵称编辑
+  onEditNickname() {
+    this.setData({
+      isEditingNickname: true,
+      editNickname: this.data.memberInfo.nickname || ''
+    })
+  },
+
+  // 昵称输入
+  onNicknameInput(e) {
+    this.setData({ editNickname: e.detail.value })
+  },
+
+  // 取消编辑昵称
+  cancelEditNickname() {
+    this.setData({ isEditingNickname: false, editNickname: '' })
+  },
+
+  // 确认修改昵称
+  async confirmEditNickname() {
+    const nickname = this.data.editNickname.trim()
+    if (!nickname) {
+      wx.showToast({ title: '昵称不能为空', icon: 'none' })
+      return
+    }
+
+    wx.showLoading({ title: '保存中...' })
+
+    try {
+      await api.updateUserProfile({ nickname })
+
+      const memberInfo = { ...this.data.memberInfo, nickname }
+      app.globalData.memberInfo = memberInfo
+      this.setData({
+        memberInfo,
+        isEditingNickname: false,
+        editNickname: ''
+      })
+
+      wx.showToast({ title: '昵称修改成功', icon: 'success' })
+    } catch (err) {
+      console.error('修改昵称失败:', err)
+      wx.showToast({ title: '修改失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   }
 })

@@ -2,12 +2,12 @@
 import os
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_member
 from app.schemas.response import ResponseModel
 
 router = APIRouter()
@@ -15,6 +15,23 @@ router = APIRouter()
 # 上传配置
 UPLOAD_DIR = "uploads"
 ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+
+
+def detect_image_type(content: bytes) -> Optional[str]:
+    """通过文件头 magic bytes 检测实际图片类型（不依赖 content_type）"""
+    if len(content) < 12:
+        return None
+    if content[:3] == b'\xff\xd8\xff':
+        return "image/jpeg"
+    if content[:8] == b'\x89PNG\r\n\x1a\n':
+        return "image/png"
+    if content[:4] == b'GIF8':
+        return "image/gif"
+    if content[:4] == b'RIFF' and content[8:12] == b'WEBP':
+        return "image/webp"
+    return None
+
+
 ALLOWED_FILE_TYPES = ALLOWED_IMAGE_TYPES + ["application/pdf", "application/msword",
                                              "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -72,6 +89,46 @@ async def upload_image(
         "filename": filename,
         "size": len(content),
         "content_type": file.content_type
+    })
+
+
+@router.post("/member-image", response_model=ResponseModel)
+async def upload_member_image(
+    file: UploadFile = File(...),
+    current_member = Depends(get_current_member)
+):
+    """会员端上传图片（头像等）"""
+    content = await file.read()
+
+    # 通过文件头判断实际图片类型（wx.uploadFile 的 content_type 不可靠）
+    actual_type = detect_image_type(content)
+    if not actual_type:
+        raise HTTPException(status_code=400, detail="不支持的图片格式，请上传 JPG/PNG/GIF/WEBP 格式")
+
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail=f"文件大小超过限制（最大 {MAX_FILE_SIZE // 1024 // 1024}MB）")
+
+    # 根据实际类型决定扩展名
+    ext_map = {"image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp"}
+    ext = ext_map.get(actual_type, ".jpg")
+
+    upload_path = ensure_upload_dir("avatars")
+    # 使用检测到的真实扩展名，而非原始文件名的扩展名
+    date_str = datetime.now().strftime("%Y%m%d")
+    unique_id = uuid.uuid4().hex[:8]
+    filename = f"{date_str}_{unique_id}{ext}"
+    file_path = os.path.join(upload_path, filename)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    relative_url = f"/{UPLOAD_DIR}/avatars/{filename}"
+
+    return ResponseModel(data={
+        "url": relative_url,
+        "filename": filename,
+        "size": len(content),
+        "content_type": actual_type
     })
 
 

@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import date, datetime, timedelta
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -357,6 +357,56 @@ def get_member_profile(
         "member_expire_time": str(current_member.member_expire_time) if current_member.member_expire_time else None,
         "coin_balance": float(current_member.coin_balance or 0),
         "point_balance": current_member.point_balance or 0
+    })
+
+
+class UpdateProfileRequest(BaseModel):
+    nickname: Optional[str] = Field(None, max_length=50)
+    avatar: Optional[str] = Field(None, max_length=500)
+    gender: Optional[int] = Field(None, ge=0, le=2)
+
+    @validator('nickname')
+    def validate_nickname(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) == 0:
+                raise ValueError('昵称不能为空')
+        return v
+
+    @validator('avatar')
+    def validate_avatar(cls, v):
+        if v is not None and not v.startswith('/uploads/'):
+            raise ValueError('无效的头像地址')
+        return v
+
+
+@router.put("/profile", response_model=ResponseModel)
+def update_member_profile(
+    data: UpdateProfileRequest,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """会员更新个人资料（昵称、头像）"""
+    if data.nickname is not None:
+        current_member.nickname = data.nickname
+    if data.avatar is not None:
+        current_member.avatar = data.avatar
+    if data.gender is not None:
+        current_member.gender = data.gender
+
+    try:
+        db.commit()
+        db.refresh(current_member)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="更新资料失败")
+
+    return ResponseModel(data={
+        "id": current_member.id,
+        "nickname": current_member.nickname,
+        "avatar": current_member.avatar,
+        "phone": current_member.phone,
+        "gender": current_member.gender
     })
 
 

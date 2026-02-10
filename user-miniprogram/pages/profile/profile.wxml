@@ -1,10 +1,14 @@
 <view class="container">
   <!-- 用户信息 -->
   <view class="user-header" wx:if="{{isLoggedIn && memberInfo}}">
-    <image class="user-avatar" src="{{memberInfo.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
+    <button class="avatar-edit-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+      <image class="user-avatar" src="{{memberInfo.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
+      <view class="avatar-edit-badge">编辑</view>
+    </button>
     <view class="user-info">
       <view class="user-name-row">
-        <text class="user-name">{{memberInfo.nickname || '用户'}}</text>
+        <text class="user-name" bindtap="onEditNickname">{{memberInfo.nickname || '用户'}}</text>
+        <text class="edit-icon-text" bindtap="onEditNickname" wx:if="{{!isEditingNickname}}">✎</text>
         <view class="user-level {{memberInfo.level_type || 'normal'}}" wx:if="{{memberInfo.level_name}}">
           <image class="level-icon" wx:if="{{memberInfo.level_icon}}" src="{{memberInfo.level_icon}}" mode="aspectFit"></image>
           <text class="level-tag">{{memberInfo.level_name}}</text>
@@ -14,12 +18,33 @@
     </view>
   </view>
 
-  <!-- 未登录状态 -->
+  <!-- wx:else 必须紧跟 wx:if 节点，中间不能插入其他元素 -->
   <view class="user-header guest" wx:else bindtap="goToLogin">
     <image class="user-avatar" src="/assets/images/avatar-default.png" mode="aspectFill"></image>
     <view class="user-info">
       <text class="login-text">点击登录</text>
       <text class="login-hint">登录后享受更多服务</text>
+    </view>
+  </view>
+
+  <!-- 昵称编辑弹窗（固定定位，移到 wx:if/else 链之后避免打断条件关系） -->
+  <view class="nickname-modal" wx:if="{{isEditingNickname}}">
+    <view class="nickname-modal-mask" bindtap="cancelEditNickname"></view>
+    <view class="nickname-modal-content">
+      <text class="nickname-modal-title">修改昵称</text>
+      <input
+        class="nickname-modal-input"
+        type="nickname"
+        placeholder="请输入昵称"
+        value="{{editNickname}}"
+        bindinput="onNicknameInput"
+        bindchange="onNicknameInput"
+        focus="{{isEditingNickname}}"
+      />
+      <view class="nickname-modal-btns">
+        <view class="nickname-modal-btn cancel" bindtap="cancelEditNickname">取消</view>
+        <view class="nickname-modal-btn confirm" bindtap="confirmEditNickname">确定</view>
+      </view>
     </view>
   </view>
 

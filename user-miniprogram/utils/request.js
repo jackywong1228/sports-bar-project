@@ -234,7 +234,13 @@ const upload = (url, filePath, name = 'file', formData = {}) => {
             reject({ code: -1, message: '解析响应失败' })
           }
         } else {
-          reject({ code: res.statusCode, message: '上传失败' })
+          // 尝试解析后端返回的错误详情
+          let message = '上传失败'
+          try {
+            const errData = JSON.parse(res.data)
+            message = errData.detail || errData.message || message
+          } catch (e) {}
+          reject({ code: res.statusCode, message })
         }
       },
       fail: (err) => {

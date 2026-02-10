@@ -389,3 +389,116 @@
   font-size: 32rpx;
   color: rgba(255, 255, 255, 0.8);
 }
+
+/* ==================== 资料编辑 ==================== */
+
+.avatar-edit-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  line-height: normal;
+  position: relative;
+  width: 120rpx;
+  height: 120rpx;
+  flex-shrink: 0;
+}
+
+.avatar-edit-btn::after {
+  border: none;
+}
+
+.avatar-edit-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  padding: 4rpx 0;
+  border-radius: 0 0 60rpx 60rpx;
+}
+
+.edit-icon-text {
+  font-size: 28rpx;
+  margin-left: 8rpx;
+  opacity: 0.8;
+  color: #fff;
+}
+
+/* 昵称编辑弹窗 */
+.nickname-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nickname-modal-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.nickname-modal-content {
+  position: relative;
+  width: 600rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx;
+  z-index: 1001;
+}
+
+.nickname-modal-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  margin-bottom: 30rpx;
+}
+
+.nickname-modal-input {
+  width: 100%;
+  height: 88rpx;
+  background: #f5f5f5;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  font-size: 32rpx;
+  box-sizing: border-box;
+  margin-bottom: 30rpx;
+}
+
+.nickname-modal-btns {
+  display: flex;
+  gap: 20rpx;
+}
+
+.nickname-modal-btn {
+  flex: 1;
+  height: 80rpx;
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+}
+
+.nickname-modal-btn.cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.nickname-modal-btn.confirm {
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  color: #fff;
+}

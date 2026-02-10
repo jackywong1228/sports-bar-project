@@ -117,7 +117,7 @@ Page({
         }
       })
 
-      if (res.code !== 0) {
+      if (res.code !== 0 && res.code !== 200) {
         throw new Error(res.message || '创建订单失败')
       }
 
