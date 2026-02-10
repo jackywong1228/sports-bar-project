@@ -3,9 +3,9 @@ const api = require('../../utils/api')
 
 const LEVEL_BENEFITS = {
   TRIAL: { advanceDays: 1, dailyLimit: '1次', concurrent: 1, discount: '无' },
-  S:     { advanceDays: 3, dailyLimit: '2次', concurrent: 2, discount: '9.5折' },
-  SS:    { advanceDays: 7, dailyLimit: '3次', concurrent: 3, discount: '9折' },
-  SSS:   { advanceDays: 14, dailyLimit: '不限', concurrent: 5, discount: '8.5折' },
+  S:     { advanceDays: 3, dailyLimit: '1次', concurrent: 1, discount: '9.8折' },
+  SS:    { advanceDays: 7, dailyLimit: '2次', concurrent: 1, discount: '9.5折' },
+  SSS:   { advanceDays: 14, dailyLimit: '不限', concurrent: 1, discount: '9折' },
 }
 
 Page({
