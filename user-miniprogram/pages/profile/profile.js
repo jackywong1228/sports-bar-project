@@ -50,24 +50,37 @@ Page({
       memberTheme: app.globalData.memberTheme
     })
 
-    if (isLoggedIn && !memberInfo) {
-      app.getMemberInfo()
-      setTimeout(() => {
-        const updatedInfo = app.globalData.memberInfo
-        const updatedLevel = this.getMemberLevelFromInfo(updatedInfo) || app.globalData.memberLevel || 'TRIAL'
-        this.setData({
-          memberInfo: updatedInfo,
-          memberLevel: updatedLevel,
-          memberTheme: app.globalData.memberTheme
-        })
-      }, 500)
-    }
-
-    // 检查是否是教练
+    // 登录状态下始终刷新会员信息，确保等级等数据最新
     if (isLoggedIn) {
+      this.refreshMemberInfo()
       this.checkCoachStatus()
       this.loadCheckinStats()
     }
+  },
+
+  // 刷新会员信息（通过回调更新，避免硬编码延时）
+  refreshMemberInfo() {
+    const that = this
+    wx.request({
+      url: `${app.globalData.baseUrl}/member/profile`,
+      method: 'GET',
+      header: {
+        'Authorization': `Bearer ${app.globalData.token}`
+      },
+      success(res) {
+        if (res.data.code === 200) {
+          app.globalData.memberInfo = res.data.data
+          const data = res.data.data
+          const levelCode = data.member_level || data.level_code || 'TRIAL'
+          app.setMemberTheme(levelCode)
+          that.setData({
+            memberInfo: data,
+            memberLevel: levelCode,
+            memberTheme: app.globalData.memberTheme
+          })
+        }
+      }
+    })
   },
 
   // 从会员信息中获取等级代码

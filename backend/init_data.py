@@ -132,11 +132,15 @@ def init_admin_user(db: Session, dept_id: int):
 def init_member_levels(db: Session):
     """初始化会员等级"""
     levels = [
-        {"name": "普通会员", "level": 1, "discount": 1.00},
-        {"name": "银卡会员", "level": 2, "discount": 0.95},
-        {"name": "金卡会员", "level": 3, "discount": 0.90},
-        {"name": "钻石会员", "level": 4, "discount": 0.85},
-        {"name": "黑金会员", "level": 5, "discount": 0.80},
+        {"name": "体验会员", "level": 0, "level_code": "TRIAL", "discount": 1.00,
+         "booking_range_days": 1, "booking_max_count": 1, "booking_period": "day"},
+        {"name": "初级会员", "level": 2, "level_code": "S", "discount": 0.95,
+         "booking_range_days": 3, "booking_max_count": 2, "booking_period": "day"},
+        {"name": "中级会员", "level": 3, "level_code": "SS", "discount": 0.90,
+         "booking_range_days": 7, "booking_max_count": 3, "booking_period": "week"},
+        {"name": "黑金会员", "level": 5, "level_code": "SSS", "discount": 0.80,
+         "booking_range_days": 14, "booking_max_count": 5, "booking_period": "month",
+         "can_book_golf": True},
     ]
 
     for level_data in levels:

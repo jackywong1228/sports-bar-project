@@ -90,7 +90,9 @@ def member_login(
             "avatar": member.avatar,
             "phone": member.phone,
             "coin_balance": float(member.coin_balance or 0),
-            "point_balance": member.point_balance or 0
+            "point_balance": member.point_balance or 0,
+            "member_level": member.level.level_code if member.level else "TRIAL",
+            "level_name": member.level.name if member.level else "体验会员"
         }
     })
 
@@ -171,7 +173,9 @@ async def member_wx_login(
             "avatar": member.avatar,
             "phone": member.phone,
             "coin_balance": float(member.coin_balance or 0),
-            "point_balance": member.point_balance or 0
+            "point_balance": member.point_balance or 0,
+            "member_level": member.level.level_code if member.level else "TRIAL",
+            "level_name": member.level.name if member.level else "体验会员"
         }
     })
 
@@ -827,16 +831,18 @@ def create_reservation(
     venue_price = 0
     coach_price = 0
 
-    # 检查是否是有效订阅会员
-    now = datetime.now()
-    is_member_valid = current_member.member_expire_time and current_member.member_expire_time > now
+    # 检查会员等级（S/SS/SSS 订阅会员场馆预约免费）
+    level_code = 'TRIAL'
+    if current_member.level:
+        level_code = current_member.level.level_code or 'TRIAL'
+    is_subscription_member = level_code in ('S', 'SS', 'SSS')
 
     if venue_id:
         venue = db.query(Venue).filter(Venue.id == venue_id).first()
         if venue:
             hours = duration / 60
             # 订阅会员场馆预约免费
-            if not is_member_valid:
+            if not is_subscription_member:
                 venue_price = float(venue.price or 0) * hours
 
     if coach_id:
