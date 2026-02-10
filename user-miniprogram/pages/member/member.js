@@ -1,10 +1,18 @@
 const app = getApp()
 const api = require('../../utils/api')
 
+const LEVEL_BENEFITS = {
+  TRIAL: { advanceDays: 1, dailyLimit: '1次', concurrent: 1, discount: '无' },
+  S:     { advanceDays: 3, dailyLimit: '2次', concurrent: 2, discount: '9.5折' },
+  SS:    { advanceDays: 7, dailyLimit: '3次', concurrent: 3, discount: '9折' },
+  SSS:   { advanceDays: 14, dailyLimit: '不限', concurrent: 5, discount: '8.5折' },
+}
+
 Page({
   data: {
     memberInfo: {},
     cards: [],
+    benefits: LEVEL_BENEFITS.TRIAL,
     buying: false
   },
 
@@ -23,9 +31,11 @@ Page({
         app.request({ url: '/member/profile' }),
         app.request({ url: '/member/cards' })
       ])
+      const levelCode = memberRes.data?.level_code || 'TRIAL'
       this.setData({
         memberInfo: memberRes.data || {},
-        cards: cardsRes.data || []
+        cards: cardsRes.data || [],
+        benefits: LEVEL_BENEFITS[levelCode] || LEVEL_BENEFITS.TRIAL
       })
     } catch (err) {
       console.error('加载数据失败:', err)

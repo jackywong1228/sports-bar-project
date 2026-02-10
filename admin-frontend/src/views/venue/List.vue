@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Upload } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 interface Venue {
@@ -39,9 +40,24 @@ const form = reactive({
   capacity: 0,
   price: 0,
   description: '',
+  image: '',
   status: 1,
   sort: 0
 })
+
+const uploadUrl = '/api/v1/upload/image?folder=venues'
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${localStorage.getItem('token')}`
+}))
+const handleUploadSuccess = (response: any) => {
+  if (response.code === 200 && response.data) {
+    form.image = response.data.url
+    ElMessage.success('上传成功')
+  } else {
+    ElMessage.error(response.message || '上传失败')
+  }
+}
+const handleUploadError = () => ElMessage.error('上传失败')
 
 const rules = {
   name: [{ required: true, message: '请输入场地名称', trigger: 'blur' }],
@@ -98,6 +114,7 @@ const handleAdd = () => {
     capacity: 0,
     price: 0,
     description: '',
+    image: '',
     status: 1,
     sort: 0
   })
@@ -180,6 +197,12 @@ onMounted(() => {
 
       <el-table :data="tableData" v-loading="loading" stripe>
         <el-table-column prop="name" label="场地名称" width="150" />
+        <el-table-column label="图片" width="80">
+          <template #default="{ row }">
+            <el-image v-if="row.image" :src="row.image" :preview-src-list="[row.image]" fit="cover" style="width: 50px; height: 50px; border-radius: 4px;" />
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="type_name" label="场地类型" width="120" />
         <el-table-column prop="location" label="位置" width="150" />
         <el-table-column prop="capacity" label="容纳人数" width="100" />
@@ -233,6 +256,22 @@ onMounted(() => {
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" />
         </el-form-item>
+        <el-form-item label="场地图片">
+          <el-upload
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :show-file-list="false"
+            accept="image/*"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+          >
+            <el-image v-if="form.image" :src="form.image" fit="cover" style="width: 148px; height: 148px; border-radius: 8px;" />
+            <div v-else class="upload-placeholder">
+              <el-icon><Upload /></el-icon>
+              <span>点击上传</span>
+            </div>
+          </el-upload>
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="form.status" style="width: 100%;">
             <el-option v-for="o in statusOptions" :key="o.value" :label="o.label" :value="o.value" />
@@ -265,5 +304,28 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.upload-placeholder {
+  width: 148px;
+  height: 148px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8c939d;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.upload-placeholder:hover {
+  border-color: #409eff;
+}
+
+.upload-placeholder .el-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
 }
 </style>

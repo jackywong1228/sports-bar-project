@@ -85,7 +85,20 @@
           </el-select>
         </el-form-item>
         <el-form-item label="商品图片">
-          <el-input v-model="formData.image" placeholder="请输入图片URL" />
+          <el-upload
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :show-file-list="false"
+            accept="image/*"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+          >
+            <el-image v-if="formData.image" :src="formData.image" fit="cover" style="width: 148px; height: 148px; border-radius: 8px;" />
+            <div v-else class="upload-placeholder">
+              <el-icon><Upload /></el-icon>
+              <span>点击上传</span>
+            </div>
+          </el-upload>
         </el-form-item>
         <el-form-item label="商品描述">
           <el-input v-model="formData.description" type="textarea" :rows="2" placeholder="请输入商品描述" />
@@ -139,8 +152,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
+import { Upload } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const loading = ref(false)
@@ -164,6 +178,20 @@ const formRules = {
   category_id: [{ required: true, message: '请选择分类', trigger: 'change' }],
   price: [{ required: true, message: '请输入价格', trigger: 'blur' }]
 }
+
+const uploadUrl = '/api/v1/upload/image?folder=foods'
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${localStorage.getItem('token')}`
+}))
+const handleUploadSuccess = (response: any) => {
+  if (response.code === 200 && response.data) {
+    formData.image = response.data.url
+    ElMessage.success('上传成功')
+  } else {
+    ElMessage.error(response.message || '上传失败')
+  }
+}
+const handleUploadError = () => ElMessage.error('上传失败')
 
 const fetchCategories = async () => {
   const res = await request.get('/foods/categories')
@@ -242,4 +270,27 @@ onMounted(() => { fetchCategories(); fetchList() })
 .page-container { padding: 20px; }
 .search-card { margin-bottom: 16px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
+
+.upload-placeholder {
+  width: 148px;
+  height: 148px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8c939d;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.upload-placeholder:hover {
+  border-color: #409eff;
+}
+
+.upload-placeholder .el-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
 </style>

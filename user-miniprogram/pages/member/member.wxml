@@ -3,14 +3,38 @@
   <view class="header">
     <view class="level-info">
       <text class="level">{{memberInfo.level_name || '普通会员'}}</text>
-      <text class="expire" wx:if="{{memberInfo.member_expire_time}}">有效期至：{{memberInfo.member_expire_time}}</text>
+      <text class="expire" wx:if="{{memberInfo.level_code !== 'TRIAL' && memberInfo.member_expire_time}}">有效期至：{{memberInfo.member_expire_time}}</text>
+      <text class="expire" wx:elif="{{memberInfo.level_code !== 'TRIAL'}}">长期有效</text>
       <text class="expire" wx:else>暂未开通会员</text>
+    </view>
+  </view>
+
+  <!-- 已付费会员权益 -->
+  <view class="section" wx:if="{{memberInfo.level_code !== 'TRIAL'}}">
+    <view class="title">我的会员权益</view>
+    <view class="benefits-grid">
+      <view class="benefit-item">
+        <text class="benefit-value">{{benefits.advanceDays}}天</text>
+        <text class="benefit-label">提前预约</text>
+      </view>
+      <view class="benefit-item">
+        <text class="benefit-value">{{benefits.dailyLimit}}</text>
+        <text class="benefit-label">每日预约</text>
+      </view>
+      <view class="benefit-item">
+        <text class="benefit-value">{{benefits.concurrent}}个</text>
+        <text class="benefit-label">同时预约</text>
+      </view>
+      <view class="benefit-item">
+        <text class="benefit-value">{{benefits.discount}}</text>
+        <text class="benefit-label">餐食折扣</text>
+      </view>
     </view>
   </view>
 
   <!-- 会员卡套餐列表 -->
   <view class="section">
-    <view class="title">开通/续费会员</view>
+    <view class="title">{{memberInfo.level_code !== 'TRIAL' ? '续费/升级会员' : '开通/续费会员'}}</view>
     <view class="card-list">
       <view class="card {{item.is_recommended ? 'recommended' : ''}}" wx:for="{{cards}}" wx:key="id" bindtap="buyCard" data-id="{{item.id}}">
         <view class="card-badge" wx:if="{{item.is_recommended}}">推荐</view>
