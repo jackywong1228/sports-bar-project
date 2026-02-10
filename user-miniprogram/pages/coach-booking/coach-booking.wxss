@@ -71,18 +71,17 @@
 
 /* 场馆选择 */
 .venue-scroll {
-  display: flex;
+  height: 80rpx;
   white-space: nowrap;
 }
 
 .venue-item {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   padding: 16rpx 32rpx;
   margin-right: 20rpx;
   border-radius: 30rpx;
   background: #f5f5f5;
+  vertical-align: top;
 }
 
 .venue-item.active {
@@ -100,34 +99,45 @@
 
 /* 日期选择 */
 .date-scroll {
-  display: flex;
+  height: 160rpx;
   white-space: nowrap;
 }
 
 .date-item {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100rpx;
-  height: 120rpx;
+  display: inline-block;
+  text-align: center;
+  width: 150rpx;
+  height: 140rpx;
+  line-height: 1;
+  padding-top: 28rpx;
   margin-right: 20rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   background: #f5f5f5;
+  border: 2rpx solid transparent;
+  box-sizing: border-box;
+  vertical-align: top;
+}
+
+.date-item:active {
+  transform: scale(0.96);
 }
 
 .date-item.active {
   background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  border-color: #C9A962;
+  box-shadow: 0 6rpx 16rpx rgba(26, 93, 58, 0.25);
 }
 
 .date-week {
-  font-size: 24rpx;
+  display: block;
+  font-size: 26rpx;
   color: #666;
   margin-bottom: 8rpx;
 }
 
 .date-day {
-  font-size: 32rpx;
+  display: block;
+  font-size: 36rpx;
   font-weight: bold;
   color: #333;
 }

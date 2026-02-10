@@ -40,7 +40,7 @@
         data-date="{{item.date}}"
       >
         <text class="date-week">{{item.weekDay}}</text>
-        <text class="date-day">{{item.day}}</text>
+        <text class="date-day">{{item.monthDay}}</text>
       </view>
     </scroll-view>
   </view>
@@ -50,7 +50,7 @@
     <view class="section-title">选择时间段（可多选）</view>
     <view class="time-grid">
       <view
-        class="time-item {{item.status !== 'available' ? 'disabled' : ''}} {{selectedSlots.indexOf(item.time) > -1 ? 'selected' : ''}}"
+        class="time-item {{item.status !== 'available' ? 'disabled' : ''}} {{selectedSlotsMap[item.time] ? 'selected' : ''}}"
         wx:for="{{timeSlots}}"
         wx:key="time"
         bindtap="selectSlot"
@@ -67,12 +67,12 @@
     <view class="booking-summary">
       <view class="summary-row">
         <text class="summary-label">已选：</text>
-        <text class="summary-value">{{getDuration()}}小时</text>
-        <text class="summary-time" wx:if="{{selectedSlots.length > 0}}">（{{getTimeRange()}}）</text>
+        <text class="summary-value">{{selectedSlots.length}}小时</text>
+        <text class="summary-time" wx:if="{{selectedSlots.length > 0}}">（{{timeRangeText}}）</text>
       </view>
       <view class="summary-row">
         <text class="summary-label">合计：</text>
-        <text class="summary-price">{{getTotalPrice()}} 金币</text>
+        <text class="summary-price">{{totalPrice}} 金币</text>
       </view>
     </view>
     <button

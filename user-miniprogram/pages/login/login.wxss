@@ -81,13 +81,13 @@
 .divider .line {
   flex: 1;
   height: 1rpx;
-  background: #e5e5e5;
+  background: #d0d0d0;
 }
 
 .divider .text {
   padding: 0 30rpx;
   font-size: 26rpx;
-  color: #999;
+  color: #666;
 }
 
 .input-group {

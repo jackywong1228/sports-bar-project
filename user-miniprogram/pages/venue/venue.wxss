@@ -60,8 +60,13 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-.type-icon-text {
-  font-size: 32rpx;
+.type-icon-img {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+.type-card.active .type-icon-img {
+  filter: brightness(0) invert(1);
 }
 
 .type-card-name {

@@ -2,6 +2,18 @@ const app = getApp()
 const util = require('../../utils/util.js')
 const api = require('../../utils/api.js')
 
+// 场馆类型图标映射（英文key → 本地图片路径）
+const SPORT_ICON_MAP = {
+  tennis: '/assets/icons/sports/tennis.svg',
+  pickleball: '/assets/icons/sports/pickleball.svg',
+  squash: '/assets/icons/sports/squash.svg',
+  golf: '/assets/icons/sports/golf.svg',
+  'golf-vip': '/assets/icons/sports/golf.svg',
+  golf_vip: '/assets/icons/sports/golf.svg',
+  basketball: '/assets/icons/sports/basketball.svg',
+  badminton: '/assets/icons/sports/badminton.svg',
+}
+
 Page({
   data: {
     venueTypes: [],
@@ -134,7 +146,10 @@ Page({
         url: '/member/venue-types'
       })
 
-      const types = res.data || []
+      const types = (res.data || []).map(type => ({
+        ...type,
+        iconPath: SPORT_ICON_MAP[(type.icon || '').toLowerCase()] || SPORT_ICON_MAP.basketball
+      }))
       if (types.length > 0) {
         const typeId = defaultTypeId ? parseInt(defaultTypeId) : types[0].id
         this.setData({

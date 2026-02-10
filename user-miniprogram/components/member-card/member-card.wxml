@@ -32,16 +32,16 @@
       <view class="benefit-divider"></view>
       <view class="benefit-item">
         <text class="benefit-value" wx:if="{{currentLevel === 'TRIAL'}}">无</text>
-        <text class="benefit-value" wx:elif="{{currentLevel === 'S'}}">9.5折</text>
-        <text class="benefit-value" wx:elif="{{currentLevel === 'SS'}}">9折</text>
-        <text class="benefit-value" wx:else>8.5折</text>
+        <text class="benefit-value" wx:elif="{{currentLevel === 'S'}}">9.8折</text>
+        <text class="benefit-value" wx:elif="{{currentLevel === 'SS'}}">9.5折</text>
+        <text class="benefit-value" wx:else>9折</text>
         <text class="benefit-label">餐饮折扣</text>
       </view>
     </view>
 
     <!-- TRIAL会员提示 -->
     <view class="trial-tip" wx:if="{{currentLevel === 'TRIAL'}}">
-      <text class="tip-icon">&#x1F4A1;</text>
+      <text class="tip-icon">💡</text>
       <text class="tip-text">升级会员可自主预约场馆</text>
     </view>
   </view>

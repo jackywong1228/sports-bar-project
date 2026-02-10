@@ -1,5 +1,17 @@
 const app = getApp()
 
+// 场馆类型图标映射
+const SPORT_ICON_MAP = {
+  tennis: '/assets/icons/sports/tennis.svg',
+  pickleball: '/assets/icons/sports/pickleball.svg',
+  squash: '/assets/icons/sports/squash.svg',
+  golf: '/assets/icons/sports/golf.svg',
+  'golf-vip': '/assets/icons/sports/golf.svg',
+  golf_vip: '/assets/icons/sports/golf.svg',
+  basketball: '/assets/icons/sports/basketball.svg',
+  badminton: '/assets/icons/sports/badminton.svg',
+}
+
 Page({
   data: {
     venueTypes: [],
@@ -41,18 +53,24 @@ Page({
     try {
       const res = await app.request({ url: '/member/venue-types' })
       console.log('[DEBUG] loadVenueTypes 成功:', res)
-      const types = [{ id: 0, name: '全部' }, ...(res.data || [])]
+      const types = [
+        { id: 0, name: '全部', iconPath: '/assets/icons/sports/all.svg' },
+        ...(res.data || []).map(type => ({
+          ...type,
+          iconPath: SPORT_ICON_MAP[(type.icon || '').toLowerCase()] || SPORT_ICON_MAP.basketball
+        }))
+      ]
       this.setData({ venueTypes: types })
     } catch (err) {
       console.error('[DEBUG] loadVenueTypes 失败:', err)
       console.error('[DEBUG] 错误详情:', JSON.stringify(err))
       this.setData({
         venueTypes: [
-          { id: 0, name: '全部' },
-          { id: 1, name: '羽毛球' },
-          { id: 2, name: '乒乓球' },
-          { id: 3, name: '篮球' },
-          { id: 4, name: '网球' }
+          { id: 0, name: '全部', iconPath: '/assets/icons/sports/all.svg' },
+          { id: 1, name: '羽毛球', iconPath: '/assets/icons/sports/badminton.svg' },
+          { id: 2, name: '乒乓球', iconPath: '/assets/icons/sports/pickleball.svg' },
+          { id: 3, name: '篮球', iconPath: '/assets/icons/sports/basketball.svg' },
+          { id: 4, name: '网球', iconPath: '/assets/icons/sports/tennis.svg' }
         ]
       })
     }

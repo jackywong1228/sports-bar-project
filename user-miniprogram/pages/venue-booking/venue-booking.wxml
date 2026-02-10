@@ -3,7 +3,7 @@
   <!-- TRIAL会员提示横幅 -->
   <view class="trial-banner" wx:if="{{!canBook && memberLevel === 'TRIAL'}}">
     <view class="trial-banner-content">
-      <text class="trial-icon">&#x26A0;</text>
+      <text class="trial-icon">⚠️</text>
       <text class="trial-text">体验会员无法自行预约，请联系前台或</text>
       <text class="trial-link" bindtap="goToMember">升级会员</text>
     </view>
@@ -25,7 +25,7 @@
         data-id="{{item.id}}"
       >
         <view class="type-card-icon">
-          <text class="type-icon-text">{{item.icon || '🏀'}}</text>
+          <image class="type-icon-img" src="{{item.iconPath}}" mode="aspectFit"></image>
         </view>
         <text class="type-card-name">{{item.name}}</text>
         <text class="type-card-count" wx:if="{{item.venue_count}}">{{item.venue_count}}个场地</text>
@@ -34,16 +34,18 @@
   </scroll-view>
 
   <!-- 日期选择 -->
-  <scroll-view class="date-scroll" scroll-x enable-flex>
-    <view
-      class="date-item {{selectedDate === item.date ? 'active' : ''}}"
-      wx:for="{{dates}}"
-      wx:key="date"
-      bindtap="selectDate"
-      data-date="{{item.date}}"
-    >
-      <text class="date-week">{{item.weekDay}}</text>
-      <text class="date-day">{{item.day}}</text>
+  <scroll-view class="date-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="date-list">
+      <view
+        class="date-item {{selectedDate === item.date ? 'active' : ''}}"
+        wx:for="{{dates}}"
+        wx:key="date"
+        bindtap="selectDate"
+        data-date="{{item.date}}"
+      >
+        <text class="date-week">{{item.weekDay}}</text>
+        <text class="date-day">{{item.day}}</text>
+      </view>
     </view>
   </scroll-view>
 

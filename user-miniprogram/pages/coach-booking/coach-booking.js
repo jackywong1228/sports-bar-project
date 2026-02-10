@@ -11,6 +11,9 @@ Page({
     selectedDate: '',
     timeSlots: [],
     selectedSlots: [],
+    selectedSlotsMap: {},
+    totalPrice: 0,
+    timeRangeText: '',
     loading: true,
     submitting: false
   },
@@ -23,7 +26,13 @@ Page({
 
   // 初始化日期列表
   initDates() {
-    const dates = util.getDateList(7)
+    const dates = util.getDateList(7).map(item => {
+      // 从 date 字段 "2026-02-10" 解析出 "2/10" 格式
+      const parts = item.date.split('-')
+      const month = parseInt(parts[1])
+      const day = parseInt(parts[2])
+      return { ...item, monthDay: `${month}/${day}` }
+    })
     this.setData({
       dates,
       selectedDate: dates[0].date
@@ -57,7 +66,10 @@ Page({
     const venueId = e.currentTarget.dataset.id
     this.setData({
       selectedVenue: venueId,
-      selectedSlots: []
+      selectedSlots: [],
+      selectedSlotsMap: {},
+      totalPrice: 0,
+      timeRangeText: ''
     })
     this.loadTimeSlots()
   },
@@ -67,7 +79,10 @@ Page({
     const date = e.currentTarget.dataset.date
     this.setData({
       selectedDate: date,
-      selectedSlots: []
+      selectedSlots: [],
+      selectedSlotsMap: {},
+      totalPrice: 0,
+      timeRangeText: ''
     })
     this.loadTimeSlots()
   },
@@ -131,29 +146,28 @@ Page({
     }
 
     selectedSlots.sort()
-    this.setData({ selectedSlots })
+    const slotsMap = {}
+    selectedSlots.forEach(t => { slotsMap[t] = true })
+    this.setData({
+      selectedSlots,
+      selectedSlotsMap: slotsMap,
+      totalPrice: this._calcTotalPrice(selectedSlots),
+      timeRangeText: this._calcTimeRange(selectedSlots)
+    })
   },
 
-  // 计算总价
-  getTotalPrice() {
+  // 计算总价（内部方法）
+  _calcTotalPrice(slots) {
     const price = Number(this.data.coach.price) || 0
-    return (price * this.data.selectedSlots.length).toFixed(0)
+    return (price * slots.length).toFixed(0)
   },
 
-  // 计算时长
-  getDuration() {
-    return this.data.selectedSlots.length
-  },
-
-  // 获取时间范围
-  getTimeRange() {
-    const slots = this.data.selectedSlots
+  // 计算时间范围（内部方法）
+  _calcTimeRange(slots) {
     if (slots.length === 0) return ''
-
     const startTime = slots[0]
     const endHour = parseInt(slots[slots.length - 1].split(':')[0]) + 1
     const endTime = `${String(endHour).padStart(2, '0')}:00`
-
     return `${startTime} - ${endTime}`
   },
 
@@ -186,7 +200,7 @@ Page({
           reservation_date: this.data.selectedDate,
           start_time: startTime,
           end_time: endTime,
-          duration: this.getDuration() * 60
+          duration: this.data.selectedSlots.length * 60
         }
       })
 

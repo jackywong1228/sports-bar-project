@@ -10,7 +10,7 @@
         data-type="{{item.id}}"
       >
         <view class="type-card-icon">
-          <text class="type-icon-text">{{item.id === 0 ? '🏟️' : item.icon === 'tennis' ? '🎾' : item.icon === 'pickleball' ? '🏓' : item.icon === 'squash' ? '🎯' : item.icon === 'golf' || item.icon === 'golf-vip' ? '⛳' : '🏀'}}</text>
+          <image class="type-icon-img" src="{{item.iconPath}}" mode="aspectFit"></image>
         </view>
         <text class="type-card-name">{{item.name}}</text>
       </view>
