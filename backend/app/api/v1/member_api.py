@@ -167,6 +167,7 @@ async def member_wx_login(
         "access_token": access_token,
         "token_type": "bearer",
         "is_new_user": is_new_user,
+        "openid": openid,
         "member_info": {
             "id": member.id,
             "nickname": member.nickname,

@@ -138,6 +138,10 @@ Page({
     wx.setStorageSync('token', data.access_token)
     app.globalData.token = data.access_token
     app.globalData.memberInfo = data.member_info
+    if (data.openid) {
+      app.globalData.openid = data.openid
+      wx.setStorageSync('openid', data.openid)
+    }
 
     // 新用户可能需要绑定手机号
     if (data.is_new_user && !data.member_info.phone) {

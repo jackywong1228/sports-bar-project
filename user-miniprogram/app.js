@@ -3,6 +3,7 @@ App({
     userInfo: null,
     memberInfo: null,
     token: '',
+    openid: '',
     baseUrl: 'https://yunlifang.cloud/api/v1',
     cartCount: 0,
     // 教练相关
@@ -57,6 +58,10 @@ App({
     if (token) {
       this.globalData.token = token
       this.getMemberInfo()
+    }
+    const openid = wx.getStorageSync('openid')
+    if (openid) {
+      this.globalData.openid = openid
     }
     // 检查教练登录状态
     const coachToken = wx.getStorageSync('coach_token')
@@ -169,7 +174,9 @@ App({
   // 退出登录
   logout() {
     wx.removeStorageSync('token')
+    wx.removeStorageSync('openid')
     this.globalData.token = ''
+    this.globalData.openid = ''
     this.globalData.memberInfo = null
     this.globalData.cartCount = 0
     // 重置会员状态

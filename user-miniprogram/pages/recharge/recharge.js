@@ -68,26 +68,42 @@ Page({
     this.setData({ loading: true })
 
     try {
-      // 获取用户openid（实际项目中应该在登录时获取并存储）
-      const openid = app.globalData.openid || ''
+      let openid = app.globalData.openid || ''
 
       if (!openid) {
-        // 如果没有openid，尝试获取
+        // 尝试用 wx.login 的 code 换取 openid
         const loginRes = await new Promise((resolve, reject) => {
           wx.login({
             success: res => resolve(res),
             fail: err => reject(err)
           })
         })
-        // 这里应该调用后端接口用code换取openid
-        // 简化处理：模拟支付成功
-        wx.showModal({
-          title: '提示',
-          content: '请先完成微信授权登录',
-          showCancel: false
-        })
-        this.setData({ loading: false })
-        return
+        if (loginRes.code) {
+          const wxRes = await app.request({
+            url: '/member/auth/wx-login',
+            method: 'POST',
+            data: { code: loginRes.code }
+          })
+          if (wxRes.data && wxRes.data.openid) {
+            openid = wxRes.data.openid
+            app.globalData.openid = openid
+            wx.setStorageSync('openid', openid)
+            // 同步更新 token
+            if (wxRes.data.access_token) {
+              app.globalData.token = wxRes.data.access_token
+              wx.setStorageSync('token', wxRes.data.access_token)
+            }
+          }
+        }
+        if (!openid) {
+          wx.showModal({
+            title: '提示',
+            content: '请先完成微信授权登录',
+            showCancel: false
+          })
+          this.setData({ loading: false })
+          return
+        }
       }
 
       // 创建充值订单
