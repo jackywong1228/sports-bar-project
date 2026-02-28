@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Numeric, Date
+from sqlalchemy import Column, Integer, String, Text, DateTime, Numeric, Date, Boolean
 from sqlalchemy.sql import func
 from app.core.database import Base
-from app.models.base import TimestampMixin
+from app.models.base import TimestampMixin, SoftDeleteMixin
 
 
 class RechargeOrder(Base, TimestampMixin):
@@ -109,3 +109,16 @@ class FinanceStat(Base, TimestampMixin):
 
     # 新增会员
     new_members = Column(Integer, default=0, comment="新增会员数")
+
+
+class RechargePackage(Base, TimestampMixin, SoftDeleteMixin):
+    """充值套餐配置表"""
+    __tablename__ = "recharge_package"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, comment='套餐名称')
+    amount = Column(Numeric(10, 2), nullable=False, comment='充值金额(元)')
+    coin_amount = Column(Integer, nullable=False, comment='获得金币数')
+    bonus_coins = Column(Integer, default=0, comment='赠送金币数')
+    sort_order = Column(Integer, default=0, comment='排序')
+    is_active = Column(Boolean, default=True, comment='是否启用')

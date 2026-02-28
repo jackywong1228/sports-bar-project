@@ -535,3 +535,109 @@ def get_coin_records(
             "page_size": page_size
         }
     )
+
+
+# ================== 充值套餐管理 ==================
+
+from app.models.finance import RechargePackage
+from pydantic import BaseModel as PydanticBaseModel
+
+
+class RechargePackageCreate(PydanticBaseModel):
+    name: str
+    amount: float
+    coin_amount: int
+    bonus_coins: int = 0
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class RechargePackageUpdate(PydanticBaseModel):
+    name: Optional[str] = None
+    amount: Optional[float] = None
+    coin_amount: Optional[int] = None
+    bonus_coins: Optional[int] = None
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+@router.get("/recharge-packages", response_model=ResponseModel)
+def list_recharge_packages(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """获取充值套餐列表"""
+    packages = db.query(RechargePackage).filter(
+        RechargePackage.is_deleted == False
+    ).order_by(RechargePackage.sort_order).all()
+
+    result = []
+    for pkg in packages:
+        result.append({
+            "id": pkg.id,
+            "name": pkg.name,
+            "amount": float(pkg.amount),
+            "coin_amount": pkg.coin_amount,
+            "bonus_coins": pkg.bonus_coins,
+            "total_coins": pkg.coin_amount + pkg.bonus_coins,
+            "sort_order": pkg.sort_order,
+            "is_active": pkg.is_active
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.post("/recharge-packages", response_model=ResponseModel)
+def create_recharge_package(
+    data: RechargePackageCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """创建充值套餐"""
+    pkg = RechargePackage(**data.model_dump())
+    db.add(pkg)
+    db.commit()
+    db.refresh(pkg)
+    return ResponseModel(data={"id": pkg.id, "name": pkg.name})
+
+
+@router.put("/recharge-packages/{pkg_id}", response_model=ResponseModel)
+def update_recharge_package(
+    pkg_id: int,
+    data: RechargePackageUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """更新充值套餐"""
+    pkg = db.query(RechargePackage).filter(
+        RechargePackage.id == pkg_id,
+        RechargePackage.is_deleted == False
+    ).first()
+    if not pkg:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="套餐不存在")
+
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(pkg, key, value)
+    db.commit()
+    return ResponseModel(message="更新成功")
+
+
+@router.delete("/recharge-packages/{pkg_id}", response_model=ResponseModel)
+def delete_recharge_package(
+    pkg_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """删除充值套餐"""
+    pkg = db.query(RechargePackage).filter(
+        RechargePackage.id == pkg_id,
+        RechargePackage.is_deleted == False
+    ).first()
+    if not pkg:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="套餐不存在")
+
+    pkg.is_deleted = True
+    db.commit()
+    return ResponseModel(message="删除成功")

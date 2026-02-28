@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Numeric, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Numeric, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.models.base import TimestampMixin, SoftDeleteMixin
@@ -70,3 +70,36 @@ class MemberCoupon(Base, TimestampMixin):
     use_time = Column(DateTime, comment="使用时间")
     order_type = Column(String(20), comment="订单类型")
     order_id = Column(Integer, comment="订单ID")
+
+
+class CouponPack(Base, TimestampMixin, SoftDeleteMixin):
+    """优惠券合集表（入会赠送券包）"""
+    __tablename__ = "coupon_pack"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, comment='合集名称')
+    description = Column(Text, nullable=True, comment='合集描述')
+    is_active = Column(Boolean, default=True, comment='是否启用')
+
+    # 关系
+    items = relationship("CouponPackItem", back_populates="pack")
+
+
+class CouponPackItem(Base, TimestampMixin):
+    """优惠券合集明细表"""
+    __tablename__ = "coupon_pack_item"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    pack_id = Column(Integer, ForeignKey('coupon_pack.id'), nullable=False, comment='合集ID')
+    template_id = Column(Integer, ForeignKey('coupon_template.id'), nullable=False, comment='券模板ID')
+    quantity = Column(Integer, default=1, comment='数量')
+    sort_order = Column(Integer, default=0, comment='排序')
+
+    # 关系
+    pack = relationship("CouponPack", back_populates="items")
+    template = relationship("CouponTemplate")
+
+    # 唯一约束：同一合集中同一券模板只能有一条记录
+    __table_args__ = (
+        UniqueConstraint('pack_id', 'template_id', name='uk_pack_template'),
+    )

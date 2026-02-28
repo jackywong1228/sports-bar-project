@@ -1,0 +1,12 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Ball outline -->
+  <circle cx="24" cy="24" r="16" stroke="#1A5D3A" stroke-width="2"/>
+  <!-- Vertical seam -->
+  <path d="M24 8C24 8 24 40 24 40" stroke="#1A5D3A" stroke-width="1.5"/>
+  <!-- Horizontal seam -->
+  <path d="M8 24C8 24 40 24 40 24" stroke="#1A5D3A" stroke-width="1.5"/>
+  <!-- Left curve -->
+  <path d="M18 9C14 15 14 33 18 39" stroke="#1A5D3A" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+  <!-- Right curve -->
+  <path d="M30 9C34 15 34 33 30 39" stroke="#1A5D3A" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+</svg>

@@ -6,8 +6,9 @@ Page({
     memberInfo: null,
     isLoggedIn: false,
     isCoach: false,
-    // 会员等级相关
-    memberLevel: 'TRIAL',
+    // 会员等级相关（GUEST/MEMBER）
+    memberLevel: 'GUEST',
+    isMember: false,
     memberTheme: null,
     // 编辑相关
     isEditingNickname: false,
@@ -44,12 +45,13 @@ Page({
     const isLoggedIn = !!app.globalData.token
     const memberInfo = app.globalData.memberInfo
     // 优先从 memberInfo 获取会员等级，确保与后端数据一致
-    const memberLevel = this.getMemberLevelFromInfo(memberInfo) || app.globalData.memberLevel || 'TRIAL'
+    const memberLevel = this.getMemberLevelFromInfo(memberInfo) || app.globalData.memberLevel || 'GUEST'
 
     this.setData({
       isLoggedIn,
       memberInfo: memberInfo,
       memberLevel: memberLevel,
+      isMember: app.globalData.isMember || (memberLevel === 'MEMBER'),
       memberTheme: app.globalData.memberTheme
     })
 
@@ -74,11 +76,14 @@ Page({
         if (res.data.code === 200) {
           app.globalData.memberInfo = res.data.data
           const data = res.data.data
-          const levelCode = data.member_level || data.level_code || 'TRIAL'
-          app.setMemberTheme(levelCode)
+          // 兼容旧等级名，映射到 GUEST/MEMBER
+          const rawLevel = data.member_level || data.level_code || 'GUEST'
+          app.setMemberTheme(rawLevel)  // setMemberTheme 内部已做映射
+          const mappedLevel = app.globalData.memberLevel  // 取映射后的值
           that.setData({
             memberInfo: data,
-            memberLevel: levelCode,
+            memberLevel: mappedLevel,
+            isMember: app.globalData.isMember,
             memberTheme: app.globalData.memberTheme
           })
         }
@@ -86,11 +91,14 @@ Page({
     })
   },
 
-  // 从会员信息中获取等级代码
+  // 从会员信息中获取等级代码（兼容旧等级名映射到 GUEST/MEMBER）
   getMemberLevelFromInfo(memberInfo) {
     if (!memberInfo) return null
-    // 优先使用 member_level，其次是 level_code
-    return memberInfo.member_level || memberInfo.level_code || null
+    const rawLevel = memberInfo.member_level || memberInfo.level_code || null
+    if (!rawLevel) return null
+    // 兼容旧等级名
+    const legacyMap = { TRIAL: 'GUEST', S: 'MEMBER', SS: 'MEMBER', SSS: 'MEMBER' }
+    return legacyMap[rawLevel] || rawLevel
   },
 
   // 加载打卡统计

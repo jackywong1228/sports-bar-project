@@ -1,0 +1,11 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Flag pole -->
+  <line x1="20" y1="6" x2="20" y2="36" stroke="#1A5D3A" stroke-width="2" stroke-linecap="round"/>
+  <!-- Flag -->
+  <path d="M20 6L36 12L20 18Z" fill="#1A5D3A" fill-opacity="0.2" stroke="#1A5D3A" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Green/hole -->
+  <ellipse cx="24" cy="38" rx="14" ry="4" stroke="#1A5D3A" stroke-width="2"/>
+  <!-- Golf ball -->
+  <circle cx="30" cy="33" r="3.5" stroke="#1A5D3A" stroke-width="1.5" fill="none"/>
+  <path d="M28 32.5C28.5 32.5 29 32 29.5 32" stroke="#1A5D3A" stroke-width="0.8" stroke-linecap="round"/>
+</svg>

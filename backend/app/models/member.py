@@ -98,6 +98,11 @@ class Member(Base, TimestampMixin, SoftDeleteMixin):
     # 状态
     status = Column(Boolean, default=True, comment="状态")
 
+    # 人脸识别相关字段（新增）
+    face_image_url = Column(String(500), nullable=True, comment='人脸照片URL')
+    face_feature_id = Column(String(100), nullable=True, comment='人脸特征ID(腾讯云)')
+    face_registered_at = Column(DateTime, nullable=True, comment='人脸注册时间')
+
     # 关系
     level = relationship("MemberLevel", back_populates="members")
     tags = relationship("MemberTag", secondary=member_tag_relation, back_populates="members")
@@ -168,6 +173,9 @@ class MemberCard(Base, TimestampMixin, SoftDeleteMixin):
 
     # 销售统计
     sales_count = Column(Integer, default=0, comment="销量")
+
+    # 入会优惠券合集（新增）
+    welcome_coupon_pack_id = Column(Integer, ForeignKey('coupon_pack.id'), nullable=True, comment='入会赠送优惠券合集ID')
 
     # 关系
     level = relationship("MemberLevel", back_populates="cards")

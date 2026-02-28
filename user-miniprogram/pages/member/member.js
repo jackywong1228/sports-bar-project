@@ -1,18 +1,46 @@
 const app = getApp()
 const api = require('../../utils/api')
 
-const LEVEL_BENEFITS = {
-  TRIAL: { advanceDays: 1, dailyLimit: '1次', concurrent: 1, discount: '无' },
-  S:     { advanceDays: 3, dailyLimit: '1次', concurrent: 1, discount: '9.8折' },
-  SS:    { advanceDays: 7, dailyLimit: '2次', concurrent: 1, discount: '9.5折' },
-  SSS:   { advanceDays: 14, dailyLimit: '不限', concurrent: 1, discount: '9折' },
+// 单一会员制权益介绍
+const MEMBER_BENEFITS = {
+  GUEST: {
+    title: '普通用户',
+    description: '注册即可浏览场馆信息',
+    features: [
+      { icon: 'view', text: '浏览场馆信息' },
+      { icon: 'activity', text: '参与公开活动' }
+    ]
+  },
+  MEMBER: {
+    title: '尊享会员',
+    description: '解锁全部场馆预约与专属权益',
+    features: [
+      { icon: 'booking', text: '自主预约场馆' },
+      { icon: 'discount', text: '餐饮专属折扣' },
+      { icon: 'priority', text: '活动优先报名' },
+      { icon: 'coach', text: '教练课程预约' },
+      { icon: 'points', text: '积分加倍累积' },
+      { icon: 'golf', text: '高尔夫场馆使用' }
+    ]
+  }
+}
+
+// 旧等级映射到新等级（兼容）
+const LEGACY_LEVEL_MAP = {
+  TRIAL: 'GUEST',
+  S: 'MEMBER',
+  SS: 'MEMBER',
+  SSS: 'MEMBER'
 }
 
 Page({
   data: {
     memberInfo: {},
     cards: [],
-    benefits: LEVEL_BENEFITS.TRIAL,
+    isMember: false,
+    currentLevel: 'GUEST',
+    benefits: MEMBER_BENEFITS.GUEST,
+    memberExpireTime: null,
     buying: false
   },
 
@@ -31,11 +59,16 @@ Page({
         app.request({ url: '/member/profile' }),
         app.request({ url: '/member/cards' })
       ])
-      const levelCode = memberRes.data?.level_code || 'TRIAL'
+      const rawLevel = memberRes.data?.level_code || memberRes.data?.member_level || 'GUEST'
+      const currentLevel = LEGACY_LEVEL_MAP[rawLevel] || rawLevel
+      const isMember = (currentLevel === 'MEMBER')
       this.setData({
         memberInfo: memberRes.data || {},
         cards: cardsRes.data || [],
-        benefits: LEVEL_BENEFITS[levelCode] || LEVEL_BENEFITS.TRIAL
+        isMember: isMember,
+        currentLevel: currentLevel,
+        benefits: MEMBER_BENEFITS[currentLevel] || MEMBER_BENEFITS.GUEST,
+        memberExpireTime: memberRes.data?.member_expire_time || null
       })
     } catch (err) {
       console.error('加载数据失败:', err)

@@ -1,4 +1,4 @@
-"""餐食折扣服务"""
+"""餐食折扣服务 [DEPRECATED] - 新会员制度下折扣由优惠券实现，此模块不再使用"""
 from datetime import datetime
 from typing import Dict
 from decimal import Decimal

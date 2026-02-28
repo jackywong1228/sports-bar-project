@@ -577,6 +577,61 @@ const verifyReservation = (data) => {
   return post('/member/reservations/verify', data, { showLoading: true })
 }
 
+// ==================== 评论 ====================
+
+/**
+ * 提交评论
+ * @param {Object} data { venue_id?, coach_id?, content, rating, images? }
+ */
+const submitReview = (data) => {
+  return post('/member/reviews', data)
+}
+
+/**
+ * 获取我的评论列表
+ * @param {Object} params { page?, page_size? }
+ */
+const getMyReviews = (params = {}) => {
+  return get('/member/reviews', params)
+}
+
+// ==================== 场馆价目表 ====================
+
+/**
+ * 获取场馆价目表
+ * @param {number} venueId 场馆ID
+ * @param {string} date 日期
+ */
+const getVenuePriceTable = (venueId, date) => {
+  return get(`/member/venues/${venueId}/price-table`, { date })
+}
+
+// ==================== 充值套餐（会员端） ====================
+
+/**
+ * 获取充值套餐列表
+ */
+const getMemberRechargePackages = () => {
+  return get('/member/recharge-packages')
+}
+
+// ==================== 人脸识别（预留） ====================
+
+/**
+ * 注册人脸
+ * @param {Object} data { image }
+ */
+const registerFace = (data) => {
+  return post('/member/face/register', data)
+}
+
+/**
+ * 获取人脸识别状态
+ */
+const getFaceStatus = () => {
+  return get('/member/face/status')
+}
+
 module.exports = {
   // 认证
   loginByPhone,
@@ -686,5 +741,19 @@ module.exports = {
   checkBookingPermission,
   getFoodDiscount,
   getViolations,
-  verifyReservation
+  verifyReservation,
+
+  // 评论
+  submitReview,
+  getMyReviews,
+
+  // 场馆价目表
+  getVenuePriceTable,
+
+  // 充值套餐（会员端）
+  getMemberRechargePackages,
+
+  // 人脸识别（预留）
+  registerFace,
+  getFaceStatus
 }

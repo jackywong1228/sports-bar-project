@@ -229,6 +229,12 @@ const routes: RouteRecordRaw[] = [
             name: 'CouponRecord',
             component: () => import('@/views/coupon/Record.vue'),
             meta: { title: '发放记录' }
+          },
+          {
+            path: 'pack',
+            name: 'CouponPack',
+            component: () => import('@/views/coupon/Pack.vue'),
+            meta: { title: '优惠券合集', icon: 'GiftBox' }
           }
         ]
       },
@@ -289,6 +295,33 @@ const routes: RouteRecordRaw[] = [
             name: 'FinanceSettlement',
             component: () => import('@/views/finance/Settlement.vue'),
             meta: { title: '教练结算' }
+          },
+          {
+            path: 'recharge-package',
+            name: 'RechargePackage',
+            component: () => import('@/views/finance/RechargePackage.vue'),
+            meta: { title: '充值套餐', icon: 'Money' }
+          }
+        ]
+      },
+      // 评论管理
+      {
+        path: 'review',
+        name: 'Review',
+        redirect: '/review/list',
+        meta: { title: '评论管理', icon: 'ChatDotSquare' },
+        children: [
+          {
+            path: 'list',
+            name: 'ReviewList',
+            component: () => import('@/views/review/List.vue'),
+            meta: { title: '评论列表' }
+          },
+          {
+            path: 'point-config',
+            name: 'ReviewPointConfig',
+            component: () => import('@/views/review/PointConfig.vue'),
+            meta: { title: '积分配置' }
           }
         ]
       },

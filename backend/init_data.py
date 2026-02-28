@@ -1,5 +1,5 @@
 """
-初始化数据脚本
+初始化数据脚本（单一会员制版本）
 运行: python init_data.py
 """
 from sqlalchemy.orm import Session
@@ -8,6 +8,8 @@ from app.core.security import get_password_hash
 from app.models import SysUser, SysRole, SysDepartment, SysPermission, MemberLevel
 from app.models.venue import VenueType, Venue
 from app.models.member import MemberCard
+from app.models.finance import RechargePackage
+from app.models.review import ReviewPointConfig
 
 # 创建所有表
 Base.metadata.create_all(bind=engine)
@@ -130,115 +132,124 @@ def init_admin_user(db: Session, dept_id: int):
 
 
 def init_member_levels(db: Session):
-    """初始化会员等级"""
+    """初始化会员等级（单一会员制：GUEST + MEMBER）"""
     levels = [
-        {"name": "体验会员", "level": 0, "level_code": "TRIAL", "discount": 1.00,
-         "booking_range_days": 1, "booking_max_count": 1, "booking_period": "day"},
-        {"name": "初级会员", "level": 2, "level_code": "S", "discount": 0.95,
-         "booking_range_days": 3, "booking_max_count": 2, "booking_period": "day"},
-        {"name": "中级会员", "level": 3, "level_code": "SS", "discount": 0.90,
-         "booking_range_days": 7, "booking_max_count": 3, "booking_period": "week"},
-        {"name": "黑金会员", "level": 5, "level_code": "SSS", "discount": 0.80,
-         "booking_range_days": 14, "booking_max_count": 5, "booking_period": "month",
-         "can_book_golf": True},
+        {
+            "name": "普通用户", "level": 0, "level_code": "GUEST",
+            "discount": 1.00, "booking_range_days": 0, "booking_max_count": 0,
+            "booking_period": "day", "food_discount_rate": 1.00,
+            "can_book_golf": False,
+            "theme_color": "#999999",
+            "theme_gradient": "linear-gradient(135deg, #999999 0%, #BBBBBB 100%)",
+            "description": "注册即为普通用户，可浏览信息和餐饮点单",
+        },
+        {
+            "name": "尊享会员", "level": 1, "level_code": "MEMBER",
+            "discount": 1.00, "booking_range_days": 14, "booking_max_count": 0,
+            "booking_period": "day", "food_discount_rate": 1.00,
+            "can_book_golf": True,
+            "theme_color": "#C9A962",
+            "theme_gradient": "linear-gradient(135deg, #C9A962 0%, #E8D5A3 100%)",
+            "description": "尊享会员，享受全部场馆预约、商城、组队等权益",
+        },
     ]
 
     for level_data in levels:
-        existing = db.query(MemberLevel).filter(MemberLevel.level == level_data["level"]).first()
+        existing = db.query(MemberLevel).filter(
+            MemberLevel.level_code == level_data["level_code"]
+        ).first()
         if not existing:
             level = MemberLevel(**level_data)
             db.add(level)
+            print(f"创建会员等级: {level_data['name']}")
 
     db.commit()
     print("会员等级初始化完成")
 
 
 def init_member_cards(db: Session):
-    """初始化会员卡套餐"""
-    # 获取会员等级
-    levels = {level.level: level.id for level in db.query(MemberLevel).all()}
+    """初始化会员卡套餐（单一888元年卡）"""
+    member_level = db.query(MemberLevel).filter(
+        MemberLevel.level_code == "MEMBER"
+    ).first()
 
-    if not levels:
+    if not member_level:
         print("请先初始化会员等级")
         return
 
-    cards_config = [
-        {
-            "name": "月卡体验",
-            "level_id": levels.get(2, 1),  # 银卡会员
-            "original_price": 99,
-            "price": 68,
-            "duration_days": 30,
-            "bonus_coins": 10,
-            "bonus_points": 100,
-            "description": "适合新用户体验",
-            "is_recommended": False,
-            "sort_order": 1
-        },
-        {
-            "name": "季卡畅享",
-            "level_id": levels.get(3, 1),  # 金卡会员
-            "original_price": 299,
-            "price": 199,
-            "duration_days": 90,
-            "bonus_coins": 50,
-            "bonus_points": 500,
-            "description": "高性价比之选",
-            "is_recommended": True,
-            "sort_order": 2
-        },
-        {
-            "name": "年卡尊享",
-            "level_id": levels.get(4, 1),  # 钻石会员
-            "original_price": 999,
-            "price": 699,
-            "duration_days": 365,
-            "bonus_coins": 200,
-            "bonus_points": 2000,
-            "description": "全年无忧，尊享特权",
-            "is_recommended": False,
-            "sort_order": 3
-        },
-        {
-            "name": "黑金终身卡",
-            "level_id": levels.get(5, 1),  # 黑金会员
-            "original_price": 2999,
-            "price": 1999,
-            "duration_days": 3650,  # 10年
-            "bonus_coins": 1000,
-            "bonus_points": 10000,
-            "description": "终身尊享，尊贵身份",
-            "is_recommended": False,
-            "sort_order": 4
-        }
+    existing = db.query(MemberCard).filter(
+        MemberCard.name == "尊享年卡"
+    ).first()
+
+    if not existing:
+        card = MemberCard(
+            name="尊享年卡",
+            level_id=member_level.id,
+            original_price=1288,
+            price=888,
+            duration_days=365,
+            bonus_coins=100,
+            bonus_points=1000,
+            description="开通尊享会员，全场馆预约+商城+组队，一年畅享",
+            highlights='["全场馆预约权限","14天提前预约","入会优惠券包","专属金色会员标识"]',
+            is_recommended=True,
+            sort_order=1,
+            is_active=True
+        )
+        db.add(card)
+        db.commit()
+        print("创建会员卡套餐: 尊享年卡 (888元/年)")
+    else:
+        print("会员卡套餐已存在")
+
+
+def init_recharge_packages(db: Session):
+    """初始化充值套餐"""
+    packages = [
+        {"name": "小试牛刀", "amount": 100, "coin_amount": 100, "bonus_coins": 0, "sort_order": 1},
+        {"name": "初露锋芒", "amount": 500, "coin_amount": 500, "bonus_coins": 20, "sort_order": 2},
+        {"name": "渐入佳境", "amount": 1000, "coin_amount": 1000, "bonus_coins": 50, "sort_order": 3},
+        {"name": "炉火纯青", "amount": 2000, "coin_amount": 2000, "bonus_coins": 120, "sort_order": 4},
+        {"name": "登峰造极", "amount": 5000, "coin_amount": 5000, "bonus_coins": 350, "sort_order": 5},
+        {"name": "一掷千金", "amount": 10000, "coin_amount": 10000, "bonus_coins": 800, "sort_order": 6},
     ]
 
-    for card_config in cards_config:
-        existing = db.query(MemberCard).filter(MemberCard.name == card_config["name"]).first()
+    for pkg_data in packages:
+        existing = db.query(RechargePackage).filter(
+            RechargePackage.name == pkg_data["name"]
+        ).first()
         if not existing:
-            card = MemberCard(
-                name=card_config["name"],
-                level_id=card_config["level_id"],
-                original_price=card_config["original_price"],
-                price=card_config["price"],
-                duration_days=card_config["duration_days"],
-                bonus_coins=card_config["bonus_coins"],
-                bonus_points=card_config["bonus_points"],
-                description=card_config["description"],
-                is_recommended=card_config["is_recommended"],
-                sort_order=card_config["sort_order"],
-                is_active=True
-            )
-            db.add(card)
-            print(f"创建会员卡套餐: {card_config['name']}")
+            pkg = RechargePackage(**pkg_data)
+            db.add(pkg)
+            print(f"创建充值套餐: {pkg_data['name']} ({pkg_data['amount']}元)")
 
     db.commit()
-    print("会员卡套餐初始化完成")
+    print("充值套餐初始化完成")
+
+
+def init_review_config(db: Session):
+    """初始化评论积分配置"""
+    existing = db.query(ReviewPointConfig).filter(
+        ReviewPointConfig.is_active == True
+    ).first()
+
+    if not existing:
+        config = ReviewPointConfig(
+            base_points=5,
+            text_bonus=10,
+            image_bonus=5,
+            max_daily_reviews=5,
+            is_active=True
+        )
+        db.add(config)
+        db.commit()
+        print("评论积分配置初始化完成")
+    else:
+        print("评论积分配置已存在")
 
 
 def init_venues(db: Session):
     """初始化场馆类型和场馆"""
-    # 场馆类型配置
     venue_types_config = [
         {
             "name": "网球场",
@@ -287,7 +298,6 @@ def init_venues(db: Session):
     ]
 
     for type_config in venue_types_config:
-        # 检查场馆类型是否存在
         venue_type = db.query(VenueType).filter(VenueType.name == type_config["name"]).first()
         if not venue_type:
             venue_type = VenueType(
@@ -300,7 +310,6 @@ def init_venues(db: Session):
             db.flush()
             print(f"创建场馆类型: {type_config['name']}")
 
-        # 创建该类型下的场馆
         for venue_config in type_config["venues"]:
             existing_venue = db.query(Venue).filter(
                 Venue.name == venue_config["name"],
@@ -333,6 +342,8 @@ def main():
         init_admin_user(db, dept_id)
         init_member_levels(db)
         init_member_cards(db)
+        init_recharge_packages(db)
+        init_review_config(db)
         init_venues(db)
         print("数据初始化完成!")
     finally:

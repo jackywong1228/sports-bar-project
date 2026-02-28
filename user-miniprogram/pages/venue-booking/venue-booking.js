@@ -32,12 +32,10 @@ Page({
     submitting: false,
     calendarHeight: 800,
     scrollLeft: 0,
-    // 会员权限相关
+    // 会员权限相关（单一会员制）
     canBook: true,
-    memberLevel: 'TRIAL',
-    bookingQuota: 0,
-    usedQuota: 0,
-    remainingQuota: 0,
+    isMember: false,
+    memberLevel: 'GUEST',
     permissionReason: ''
   },
 
@@ -61,8 +59,11 @@ Page({
     this.checkMemberPermission()
   },
 
-  // 检查会员预约权限
+  // 检查会员预约权限（单一会员制）
   async checkMemberPermission() {
+    // 旧等级映射
+    const legacyMap = { TRIAL: 'GUEST', S: 'MEMBER', SS: 'MEMBER', SSS: 'MEMBER' }
+
     try {
       const res = await api.checkBookingPermission({
         venue_type_id: this.data.currentTypeId || 1,
@@ -70,18 +71,21 @@ Page({
       })
       if (res.code === 200) {
         const data = res.data || {}
+        // 兼容后端返回旧等级名
+        const rawLevel = data.member_level || app.globalData.memberLevel
+        const mappedLevel = legacyMap[rawLevel] || rawLevel
+        const isMember = data.is_member !== undefined ? data.is_member : (mappedLevel === 'MEMBER')
+
         this.setData({
           canBook: data.can_book !== false,
-          memberLevel: data.member_level || app.globalData.memberLevel,
-          bookingQuota: data.daily_quota || 0,
-          usedQuota: data.used_quota || 0,
-          remainingQuota: data.remaining_quota || 0,
+          isMember: isMember,
+          memberLevel: mappedLevel,
           permissionReason: data.reason || ''
         })
 
-        // 如果是TRIAL会员，显示提示
-        if (data.member_level === 'TRIAL' || !data.can_book) {
-          this.showTrialTip()
+        // 如果非会员，显示提示
+        if (!isMember || !data.can_book) {
+          this.showGuestTip()
         }
       }
     } catch (err) {
@@ -89,23 +93,21 @@ Page({
       // 从app获取默认值
       this.setData({
         canBook: app.checkCanBook(),
-        memberLevel: app.globalData.memberLevel,
-        bookingQuota: app.globalData.bookingQuota,
-        usedQuota: app.globalData.usedQuota,
-        remainingQuota: app.getRemainingQuota()
+        isMember: app.globalData.isMember,
+        memberLevel: app.globalData.memberLevel
       })
-      if (app.globalData.memberLevel === 'TRIAL') {
-        this.showTrialTip()
+      if (!app.globalData.isMember) {
+        this.showGuestTip()
       }
     }
   },
 
-  // 显示体验会员提示
-  showTrialTip() {
+  // 显示非会员提示
+  showGuestTip() {
     wx.showModal({
       title: '预约提示',
-      content: '体验会员暂无法自行预约场馆，请联系前台或升级会员',
-      confirmText: '升级会员',
+      content: '您尚未开通会员，无法自行预约场馆。开通会员即可享受全部预约权益。',
+      confirmText: '开通会员',
       cancelText: '知道了',
       success: (res) => {
         if (res.confirm) {
@@ -307,26 +309,7 @@ Page({
 
     // 检查预约权限
     if (!this.data.canBook) {
-      this.showTrialTip()
-      return
-    }
-
-    // 检查额度
-    const duration = this.data.selectedSlots.length
-    if (duration > this.data.remainingQuota) {
-      wx.showModal({
-        title: '额度不足',
-        content: `您今日剩余预约额度为${this.data.remainingQuota}小时，已选${duration}小时`,
-        confirmText: '升级会员',
-        cancelText: '调整时段',
-        success: (res) => {
-          if (res.confirm) {
-            wx.navigateTo({
-              url: '/pages/member/member'
-            })
-          }
-        }
-      })
+      this.showGuestTip()
       return
     }
 

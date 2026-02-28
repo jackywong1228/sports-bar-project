@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime, date
 from decimal import Decimal
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models import SysUser, Venue, VenueType
+from app.models.venue_price import VenuePriceRule
 from app.schemas import (
     ResponseModel, PageResult,
     VenueTypeCreate, VenueTypeUpdate, VenueTypeResponse,
@@ -307,3 +309,189 @@ def get_venue_prices_summary(
         })
 
     return ResponseModel(data=list(type_groups.values()))
+
+
+# ============ 场馆时段价格管理 ============
+
+class PriceRuleItem(BaseModel):
+    day_of_week: int  # 0-6
+    hour: int  # 0-23
+    price: float
+
+
+class BatchPriceRuleCreate(BaseModel):
+    rules: List[PriceRuleItem]
+
+
+class CopyPriceRulesRequest(BaseModel):
+    source_day: int  # 源星期
+    target_days: List[int]  # 目标星期列表
+
+
+@router.get("/{venue_id}/price-rules", response_model=ResponseModel)
+def get_venue_price_rules(
+    venue_id: int,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """获取场馆所有价格规则"""
+    rules = db.query(VenuePriceRule).filter(
+        VenuePriceRule.venue_id == venue_id,
+        VenuePriceRule.is_deleted == False
+    ).order_by(VenuePriceRule.day_of_week, VenuePriceRule.hour).all()
+
+    result = []
+    for r in rules:
+        result.append({
+            "id": r.id,
+            "day_of_week": r.day_of_week,
+            "hour": r.hour,
+            "price": float(r.price),
+            "is_active": r.is_active
+        })
+
+    return ResponseModel(data=result)
+
+
+@router.post("/{venue_id}/price-rules", response_model=ResponseModel)
+def batch_set_price_rules(
+    venue_id: int,
+    data: BatchPriceRuleCreate,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """批量设置价格规则"""
+    venue = db.query(Venue).filter(Venue.id == venue_id, Venue.is_deleted == False).first()
+    if not venue:
+        raise HTTPException(status_code=404, detail="场馆不存在")
+
+    created = 0
+    updated = 0
+
+    for rule_data in data.rules:
+        existing = db.query(VenuePriceRule).filter(
+            VenuePriceRule.venue_id == venue_id,
+            VenuePriceRule.day_of_week == rule_data.day_of_week,
+            VenuePriceRule.hour == rule_data.hour,
+            VenuePriceRule.is_deleted == False
+        ).first()
+
+        if existing:
+            existing.price = rule_data.price
+            existing.is_active = True
+            updated += 1
+        else:
+            rule = VenuePriceRule(
+                venue_id=venue_id,
+                day_of_week=rule_data.day_of_week,
+                hour=rule_data.hour,
+                price=rule_data.price,
+                is_active=True
+            )
+            db.add(rule)
+            created += 1
+
+    db.commit()
+    return ResponseModel(message=f"创建{created}条，更新{updated}条", data={
+        "created": created, "updated": updated
+    })
+
+
+@router.put("/price-rules/{rule_id}", response_model=ResponseModel)
+def update_price_rule(
+    rule_id: int,
+    price: float = Query(..., ge=0),
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """更新单条价格规则"""
+    rule = db.query(VenuePriceRule).filter(
+        VenuePriceRule.id == rule_id, VenuePriceRule.is_deleted == False
+    ).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="规则不存在")
+
+    rule.price = price
+    db.commit()
+    return ResponseModel(message="更新成功")
+
+
+@router.delete("/price-rules/{rule_id}", response_model=ResponseModel)
+def delete_price_rule(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """删除价格规则"""
+    rule = db.query(VenuePriceRule).filter(
+        VenuePriceRule.id == rule_id, VenuePriceRule.is_deleted == False
+    ).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="规则不存在")
+
+    rule.is_deleted = True
+    db.commit()
+    return ResponseModel(message="删除成功")
+
+
+@router.get("/{venue_id}/price-table", response_model=ResponseModel)
+def preview_price_table(
+    venue_id: int,
+    date: str = Query(..., description="日期 YYYY-MM-DD"),
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """预览某天价目表"""
+    from app.services.venue_pricing_service import VenuePricingService
+    pricing = VenuePricingService(db)
+    target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    table = pricing.get_price_table(venue_id, target_date)
+    return ResponseModel(data=table)
+
+
+@router.post("/{venue_id}/price-rules/copy", response_model=ResponseModel)
+def copy_price_rules(
+    venue_id: int,
+    data: CopyPriceRulesRequest,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """复制某天规则到其他天"""
+    source_rules = db.query(VenuePriceRule).filter(
+        VenuePriceRule.venue_id == venue_id,
+        VenuePriceRule.day_of_week == data.source_day,
+        VenuePriceRule.is_deleted == False,
+        VenuePriceRule.is_active == True
+    ).all()
+
+    if not source_rules:
+        raise HTTPException(status_code=400, detail="源天没有价格规则")
+
+    count = 0
+    for target_day in data.target_days:
+        if target_day == data.source_day:
+            continue
+        for src in source_rules:
+            existing = db.query(VenuePriceRule).filter(
+                VenuePriceRule.venue_id == venue_id,
+                VenuePriceRule.day_of_week == target_day,
+                VenuePriceRule.hour == src.hour,
+                VenuePriceRule.is_deleted == False
+            ).first()
+
+            if existing:
+                existing.price = src.price
+                existing.is_active = True
+            else:
+                rule = VenuePriceRule(
+                    venue_id=venue_id,
+                    day_of_week=target_day,
+                    hour=src.hour,
+                    price=src.price,
+                    is_active=True
+                )
+                db.add(rule)
+            count += 1
+
+    db.commit()
+    return ResponseModel(message=f"成功复制到{len(data.target_days)}天，共{count}条规则")

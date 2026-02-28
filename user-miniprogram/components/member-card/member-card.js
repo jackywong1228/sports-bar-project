@@ -11,10 +11,10 @@ Component({
       type: Object,
       value: null
     },
-    // 会员等级: TRIAL, S, SS, SSS
+    // 会员等级: GUEST, MEMBER（兼容旧值 TRIAL/S/SS/SSS）
     level: {
       type: String,
-      value: 'TRIAL'
+      value: 'GUEST'
     },
     // 是否显示详细信息
     showDetail: {
@@ -29,40 +29,32 @@ Component({
   },
 
   data: {
-    // 主题配置
+    // 主题配置（单一会员制）
     themeConfig: {
-      TRIAL: {
+      GUEST: {
         primary: '#999999',
         gradient: 'linear-gradient(135deg, #999999 0%, #BBBBBB 100%)',
-        name: '体验会员',
-        icon: '/assets/icons/level-trial.png'
+        name: '普通用户',
+        icon: '/assets/icons/level-guest.png'
       },
-      S: {
-        primary: '#4A90E2',
-        gradient: 'linear-gradient(135deg, #4A90E2 0%, #6BA8F0 100%)',
-        name: 'S级会员',
-        icon: '/assets/icons/level-s.png'
-      },
-      SS: {
-        primary: '#9B59B6',
-        gradient: 'linear-gradient(135deg, #9B59B6 0%, #B07CC8 100%)',
-        name: 'SS级会员',
-        icon: '/assets/icons/level-ss.png'
-      },
-      SSS: {
-        primary: '#F39C12',
-        gradient: 'linear-gradient(135deg, #F39C12 0%, #F5B041 100%)',
-        name: 'SSS级会员',
-        icon: '/assets/icons/level-sss.png'
+      MEMBER: {
+        primary: '#C9A962',
+        gradient: 'linear-gradient(135deg, #C9A962 0%, #E8D5A3 100%)',
+        name: '尊享会员',
+        icon: '/assets/icons/level-member.png'
       }
     },
+    // 旧等级映射（兼容）
+    legacyLevelMap: {
+      TRIAL: 'GUEST',
+      S: 'MEMBER',
+      SS: 'MEMBER',
+      SSS: 'MEMBER'
+    },
     currentTheme: null,
-    currentLevel: 'TRIAL',  // 实际使用的等级（优先从memberInfo获取）
-    quotaInfo: {
-      daily: 0,
-      used: 0,
-      remaining: 0
-    }
+    currentLevel: 'GUEST',  // 实际使用的等级（GUEST/MEMBER）
+    isMember: false,
+    memberExpireTime: null
   },
 
   observers: {
@@ -74,7 +66,7 @@ Component({
     },
     'memberInfo': function(info) {
       if (info) {
-        this.updateQuotaInfo(info)
+        this.updateMemberExpire(info)
         // 如果 memberInfo 中包含 level_code 或 member_level，优先使用
         const levelFromInfo = info.member_level || info.level_code
         if (levelFromInfo) {
@@ -92,41 +84,30 @@ Component({
       // 优先从 memberInfo 获取等级
       const memberInfo = this.data.memberInfo
       const levelFromInfo = memberInfo && (memberInfo.member_level || memberInfo.level_code)
-      const initialLevel = levelFromInfo || this.data.level || 'TRIAL'
+      const initialLevel = levelFromInfo || this.data.level || 'GUEST'
       this.updateTheme(initialLevel)
+      if (memberInfo) {
+        this.updateMemberExpire(memberInfo)
+      }
     }
   },
 
   methods: {
-    // 更新主题
+    // 更新主题（兼容旧等级名）
     updateTheme(level) {
-      const validLevel = level || 'TRIAL'
-      const theme = this.data.themeConfig[validLevel] || this.data.themeConfig.TRIAL
+      const mappedLevel = this.data.legacyLevelMap[level] || level || 'GUEST'
+      const theme = this.data.themeConfig[mappedLevel] || this.data.themeConfig.GUEST
       this.setData({
         currentTheme: theme,
-        currentLevel: validLevel
+        currentLevel: mappedLevel,
+        isMember: (mappedLevel === 'MEMBER')
       })
     },
 
-    // 更新额度信息
-    updateQuotaInfo(info) {
-      const quotaMap = {
-        TRIAL: 0,
-        S: 2,
-        SS: 4,
-        SSS: 8
-      }
-      // 优先使用 member_level 或 level_code
-      const level = info.member_level || info.level_code || this.data.level
-      const daily = info.booking_quota || quotaMap[level] || 0
-      const used = info.used_quota || 0
-
+    // 更新会员有效期信息
+    updateMemberExpire(info) {
       this.setData({
-        quotaInfo: {
-          daily: daily,
-          used: used,
-          remaining: Math.max(0, daily - used)
-        }
+        memberExpireTime: info.member_expire_time || null
       })
     },
 

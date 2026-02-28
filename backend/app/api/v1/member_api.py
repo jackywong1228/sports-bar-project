@@ -81,6 +81,14 @@ def member_login(
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
 
+    # 计算会员状态
+    is_member = (
+        member.subscription_status == 'active'
+        and member.member_expire_time
+        and member.member_expire_time > datetime.now()
+    )
+    level_code = member.level.level_code if member.level else "GUEST"
+
     return ResponseModel(data={
         "access_token": access_token,
         "token_type": "bearer",
@@ -91,8 +99,12 @@ def member_login(
             "phone": member.phone,
             "coin_balance": float(member.coin_balance or 0),
             "point_balance": member.point_balance or 0,
-            "member_level": member.level.level_code if member.level else "TRIAL",
-            "level_name": member.level.name if member.level else "体验会员"
+            "is_member": is_member,
+            "membership_type": "member" if is_member else "guest",
+            "member_expire_time": str(member.member_expire_time) if member.member_expire_time else None,
+            # 兼容旧字段
+            "member_level": "MEMBER" if is_member else "GUEST",
+            "level_name": member.level.name if member.level else "普通用户"
         }
     })
 
@@ -326,25 +338,23 @@ def get_member_profile(
     db: Session = Depends(get_db)
 ):
     """获取会员信息"""
+    is_member = (
+        current_member.subscription_status == 'active'
+        and current_member.member_expire_time
+        and current_member.member_expire_time > datetime.now()
+    )
+    level_code = current_member.level.level_code if current_member.level else "GUEST"
+
     level_info = {
-        "level_id": None,
-        "level_name": None,
-        "level_code": "TRIAL",
-        "level_icon": None,
-        "level_type": "normal",
-        "level_discount": 1.0,
-        "member_level": "TRIAL"
+        "level_id": current_member.level.id if current_member.level else None,
+        "level_name": current_member.level.name if current_member.level else "普通用户",
+        "level_code": level_code,
+        "level_icon": current_member.level.icon if current_member.level else None,
+        "theme_color": current_member.level.theme_color if current_member.level else "#999999",
+        "theme_gradient": current_member.level.theme_gradient if current_member.level else None,
+        # 兼容旧字段
+        "member_level": "MEMBER" if is_member else "GUEST"
     }
-    if current_member.level:
-        level_info = {
-            "level_id": current_member.level.id,
-            "level_name": current_member.level.name,
-            "level_code": current_member.level.level_code or "TRIAL",
-            "level_icon": current_member.level.icon,
-            "level_type": current_member.level.type or "normal",
-            "level_discount": float(current_member.level.discount) if current_member.level.discount else 1.0,
-            "member_level": current_member.level.level_code or "TRIAL"
-        }
 
     return ResponseModel(data={
         "id": current_member.id,
@@ -354,6 +364,8 @@ def get_member_profile(
         "real_name": current_member.real_name,
         "gender": current_member.gender,
         **level_info,
+        "is_member": is_member,
+        "membership_type": "member" if is_member else "guest",
         "member_expire_time": str(current_member.member_expire_time) if current_member.member_expire_time else None,
         "coin_balance": float(current_member.coin_balance or 0),
         "point_balance": current_member.point_balance or 0
@@ -870,32 +882,48 @@ def create_reservation(
     current_member: Member = Depends(get_current_member),
     db: Session = Depends(get_db)
 ):
-    """创建预约"""
+    """创建预约（单一会员制版本：检查会员资格 + 时段定价 + 优惠券抵扣）"""
+    # 1. 会员资格检查
+    is_member = (
+        current_member.subscription_status == 'active'
+        and current_member.member_expire_time
+        and current_member.member_expire_time > datetime.now()
+    )
+    if not is_member:
+        raise HTTPException(status_code=403, detail="请先开通会员才能预约")
+
     venue_id = data.get("venue_id")
     coach_id = data.get("coach_id")
     reservation_date = data.get("reservation_date")
     start_time = data.get("start_time")
     end_time = data.get("end_time")
     duration = data.get("duration", 60)
+    coupon_id = data.get("coupon_id")  # 优惠券ID
+    pay_type = data.get("pay_type", "coin")  # coin/wechat
 
-    # 计算费用
+    # 2. 计算场馆费用（按时段定价）
     venue_price = 0
-    coach_price = 0
-
-    # 检查会员等级（S/SS/SSS 订阅会员场馆预约免费）
-    level_code = 'TRIAL'
-    if current_member.level:
-        level_code = current_member.level.level_code or 'TRIAL'
-    is_subscription_member = level_code in ('S', 'SS', 'SSS')
-
     if venue_id:
         venue = db.query(Venue).filter(Venue.id == venue_id).first()
         if venue:
-            hours = duration / 60
-            # 订阅会员场馆预约免费
-            if not is_subscription_member:
+            from app.services.venue_pricing_service import VenuePricingService
+            pricing = VenuePricingService(db)
+
+            if start_time and end_time:
+                start_hour = int(start_time.split(":")[0]) if isinstance(start_time, str) else start_time
+                end_hour = int(end_time.split(":")[0]) if isinstance(end_time, str) else end_time
+                price_result = pricing.calculate_booking_price(
+                    venue_id,
+                    datetime.strptime(reservation_date, "%Y-%m-%d").date() if isinstance(reservation_date, str) else reservation_date,
+                    start_hour, end_hour
+                )
+                venue_price = price_result["total"]
+            else:
+                hours = duration / 60
                 venue_price = float(venue.price or 0) * hours
 
+    # 3. 计算教练费用
+    coach_price = 0
     if coach_id:
         coach = db.query(Coach).filter(Coach.id == coach_id).first()
         if coach:
@@ -904,11 +932,30 @@ def create_reservation(
 
     total_price = venue_price + coach_price
 
-    # 只有当需要付费时才检查金币余额
-    if total_price > 0 and total_price > float(current_member.coin_balance or 0):
-        raise HTTPException(status_code=400, detail="金币余额不足")
+    # 4. 优惠券抵扣
+    coupon_discount = 0
+    used_coupon = None
+    if coupon_id:
+        coupon = db.query(MemberCoupon).filter(
+            MemberCoupon.id == coupon_id,
+            MemberCoupon.member_id == current_member.id,
+            MemberCoupon.status == 'unused'
+        ).first()
+        if coupon:
+            if coupon.type == 'cash':
+                coupon_discount = min(float(coupon.discount_value or 0), venue_price)
+            elif coupon.type == 'gift':
+                coupon_discount = venue_price  # 免费券全额抵扣场地费
+            used_coupon = coupon
 
-    # 生成预约编号
+    actual_price = max(0, total_price - coupon_discount)
+
+    # 5. 支付处理
+    if actual_price > 0 and pay_type == "coin":
+        if actual_price > float(current_member.coin_balance or 0):
+            raise HTTPException(status_code=400, detail="金币余额不足")
+
+    # 6. 生成预约
     import uuid
     reservation_no = f"R{datetime.now().strftime('%Y%m%d%H%M%S')}{str(uuid.uuid4())[:4].upper()}"
 
@@ -923,29 +970,46 @@ def create_reservation(
         duration=duration,
         venue_price=venue_price,
         coach_price=coach_price,
-        total_price=total_price,
+        total_price=actual_price,
         status="pending"
     )
-
     db.add(reservation)
 
-    # 扣除金币
-    if total_price > 0:
-        current_member.coin_balance = float(current_member.coin_balance or 0) - total_price
-
+    # 7. 扣费
+    if actual_price > 0 and pay_type == "coin":
+        current_member.coin_balance = float(current_member.coin_balance or 0) - actual_price
         coin_record = CoinRecord(
             member_id=current_member.id,
             type="expense",
-            amount=total_price,
+            amount=actual_price,
             balance=current_member.coin_balance,
             source="预约消费",
             remark=f"预约编号: {reservation_no}"
         )
         db.add(coin_record)
 
+    # 8. 核销优惠券
+    if used_coupon:
+        used_coupon.status = 'used'
+        used_coupon.use_time = datetime.now()
+        used_coupon.order_type = 'reservation'
+        used_coupon.order_id = None  # commit 后再更新
+
     db.commit()
 
-    return ResponseModel(message="预约成功", data={"reservation_no": reservation_no})
+    # 更新优惠券关联的订单ID
+    if used_coupon:
+        used_coupon.order_id = reservation.id
+        db.commit()
+
+    return ResponseModel(message="预约成功", data={
+        "reservation_no": reservation_no,
+        "venue_price": venue_price,
+        "coach_price": coach_price,
+        "coupon_discount": coupon_discount,
+        "actual_price": actual_price,
+        "pay_type": pay_type
+    })
 
 
 @router.get("/reservations", response_model=ResponseModel)
@@ -1136,26 +1200,29 @@ def recharge(
     current_member: Member = Depends(get_current_member),
     db: Session = Depends(get_db)
 ):
-    """充值金币"""
-    amount = data.get("amount", 0)
-    package_id = data.get("package_id")
+    """充值金币（从数据库配置读取套餐）"""
+    from app.models.finance import RechargePackage
 
-    # 计算金币数量（1元=10金币）
-    coins = amount * 10
+    package_id = data.get("package_id")
+    amount = data.get("amount", 0)
+
+    coins = 0
     bonus = 0
 
-    # 套餐赠送
-    packages = {
-        1: (100, 0),
-        2: (500, 20),
-        3: (1000, 50),
-        4: (2000, 120),
-        5: (5000, 350),
-        6: (10000, 800)
-    }
-
-    if package_id and package_id in packages:
-        coins, bonus = packages[package_id]
+    if package_id:
+        # 从数据库读取套餐
+        package = db.query(RechargePackage).filter(
+            RechargePackage.id == package_id,
+            RechargePackage.is_active == True,
+            RechargePackage.is_deleted == False
+        ).first()
+        if not package:
+            raise HTTPException(status_code=400, detail="充值套餐不存在")
+        coins = package.coin_amount
+        bonus = package.bonus_coins
+    else:
+        # 自定义金额（1元=1金币）
+        coins = int(amount)
 
     total_coins = coins + bonus
 
@@ -2979,3 +3046,126 @@ def get_member_announcements(
         })
 
     return ResponseModel(data=result)
+
+
+# ==================== 评论相关 ====================
+
+@router.post("/reviews", response_model=ResponseModel)
+def submit_review(
+    data: dict,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """提交评论"""
+    from app.services.review_service import ReviewService
+    service = ReviewService(db)
+    result = service.submit_review(
+        member=current_member,
+        order_type=data.get("order_type", "reservation"),
+        order_id=data.get("order_id"),
+        rating=data.get("rating", 5),
+        content=data.get("content"),
+        images=json.dumps(data.get("images", []))
+    )
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    return ResponseModel(data=result)
+
+
+@router.get("/reviews", response_model=ResponseModel)
+def get_my_reviews(
+    page: int = 1,
+    limit: int = 10,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取我的评论列表"""
+    from app.models.review import ServiceReview
+    query = db.query(ServiceReview).filter(
+        ServiceReview.member_id == current_member.id,
+        ServiceReview.is_deleted == False
+    )
+    reviews = query.order_by(ServiceReview.created_at.desc()).offset(
+        (page - 1) * limit
+    ).limit(limit).all()
+
+    result = []
+    for r in reviews:
+        result.append({
+            "id": r.id,
+            "order_type": r.order_type,
+            "order_id": r.order_id,
+            "rating": r.rating,
+            "content": r.content,
+            "images": r.images,
+            "points_awarded": r.points_awarded,
+            "admin_reply": r.admin_reply,
+            "created_at": str(r.created_at) if r.created_at else None
+        })
+    return ResponseModel(data=result)
+
+
+# ==================== 场馆价目表 ====================
+
+@router.get("/venues/{venue_id}/price-table", response_model=ResponseModel)
+def get_venue_price_table(
+    venue_id: int,
+    date: str = Query(..., description="日期 YYYY-MM-DD"),
+    db: Session = Depends(get_db)
+):
+    """获取场馆某天价目表"""
+    from app.services.venue_pricing_service import VenuePricingService
+    pricing = VenuePricingService(db)
+
+    target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    table = pricing.get_price_table(venue_id, target_date)
+
+    return ResponseModel(data=table)
+
+
+# ==================== 充值套餐列表 ====================
+
+@router.get("/recharge-packages", response_model=ResponseModel)
+def get_recharge_packages(db: Session = Depends(get_db)):
+    """获取充值套餐列表"""
+    from app.models.finance import RechargePackage
+    packages = db.query(RechargePackage).filter(
+        RechargePackage.is_active == True,
+        RechargePackage.is_deleted == False
+    ).order_by(RechargePackage.sort_order).all()
+
+    result = []
+    for pkg in packages:
+        result.append({
+            "id": pkg.id,
+            "name": pkg.name,
+            "amount": float(pkg.amount),
+            "coin_amount": pkg.coin_amount,
+            "bonus_coins": pkg.bonus_coins,
+            "total_coins": pkg.coin_amount + pkg.bonus_coins
+        })
+    return ResponseModel(data=result)
+
+
+# ==================== 人脸识别（预留） ====================
+
+@router.post("/face/register", response_model=ResponseModel)
+def register_face(
+    data: dict,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """注册人脸（预留接口）"""
+    return ResponseModel(code=501, message="人脸识别功能暂未开放，敬请期待")
+
+
+@router.get("/face/status", response_model=ResponseModel)
+def get_face_status(
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取人脸注册状态"""
+    return ResponseModel(data={
+        "is_registered": bool(current_member.face_feature_id),
+        "registered_at": str(current_member.face_registered_at) if current_member.face_registered_at else None
+    })

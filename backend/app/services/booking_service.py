@@ -1,14 +1,14 @@
-"""预约权限检查服务"""
-from datetime import date, datetime, timedelta
-from typing import Dict, Optional
+"""预约权限检查服务（单一会员制版本）"""
+from datetime import date, timedelta
+from typing import Dict, List
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from app.models import Member, MemberLevel, Reservation, VenueTypeConfig
+from app.models import Member, MemberLevel, Reservation, MemberCoupon
 
 
 class BookingService:
-    """预约业务服务"""
+    """预约业务服务 - 山姆模式单一会员制"""
 
     def __init__(self, db: Session):
         self.db = db
@@ -16,40 +16,39 @@ class BookingService:
     def check_booking_permission(
         self,
         member: Member,
-        venue_type_id: int,
+        venue_id: int,
         booking_date: date
     ) -> Dict:
         """
-        检查会员预约权限
+        检查会员预约权限（简化版：仅检查是否为有效会员 + 日期范围）
 
         Args:
             member: 会员对象
-            venue_type_id: 场馆类型ID
+            venue_id: 场馆ID
             booking_date: 预约日期
 
         Returns:
             权限检查结果字典
         """
-        # 1. 获取会员等级信息
-        level = member.level
-        if not level or level.level_code == 'TRIAL':
+        # 1. 检查会员资格
+        if member.subscription_status != 'active' or not member.member_expire_time:
             return {
                 "can_book": False,
-                "reason": "体验会员无法自行预约，请致电咨询",
-                "contact_phone": "400-xxx-xxxx"
+                "reason": "请先开通会员",
+                "need_membership": True
             }
 
-        # 2. 检查是否处于惩罚期
-        if member.penalty_status == 'penalized':
-            booking_range_days = member.penalty_booking_range_days
-            booking_max_count = member.penalty_booking_max_count
-            period = 'day'  # 惩罚期统一按天计算
-        else:
-            booking_range_days = level.booking_range_days
-            booking_max_count = level.booking_max_count
-            period = level.booking_period
+        from datetime import datetime
+        if member.member_expire_time < datetime.now():
+            return {
+                "can_book": False,
+                "reason": "会员已过期，请续费",
+                "need_membership": True
+            }
 
-        # 3. 检查日期范围
+        # 2. 检查日期范围
+        level = member.level
+        booking_range_days = level.booking_range_days if level else 14
         today = date.today()
         max_date = today + timedelta(days=booking_range_days)
 
@@ -62,132 +61,44 @@ class BookingService:
         if booking_date > max_date:
             return {
                 "can_book": False,
-                "reason": f"您只能预约{booking_range_days}天内的场地",
+                "reason": f"最多可提前{booking_range_days}天预约",
                 "booking_range": {
                     "min_date": today.isoformat(),
                     "max_date": max_date.isoformat()
                 }
             }
 
-        # 4. 检查高尔夫权限
-        venue_config = self.db.query(VenueTypeConfig).filter(
-            VenueTypeConfig.venue_type_id == venue_type_id
-        ).first()
+        # 3. 获取可用优惠券
+        available_coupons = self._get_available_coupons(member.id, 'venue')
 
-        if venue_config and venue_config.is_golf and not level.can_book_golf:
-            return {
-                "can_book": False,
-                "reason": "您的会员等级不支持预约高尔夫场地"
-            }
-
-        # 5. 检查预约次数
-        period_bookings = self.get_period_bookings(member, period)
-
-        if period_bookings >= booking_max_count:
-            period_desc = {"day": "今明两天", "week": "本周", "month": "本月"}
-            return {
-                "can_book": False,
-                "reason": f"{period_desc.get(period, '当前周期')}预约次数已达上限({booking_max_count}次)"
-            }
-
-        # 权限检查通过
         return {
             "can_book": True,
             "booking_range": {
                 "min_date": today.isoformat(),
                 "max_date": max_date.isoformat()
             },
-            "remaining_quota": booking_max_count - period_bookings,
-            "quota_period_desc": f"{self._get_period_desc(period)}剩余{booking_max_count - period_bookings}次预约"
+            "available_coupons": available_coupons
         }
 
-    def get_period_bookings(self, member: Member, period: str) -> int:
-        """
-        获取周期内已预约次数（未核销且未取消的预约）
+    def _get_available_coupons(self, member_id: int, applicable_type: str) -> List[Dict]:
+        """获取可用优惠券列表"""
+        from datetime import datetime
+        now = datetime.now()
 
-        Args:
-            member: 会员对象
-            period: 预约周期 day/week/month
+        coupons = self.db.query(MemberCoupon).filter(
+            MemberCoupon.member_id == member_id,
+            MemberCoupon.status == 'unused',
+            MemberCoupon.start_time <= now,
+            MemberCoupon.end_time >= now
+        ).all()
 
-        Returns:
-            预约次数
-        """
-        today = date.today()
-
-        if period == 'day':
-            # 今明两天
-            start_date = today
-            end_date = today + timedelta(days=1)
-        elif period == 'week':
-            # 本周一到本周日
-            start_date = today - timedelta(days=today.weekday())
-            end_date = start_date + timedelta(days=6)
-        else:  # month
-            # 本月1号到月末
-            start_date = today.replace(day=1)
-            next_month = today.replace(day=28) + timedelta(days=4)
-            end_date = next_month.replace(day=1) - timedelta(days=1)
-
-        # 查询未核销且未取消的预约
-        count = self.db.query(Reservation).filter(
-            Reservation.member_id == member.id,
-            Reservation.reservation_date >= start_date,
-            Reservation.reservation_date <= end_date,
-            Reservation.status.in_(['pending', 'confirmed']),
-            Reservation.is_verified == False,
-            Reservation.is_deleted == False
-        ).count()
-
-        return count
-
-    def _get_period_desc(self, period: str) -> str:
-        """获取周期描述"""
-        period_map = {
-            "day": "今明两天",
-            "week": "本周",
-            "month": "本月"
-        }
-        return period_map.get(period, "当前周期")
-
-    def get_booking_stats(self, member: Member) -> Dict:
-        """
-        获取会员预约统计信息
-
-        Args:
-            member: 会员对象
-
-        Returns:
-            统计信息字典
-        """
-        level = member.level
-        if not level:
-            return {
-                "total_bookings": 0,
-                "this_period_bookings": 0,
-                "remaining_quota": 0
+        return [
+            {
+                "id": c.id,
+                "name": c.name,
+                "type": c.type,
+                "discount_value": float(c.discount_value) if c.discount_value else None,
+                "end_time": c.end_time.isoformat() if c.end_time else None
             }
-
-        # 确定周期和上限
-        if member.penalty_status == 'penalized':
-            period = 'day'
-            max_count = member.penalty_booking_max_count or 0
-        else:
-            period = level.booking_period
-            max_count = level.booking_max_count
-
-        # 当前周期预约数
-        current_bookings = self.get_period_bookings(member, period)
-
-        # 总预约数（所有未完成的预约）
-        total_bookings = self.db.query(Reservation).filter(
-            Reservation.member_id == member.id,
-            Reservation.status.in_(['pending', 'confirmed']),
-            Reservation.is_deleted == False
-        ).count()
-
-        return {
-            "total_bookings": total_bookings,
-            "this_period_bookings": current_bookings,
-            "remaining_quota": max(0, max_count - current_bookings),
-            "booking_period": period
-        }
+            for c in coupons
+        ]
