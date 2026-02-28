@@ -107,6 +107,7 @@ vue-tsc -b                       # 仅运行类型检查
 - **列注释**: 所有 Column 使用 `comment` 参数说明用途
 - **配置管理**: `backend/app/core/config.py` 使用 pydantic-settings 从 `.env` 加载
 - **数据库建表**: 使用 `Base.metadata.create_all()` 自动建表，首次初始化用 `init_data.py`（Alembic 目录存在但未配置迁移脚本）
+- **注意 `create_all()` 限制**: 只创建新表，不会给已存在的表添加新列。生产部署新增列时需手动 `ALTER TABLE ADD COLUMN`
 - **CORS**: DEBUG=True 时允许所有源，生产环境有白名单（见 `main.py`）
 - **文件上传**: `POST /api/v1/upload/image?folder=xxx`，存储到 `backend/uploads/{folder}/`，通过 `/uploads/` 路径访问
 
@@ -295,6 +296,13 @@ systemctl restart nginx          # 重启 Nginx
 ```
 
 部署配置文件：`deploy/sports-bar.service`（systemd）、`nginx-ssl.conf`（Nginx SSL + 反向代理）
+
+### 部署注意事项
+
+- **数据库备份**: 任何迁移前必须先备份 `mysqldump -u root sports_bar > /root/backup/sports_bar_$(date +%Y%m%d_%H%M%S).sql`
+- **新增列**: `create_all()` 不会修改已有表，新增列需手动 `ALTER TABLE ADD COLUMN`
+- **唯一键冲突**: 迁移时若新旧数据共用唯一键值，需先修改旧数据腾出位置
+- **Nginx**: `/health` 和 `/api/` 代理到后端 8000 端口，`/` 是管理后台 SPA，`/uploads/` 是静态文件
 
 ## 常见问题排查
 
