@@ -16,9 +16,24 @@ from app.models.review import ReviewPointConfig
 Base.metadata.create_all(bind=engine)
 
 
-def step1_create_new_levels(db: Session):
-    """步骤1: 创建 GUEST 和 MEMBER 等级记录"""
-    print("\n[步骤1] 创建新等级记录...")
+def step1_deactivate_old_levels(db: Session):
+    """步骤1: 旧等级标记为停用，并修改 level 值避免唯一键冲突"""
+    print("\n[步骤1] 停用旧等级...")
+    old_codes = ['TRIAL', 'S', 'SS', 'SSS']
+    old_levels = db.query(MemberLevel).filter(
+        MemberLevel.level_code.in_(old_codes)
+    ).all()
+    for ol in old_levels:
+        ol.status = False
+        ol.level = ol.level + 100  # 避免与新等级的 level 值冲突
+        print(f"  停用 {ol.level_code}(level {ol.level - 100} -> {ol.level})")
+    db.commit()
+    print(f"  共停用 {len(old_levels)} 个旧等级")
+
+
+def step2_create_new_levels(db: Session):
+    """步骤2: 创建 GUEST 和 MEMBER 等级记录"""
+    print("\n[步骤2] 创建新等级记录...")
 
     # GUEST
     guest = db.query(MemberLevel).filter(MemberLevel.level_code == "GUEST").first()
@@ -34,6 +49,8 @@ def step1_create_new_levels(db: Session):
         )
         db.add(guest)
         print("  + 创建 GUEST 等级")
+    else:
+        print("  GUEST 等级已存在")
 
     # MEMBER
     member = db.query(MemberLevel).filter(MemberLevel.level_code == "MEMBER").first()
@@ -49,20 +66,11 @@ def step1_create_new_levels(db: Session):
         )
         db.add(member)
         print("  + 创建 MEMBER 等级")
+    else:
+        print("  MEMBER 等级已存在")
 
     db.commit()
     return guest, member
-
-
-def step2_deactivate_old_levels(db: Session):
-    """步骤2: 旧等级标记为停用（不删除）"""
-    print("\n[步骤2] 停用旧等级...")
-    old_codes = ['TRIAL', 'S', 'SS', 'SSS']
-    count = db.query(MemberLevel).filter(
-        MemberLevel.level_code.in_(old_codes)
-    ).update({"status": False}, synchronize_session=False)
-    db.commit()
-    print(f"  停用 {count} 个旧等级")
 
 
 def step3_reset_all_members(db: Session):
@@ -217,8 +225,8 @@ def main():
 
     db = SessionLocal()
     try:
-        step1_create_new_levels(db)
-        step2_deactivate_old_levels(db)
+        step1_deactivate_old_levels(db)
+        step2_create_new_levels(db)
         step3_reset_all_members(db)
         step4_deactivate_old_cards(db)
         step5_create_new_card(db)
