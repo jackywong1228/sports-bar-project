@@ -632,6 +632,36 @@ const getFaceStatus = () => {
   return get('/member/face/status')
 }
 
+// ==================== 邀请功能 ====================
+
+/**
+ * 生成邀请码
+ */
+const generateInviteCode = () => {
+  return post('/member/invite/generate')
+}
+
+/**
+ * 获取本月邀请统计
+ */
+const getInviteStats = () => {
+  return get('/member/invite/stats')
+}
+
+/**
+ * 获取邀请记录
+ */
+const getInviteHistory = (page = 1, pageSize = 20) => {
+  return get(`/member/invite/history?page=${page}&page_size=${pageSize}`)
+}
+
+/**
+ * 使用邀请码
+ */
+const useInviteCode = (code) => {
+  return post(`/member/invite/${code}/accept`)
+}
+
 module.exports = {
   // 认证
   loginByPhone,
@@ -755,5 +785,11 @@ module.exports = {
 
   // 人脸识别（预留）
   registerFace,
-  getFaceStatus
+  getFaceStatus,
+
+  // 邀请功能
+  generateInviteCode,
+  getInviteStats,
+  getInviteHistory,
+  useInviteCode
 }

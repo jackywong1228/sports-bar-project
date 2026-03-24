@@ -212,7 +212,7 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="会员等级">
           <el-select v-model="queryParams.level_id" placeholder="全部" clearable style="width: 150px">
-            <el-option v-for="item in levelOptions" :key="item.id" :label="item.name" :value="item.id" />
+            <el-option v-for="item in levelOptions" :key="item.id" :label="`${item.name} (${item.level_code || ''})`" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -315,7 +315,7 @@ onMounted(() => {
           <el-col :span="12">
             <el-form-item label="会员等级" prop="level_id">
               <el-select v-model="form.level_id" placeholder="请选择" style="width: 100%">
-                <el-option v-for="item in levelOptions" :key="item.id" :label="item.name" :value="item.id" />
+                <el-option v-for="item in levelOptions" :key="item.id" :label="`${item.name} (${item.level_code || ''})`" :value="item.id" />
               </el-select>
             </el-form-item>
           </el-col>

@@ -17,6 +17,7 @@ from app.models.checkin import GateCheckRecord, PointRuleConfig, Leaderboard
 from app.models.member_violation import MemberViolation
 from app.models.member_coupon_issuance import MemberCouponIssuance
 from app.models.review import ServiceReview, ReviewPointConfig
+from app.models.member_invitation import MemberInvitation
 
 __all__ = [
     "SysUser", "SysRole", "SysDepartment", "SysPermission",
@@ -36,4 +37,5 @@ __all__ = [
     "GateCheckRecord", "PointRuleConfig", "Leaderboard",
     "MemberViolation", "MemberCouponIssuance",
     "ServiceReview", "ReviewPointConfig",
+    "MemberInvitation",
 ]

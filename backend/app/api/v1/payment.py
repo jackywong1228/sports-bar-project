@@ -244,9 +244,11 @@ def _handle_member_card_notify(out_trade_no: str, transaction_id: str, trade_sta
                 order.start_time = start_time
                 order.expire_time = expire_time
 
-                # 升级会员等级
+                # 升级会员等级 + 修复subscription_status
                 member.level_id = order.level_id
                 member.member_expire_time = expire_time
+                member.subscription_status = 'active'
+                member.subscription_start_date = start_time.date() if hasattr(start_time, 'date') else now.date()
 
                 # 发放赠送金币
                 if order.bonus_coins and float(order.bonus_coins) > 0:

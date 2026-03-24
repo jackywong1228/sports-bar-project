@@ -1,0 +1,38 @@
+<view class="container">
+  <!-- 加载中 -->
+  <view class="card" wx:if="{{status === 'loading'}}">
+    <view class="icon-area">
+      <view class="loading-spinner"></view>
+    </view>
+    <text class="title">正在处理邀请...</text>
+    <text class="code-text">邀请码: {{code}}</text>
+  </view>
+
+  <!-- 成功 -->
+  <view class="card" wx:if="{{status === 'success'}}">
+    <view class="icon-area">
+      <view class="success-icon">&#10003;</view>
+    </view>
+    <text class="title">邀请成功</text>
+    <text class="desc" wx:if="{{inviterName}}">{{inviterName}} 邀请你加入云里坊</text>
+    <text class="desc" wx:else>{{message}}</text>
+    <text class="code-text">邀请码: {{code}}</text>
+    <view class="actions">
+      <button class="btn-primary" bindtap="goHome">进入首页</button>
+      <button class="btn-secondary" bindtap="goMember">查看会员权益</button>
+    </view>
+  </view>
+
+  <!-- 失败 -->
+  <view class="card" wx:if="{{status === 'error'}}">
+    <view class="icon-area">
+      <view class="error-icon">!</view>
+    </view>
+    <text class="title">邀请未成功</text>
+    <text class="desc">{{errorMsg}}</text>
+    <text class="code-text" wx:if="{{code}}">邀请码: {{code}}</text>
+    <view class="actions">
+      <button class="btn-primary" bindtap="goHome">进入首页</button>
+    </view>
+  </view>
+</view>

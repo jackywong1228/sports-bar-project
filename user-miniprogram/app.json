@@ -23,6 +23,8 @@
     "pages/orders/orders",
     "pages/order-detail/order-detail",
     "pages/member/member",
+    "pages/invite/invite",
+    "pages/invite/accept",
     "pages/coupons/coupons",
     "pages/settings/settings",
     "pages/coach-home/coach-home",

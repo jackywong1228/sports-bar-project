@@ -9,37 +9,41 @@ App({
     // 教练相关
     coachInfo: null,
     coachToken: '',
-    // 会员等级与权限相关（单一会员制：GUEST/MEMBER）
-    memberLevel: 'GUEST',  // GUEST, MEMBER
+    // 会员等级与权限相关（三级会员制：S/SS/SSS）
+    memberLevel: 'S',  // S, SS, SSS
     memberTheme: {
       primary: '#999999',
       gradient: 'linear-gradient(135deg, #999999 0%, #BBBBBB 100%)'
     },
-    isMember: false,          // 是否为正式会员
+    isMember: false,          // 是否为付费会员(SS/SSS)
     memberExpireTime: null,   // 会员到期时间
-    canBook: false            // 是否可以自行预约
+    canBook: false            // 是否可以预约场馆
   },
 
-  // 会员等级主题色配置（单一会员制）
+  // 会员等级主题色配置（三级会员制）
   memberThemeConfig: {
-    GUEST: {
+    S: {
       primary: '#999999',
       gradient: 'linear-gradient(135deg, #999999 0%, #BBBBBB 100%)',
-      name: '普通用户'
+      name: 'S级会员'
     },
-    MEMBER: {
+    SS: {
       primary: '#C9A962',
       gradient: 'linear-gradient(135deg, #C9A962 0%, #E8D5A3 100%)',
-      name: '尊享会员'
+      name: 'SS级会员'
+    },
+    SSS: {
+      primary: '#8B7355',
+      gradient: 'linear-gradient(135deg, #8B7355 0%, #C9A962 50%, #E8D5A3 100%)',
+      name: 'SSS级会员'
     }
   },
 
   // 旧等级映射到新等级（兼容后端返回旧等级名）
   legacyLevelMap: {
-    TRIAL: 'GUEST',
-    S: 'MEMBER',
-    SS: 'MEMBER',
-    SSS: 'MEMBER'
+    GUEST: 'S',
+    TRIAL: 'S',
+    MEMBER: 'SS'
   },
 
   onLaunch() {
@@ -110,12 +114,12 @@ App({
           that.globalData.memberInfo = res.data.data
           // 更新会员等级相关信息
           const data = res.data.data
-          // 优先使用 member_level 或 level_code，兼容旧等级名
-          const rawLevel = data.member_level || data.level_code || 'GUEST'
+          // 优先使用 level_code 或 member_level，兼容旧等级名
+          const rawLevel = data.level_code || data.member_level || 'S'
           const levelCode = that.legacyLevelMap[rawLevel] || rawLevel
           that.setMemberTheme(levelCode)
           // 更新会员状态
-          that.globalData.isMember = (levelCode === 'MEMBER')
+          that.globalData.isMember = (levelCode === 'SS' || levelCode === 'SSS')
           if (data.member_expire_time !== undefined) {
             that.globalData.memberExpireTime = data.member_expire_time
           }
@@ -129,18 +133,18 @@ App({
 
   // 设置会员主题（兼容旧等级名）
   setMemberTheme(level) {
-    // 兼容旧等级名，映射到新的 GUEST/MEMBER
+    // 兼容旧等级名，映射到 S/SS/SSS
     const mappedLevel = this.legacyLevelMap[level] || level
-    const theme = this.memberThemeConfig[mappedLevel] || this.memberThemeConfig.GUEST
+    const theme = this.memberThemeConfig[mappedLevel] || this.memberThemeConfig.S
     this.globalData.memberLevel = mappedLevel
-    this.globalData.isMember = (mappedLevel === 'MEMBER')
+    this.globalData.isMember = (mappedLevel === 'SS' || mappedLevel === 'SSS')
     this.globalData.memberTheme = {
       primary: theme.primary,
       gradient: theme.gradient,
       name: theme.name
     }
-    // 根据会员状态设置预约权限
-    this.globalData.canBook = (mappedLevel === 'MEMBER')
+    // SS/SSS 可预约场馆
+    this.globalData.canBook = (mappedLevel === 'SS' || mappedLevel === 'SSS')
   },
 
   // 获取当前会员主题
@@ -167,7 +171,7 @@ App({
     this.globalData.memberInfo = null
     this.globalData.cartCount = 0
     // 重置会员状态
-    this.globalData.memberLevel = 'GUEST'
+    this.globalData.memberLevel = 'S'
     this.globalData.isMember = false
     this.globalData.memberExpireTime = null
     this.globalData.memberTheme = {

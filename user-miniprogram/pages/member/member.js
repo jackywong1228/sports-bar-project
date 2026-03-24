@@ -1,36 +1,52 @@
 const app = getApp()
 const api = require('../../utils/api')
 
-// 单一会员制权益介绍
+// 三级会员制权益介绍
 const MEMBER_BENEFITS = {
-  GUEST: {
-    title: '普通用户',
-    description: '注册即可浏览场馆信息',
+  S: {
+    title: 'S级会员',
+    description: '注册即可浏览场馆信息和餐饮点单',
     features: [
       { icon: 'view', text: '浏览场馆信息' },
+      { icon: 'food', text: '餐饮点单' },
       { icon: 'activity', text: '参与公开活动' }
     ]
   },
-  MEMBER: {
-    title: '尊享会员',
-    description: '解锁全部场馆预约与专属权益',
+  SS: {
+    title: 'SS级会员',
+    description: '当天预约场馆 + 月度券 + 邀请朋友',
     features: [
-      { icon: 'booking', text: '自主预约场馆' },
-      { icon: 'discount', text: '餐饮专属折扣' },
-      { icon: 'priority', text: '活动优先报名' },
+      { icon: 'booking', text: '当天预约场馆' },
+      { icon: 'coupon', text: '每月场地券+饮品券' },
+      { icon: 'invite', text: '每月1次邀请朋友' },
       { icon: 'coach', text: '教练课程预约' },
-      { icon: 'points', text: '积分加倍累积' },
-      { icon: 'golf', text: '高尔夫场馆使用' }
+      { icon: 'golf', text: '高尔夫场馆使用' },
+      { icon: 'gift', text: '入会礼（实物+数字券包）' }
+    ]
+  },
+  SSS: {
+    title: 'SSS级会员',
+    description: '提前3天预约 + 每日3小时免费 + 顶级权益',
+    features: [
+      { icon: 'booking', text: '提前3天预约场馆' },
+      { icon: 'free', text: '每日3小时免费场地' },
+      { icon: 'invite', text: '每月10次邀请朋友' },
+      { icon: 'locker', text: '专属储物柜' },
+      { icon: 'parking', text: '免费停车位' },
+      { icon: 'car', text: '专车接送服务' },
+      { icon: 'bath', text: '豪华卫浴' },
+      { icon: 'vip', text: '包场权限' },
+      { icon: 'drink', text: '饮品畅享' },
+      { icon: 'gift', text: '入会礼（实物+数字券包）' }
     ]
   }
 }
 
 // 旧等级映射到新等级（兼容）
 const LEGACY_LEVEL_MAP = {
-  TRIAL: 'GUEST',
-  S: 'MEMBER',
-  SS: 'MEMBER',
-  SSS: 'MEMBER'
+  GUEST: 'S',
+  TRIAL: 'S',
+  MEMBER: 'SS'
 }
 
 Page({
@@ -38,8 +54,8 @@ Page({
     memberInfo: {},
     cards: [],
     isMember: false,
-    currentLevel: 'GUEST',
-    benefits: MEMBER_BENEFITS.GUEST,
+    currentLevel: 'S',
+    benefits: MEMBER_BENEFITS.S,
     memberExpireTime: null,
     buying: false
   },
@@ -59,15 +75,15 @@ Page({
         app.request({ url: '/member/profile' }),
         app.request({ url: '/member/cards' })
       ])
-      const rawLevel = memberRes.data?.level_code || memberRes.data?.member_level || 'GUEST'
+      const rawLevel = memberRes.data?.level_code || memberRes.data?.member_level || 'S'
       const currentLevel = LEGACY_LEVEL_MAP[rawLevel] || rawLevel
-      const isMember = (currentLevel === 'MEMBER')
+      const isMember = (currentLevel === 'SS' || currentLevel === 'SSS')
       this.setData({
         memberInfo: memberRes.data || {},
         cards: cardsRes.data || [],
         isMember: isMember,
         currentLevel: currentLevel,
-        benefits: MEMBER_BENEFITS[currentLevel] || MEMBER_BENEFITS.GUEST,
+        benefits: MEMBER_BENEFITS[currentLevel] || MEMBER_BENEFITS.S,
         memberExpireTime: memberRes.data?.member_expire_time || null
       })
     } catch (err) {

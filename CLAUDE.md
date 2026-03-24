@@ -18,8 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 cd backend
 pip install -r requirements.txt
-python init_data.py              # 首次运行：建表 + 初始化权限/角色/管理员/会员等级(GUEST+MEMBER)/年卡套餐/充值套餐/评论积分配置
-python migrate_membership.py     # 从旧多等级制迁移到新单一会员制（仅需运行一次）
+python init_data.py              # 首次运行：建表 + 初始化权限/角色/管理员/会员等级(S/SS/SSS)/年卡套餐/月度券模板/入会券包/充值套餐/评论积分配置
+python migrate_to_3tier.py       # 从旧二级制(GUEST/MEMBER)迁移到三级制(S/SS/SSS)（仅需运行一次）
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 运行测试
@@ -73,7 +73,9 @@ vue-tsc -b                       # 仅运行类型检查
 | `app/api/v1/upload.py` | 文件上传（图片/文档，最大10MB） |
 | `app/api/v1/ui_assets.py` | UI 素材管理（图标/主题/图片） |
 | `app/api/v1/ui_editor.py` | UI 可视化编辑器（页面配置/区块/菜单） |
-| `app/services/booking_service.py` | 预约权限检查（会员资格+日期范围） |
+| `app/services/booking_service.py` | 预约权限检查（S拒绝/SS仅当天/SSS提前3天+免费时长） |
+| `app/services/invitation_service.py` | 邀请码生成/使用/月度配额/历史 |
+| `app/services/monthly_coupon_service.py` | SS级月度券自动发放（场地券+饮品券） |
 | `app/services/venue_pricing_service.py` | 场馆按小时动态定价计算 |
 | `app/services/review_service.py` | 评论提交与积分发放 |
 | `app/services/coupon_pack_service.py` | 入会优惠券合集发放 |
@@ -148,7 +150,8 @@ vue-tsc -b                       # 仅运行类型检查
 - **全局状态**: 通过 `app.globalData` 管理，包括会员等级主题色
 - **页面命名**: 教练端页面统一使用 `coach-*` 前缀
 - **Base URL**: `app.globalData.baseUrl`，生产指向 `https://yunlifang.cloud/api/v1`
-- **会员权益**: `pages/member/member.js` 展示单一会员权益（GUEST/MEMBER），无多等级权益常量
+- **会员权益**: `pages/member/member.js` 展示三级权益（S/SS/SSS），含邀请功能入口
+- **邀请页面**: `pages/invite/invite.js` 邀请码生成、分享、历史记录
 
 ## 数据库配置
 
@@ -166,24 +169,29 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 
 ## 业务规则
 
-### 会员制度（山姆模式 - 单一付费会员制）
+### 会员制度（三级会员制: S/SS/SSS）
 
-系统采用**单一付费会员制**（类似山姆超市模式），只有两个等级：
+系统采用**三级差异化会员制**：
 
-| 等级 | 等级名称 | 提前预约天数 | 主题色 | 权限 |
-|------|---------|-------------|--------|------|
-| GUEST | 普通用户 | - | `#999999` | 浏览所有信息 + 餐饮点单 |
-| MEMBER | 尊享会员 | 14天（可配置） | `#C9A962`（金色） | 全部功能 |
-
-**会员年卡**: 888元/年（后台可配置价格）
-**入会赠送**: 优惠券合集（后台通过 CouponPack 配置）
+| | S级（免费） | SS级（888元/年） | SSS级（8888元/年） |
+|---|---|---|---|
+| level_code | S | SS | SSS |
+| level 值 | 0 | 1 | 2 |
+| 主题色 | `#999999` | `#C9A962` | `#8B7355` |
+| 预约场馆 | 不可 | 仅当天 | 提前3天 |
+| 每日免费 | - | - | 3小时（硬限制） |
+| 月度券 | - | 1h场地券 + 1饮品券 | - |
+| 月邀请 | 0 | 1次 | 10次 |
+| 入会礼 | - | 实物+数字券包 | 实物+数字券包 |
+| 展示权益 | - | - | 储物柜/停车/接送/卫浴/包场/饮品畅享 |
 
 **权限规则**:
-- 非会员（GUEST）: 可浏览所有信息，但只能使用餐饮点单功能
-- 会员（MEMBER）: 预约场地、商城购物、组队 等全部功能
-- 会员判定: `subscription_status == 'active'` 且 `member_expire_time > now()`
+- S级: 可浏览信息、餐饮点单，不可预约
+- SS级: 当天预约场馆（`can_book_venue=True`, `booking_range_days=0`）
+- SSS级: 提前3天预约，每日3小时免费（超出拒绝），最多10次邀请/月
+- 会员判定（SS/SSS）: `subscription_status == 'active'` 且 `member_expire_time > now()`
 
-> 旧的四级会员制（TRIAL/S/SS/SSS）和违约惩罚系统已废弃。`food_discount_service.py` 已标记 DEPRECATED。
+> 旧的 GUEST/MEMBER 二级制和 TRIAL/S/SS/SSS 四级制均已废弃。`food_discount_service.py` 已标记 DEPRECATED。
 
 ### 场馆定价
 
@@ -208,14 +216,16 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 
 ### 预约权限检查
 `BookingService.check_booking_permission()`（`backend/app/services/booking_service.py`）校验：
-- 会员资格（subscription_status == 'active' 且未过期）
-- 日期范围限制（MEMBER 等级的 booking_range_days）
-- 返回 `can_book`、`reason`、`available_coupons` 等信息
+- S级: `can_book_venue=False` → 拒绝
+- SS级: `can_book_venue=True`, 检查 booking_date == today
+- SSS级: `can_book_venue=True`, 检查 booking_date <= today+3天, 检查每日3h免费上限
+- 返回 `can_book`、`reason`、`available_coupons`、`free_usage_info`（SSS）等信息
 
 ### 核心数据模型
 
 主要表定义在 `backend/app/models/`：
-- `member.py`: Member（会员）, MemberLevel（会员等级: GUEST/MEMBER）, MemberCard（会员卡套餐）
+- `member.py`: Member（会员）, MemberLevel（会员等级: S/SS/SSS, 含 can_book_venue/daily_free_hours/monthly_invite_count）, MemberCard（会员卡套餐）
+- `member_invitation.py`: MemberInvitation（邀请记录，邀请码/月度配额/状态）
 - `member_violation.py`: MemberViolation（违约记录）[已废弃，不再使用]
 - `venue.py`: Venue（场馆）, VenueType（场馆类型）
 - `venue_price.py`: VenuePriceRule（场馆按小时动态定价）
@@ -236,7 +246,7 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 
 ### 测试账号（生产环境）
 
-> 注意：数据迁移后所有会员已重置为 GUEST。需重新购买会员卡才能成为 MEMBER。
+> 注意：数据迁移后原 MEMBER 会员迁移为 SS 级，其他重置为 S 级。需购买会员卡成为 SS/SSS。
 
 会员登录 API：`POST /api/v1/member/auth/login`，body: `{"phone": "13800000004"}`（无需验证码）
 
@@ -251,7 +261,7 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 | 背景色 | `#F5F7F5` | 页面背景 |
 
 会员主题色定义在 `app.js` 的 `memberThemeConfig` 中，通过 `setMemberTheme(level)` 动态切换：
-- GUEST: `#999999` / MEMBER: `#C9A962`（金色）
+- S: `#999999` / SS: `#C9A962`（金色） / SSS: `#8B7355`（深金/铂金）
 
 详细设计规范: [user-miniprogram/docs/UI-REDESIGN-SPEC.md](user-miniprogram/docs/UI-REDESIGN-SPEC.md)
 
@@ -321,9 +331,11 @@ systemctl restart nginx          # 重启 Nginx
 - 开发时可在开发者工具中关闭"不校验合法域名"
 
 ### 会员状态问题
-- 会员判定逻辑: `subscription_status == 'active'` 且 `member_expire_time > datetime.now()`
-- 非会员尝试预约/商城/组队时返回 403，需引导开通会员
-- 餐饮点单不需要会员资格，非会员也可使用
+- 会员判定逻辑（SS/SSS）: `subscription_status == 'active'` 且 `member_expire_time > datetime.now()`
+- S级尝试预约时返回 403，提示"开通SS/SSS会员"
+- SS级预约非当天日期返回 403，提示"SS级仅可预约当天"
+- SSS级超3小时返回 403，显示已用/剩余分钟数
+- 餐饮点单不需要会员资格，S级也可使用
 
 ## 更多文档
 

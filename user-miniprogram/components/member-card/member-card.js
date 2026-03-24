@@ -11,10 +11,10 @@ Component({
       type: Object,
       value: null
     },
-    // 会员等级: GUEST, MEMBER（兼容旧值 TRIAL/S/SS/SSS）
+    // 会员等级: S, SS, SSS（兼容旧值 GUEST/TRIAL/MEMBER）
     level: {
       type: String,
-      value: 'GUEST'
+      value: 'S'
     },
     // 是否显示详细信息
     showDetail: {
@@ -29,30 +29,32 @@ Component({
   },
 
   data: {
-    // 主题配置（单一会员制）
+    // 主题配置（三级会员制：S/SS/SSS）
     themeConfig: {
-      GUEST: {
+      S: {
         primary: '#999999',
         gradient: 'linear-gradient(135deg, #999999 0%, #BBBBBB 100%)',
-        name: '普通用户',
-        icon: '/assets/icons/level-guest.png'
+        name: 'S级会员'
       },
-      MEMBER: {
+      SS: {
         primary: '#C9A962',
         gradient: 'linear-gradient(135deg, #C9A962 0%, #E8D5A3 100%)',
-        name: '尊享会员',
-        icon: '/assets/icons/level-member.png'
+        name: 'SS级会员'
+      },
+      SSS: {
+        primary: '#8B7355',
+        gradient: 'linear-gradient(135deg, #8B7355 0%, #C9A962 50%, #E8D5A3 100%)',
+        name: 'SSS级会员'
       }
     },
-    // 旧等级映射（兼容）
+    // 旧等级映射到新等级（兼容旧值）
     legacyLevelMap: {
-      TRIAL: 'GUEST',
-      S: 'MEMBER',
-      SS: 'MEMBER',
-      SSS: 'MEMBER'
+      GUEST: 'S',
+      TRIAL: 'S',
+      MEMBER: 'SS'
     },
     currentTheme: null,
-    currentLevel: 'GUEST',  // 实际使用的等级（GUEST/MEMBER）
+    currentLevel: 'S',  // 实际使用的等级（S/SS/SSS）
     isMember: false,
     memberExpireTime: null
   },
@@ -84,7 +86,7 @@ Component({
       // 优先从 memberInfo 获取等级
       const memberInfo = this.data.memberInfo
       const levelFromInfo = memberInfo && (memberInfo.member_level || memberInfo.level_code)
-      const initialLevel = levelFromInfo || this.data.level || 'GUEST'
+      const initialLevel = levelFromInfo || this.data.level || 'S'
       this.updateTheme(initialLevel)
       if (memberInfo) {
         this.updateMemberExpire(memberInfo)
@@ -93,14 +95,14 @@ Component({
   },
 
   methods: {
-    // 更新主题（兼容旧等级名）
+    // 更新主题（兼容旧等级名，映射到 S/SS/SSS）
     updateTheme(level) {
-      const mappedLevel = this.data.legacyLevelMap[level] || level || 'GUEST'
-      const theme = this.data.themeConfig[mappedLevel] || this.data.themeConfig.GUEST
+      const mappedLevel = this.data.legacyLevelMap[level] || level || 'S'
+      const theme = this.data.themeConfig[mappedLevel] || this.data.themeConfig.S
       this.setData({
         currentTheme: theme,
         currentLevel: mappedLevel,
-        isMember: (mappedLevel === 'MEMBER')
+        isMember: (mappedLevel === 'SS' || mappedLevel === 'SSS')
       })
     },
 

@@ -7,6 +7,7 @@ interface MemberLevel {
   id: number
   name: string
   level: number
+  level_code: string
   type: string
   discount: number
   icon: string
@@ -14,6 +15,12 @@ interface MemberLevel {
   venue_permissions: any
   benefits: string
   status: boolean
+  can_book_venue: boolean
+  daily_free_hours: number
+  monthly_invite_count: number
+  display_benefits: string[]
+  booking_range_days: number
+  theme_color: string
 }
 
 const loading = ref(false)
@@ -32,7 +39,12 @@ const form = ref({
   description: '',
   venue_permissions: '',
   benefits: '',
-  status: true
+  status: true,
+  can_book_venue: false,
+  daily_free_hours: 0,
+  monthly_invite_count: 0,
+  booking_range_days: 0,
+  theme_color: '#999999'
 })
 
 const rules = {
@@ -70,7 +82,12 @@ const handleAdd = () => {
     description: '',
     venue_permissions: '',
     benefits: '',
-    status: true
+    status: true,
+    can_book_venue: false,
+    daily_free_hours: 0,
+    monthly_invite_count: 0,
+    booking_range_days: 0,
+    theme_color: '#999999'
   }
   dialogVisible.value = true
 }
@@ -155,18 +172,24 @@ onMounted(() => {
       </template>
 
       <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="level" label="等级值" width="80" />
-        <el-table-column prop="name" label="等级名称" width="120" />
-        <el-table-column prop="type" label="类型" width="120">
+        <el-table-column prop="level" label="等级值" width="70" />
+        <el-table-column prop="level_code" label="等级代码" width="90" />
+        <el-table-column prop="name" label="等级名称" width="120">
           <template #default="{ row }">
-            <el-tag :color="getTypeColor(row.type)" effect="dark">{{ getTypeLabel(row.type) }}</el-tag>
+            <span :style="{ color: row.theme_color || '#333' }">{{ row.name }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="discount" label="折扣率" width="100">
-          <template #default="{ row }">{{ (row.discount * 100).toFixed(0) }}%</template>
+        <el-table-column prop="can_book_venue" label="可预约" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.can_book_venue ? 'success' : 'info'" size="small">
+              {{ row.can_book_venue ? '是' : '否' }}
+            </el-tag>
+          </template>
         </el-table-column>
+        <el-table-column prop="booking_range_days" label="预约天数" width="90" />
+        <el-table-column prop="daily_free_hours" label="免费小时/天" width="100" />
+        <el-table-column prop="monthly_invite_count" label="月邀请次数" width="100" />
         <el-table-column prop="description" label="描述" show-overflow-tooltip />
-        <el-table-column prop="benefits" label="会员权益" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status ? 'success' : 'danger'">
@@ -222,9 +245,40 @@ onMounted(() => {
         <el-form-item label="会员权益">
           <el-input v-model="form.benefits" type="textarea" :rows="3" placeholder="描述该等级的权益，如：免费使用健身房、优先预约等" />
         </el-form-item>
+        <el-divider content-position="left">预约与权益配置</el-divider>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="可预约场馆">
+              <el-switch v-model="form.can_book_venue" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="预约天数">
+              <el-input-number v-model="form.booking_range_days" :min="0" :max="30" style="width: 100%" />
+              <div class="form-tip">0=仅当天，3=提前3天</div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="主题色">
+              <el-color-picker v-model="form.theme_color" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="每日免费小时">
+              <el-input-number v-model="form.daily_free_hours" :min="0" :max="24" style="width: 100%" />
+              <div class="form-tip">SSS=3，其他=0</div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="月邀请次数">
+              <el-input-number v-model="form.monthly_invite_count" :min="0" :max="100" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="场馆权限">
-          <el-input v-model="form.venue_permissions" type="textarea" :rows="4" placeholder="JSON格式，如：{&quot;free_venues&quot;: [1,2,3], &quot;discount_venues&quot;: {&quot;4&quot;: 0.8}}" />
-          <div class="form-tip">配置该等级可使用的场馆权限，JSON格式，留空表示无特殊权限</div>
+          <el-input v-model="form.venue_permissions" type="textarea" :rows="3" placeholder="JSON格式（可选）" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" active-text="启用" inactive-text="禁用" />

@@ -32,11 +32,12 @@ Page({
     submitting: false,
     calendarHeight: 800,
     scrollLeft: 0,
-    // 会员权限相关（单一会员制）
+    // 会员权限相关（三级会员制）
     canBook: true,
     isMember: false,
-    memberLevel: 'GUEST',
-    permissionReason: ''
+    memberLevel: 'S',
+    permissionReason: '',
+    freeUsageInfo: null  // SSS免费时长信息
   },
 
   onLoad(options) {
@@ -59,10 +60,9 @@ Page({
     this.checkMemberPermission()
   },
 
-  // 检查会员预约权限（单一会员制）
+  // 检查会员预约权限（三级会员制）
   async checkMemberPermission() {
-    // 旧等级映射
-    const legacyMap = { TRIAL: 'GUEST', S: 'MEMBER', SS: 'MEMBER', SSS: 'MEMBER' }
+    const legacyMap = { GUEST: 'S', TRIAL: 'S', MEMBER: 'SS' }
 
     try {
       const res = await api.checkBookingPermission({
@@ -71,61 +71,70 @@ Page({
       })
       if (res.code === 200) {
         const data = res.data || {}
-        // 兼容后端返回旧等级名
-        const rawLevel = data.member_level || app.globalData.memberLevel
-        const mappedLevel = legacyMap[rawLevel] || rawLevel
-        const isMember = data.is_member !== undefined ? data.is_member : (mappedLevel === 'MEMBER')
+        const levelCode = data.level_code || app.globalData.memberLevel || 'S'
+        const mappedLevel = legacyMap[levelCode] || levelCode
+        const isMember = (mappedLevel === 'SS' || mappedLevel === 'SSS')
 
         this.setData({
           canBook: data.can_book !== false,
           isMember: isMember,
           memberLevel: mappedLevel,
-          permissionReason: data.reason || ''
+          permissionReason: data.reason || '',
+          freeUsageInfo: data.free_usage_info || null
         })
 
-        // 如果非会员，显示提示
-        if (!isMember || !data.can_book) {
-          this.showGuestTip()
+        if (!data.can_book) {
+          this.showBookingTip(mappedLevel, data.reason)
         }
       }
     } catch (err) {
       console.error('检查预约权限失败:', err)
-      // 从app获取默认值
       this.setData({
         canBook: app.checkCanBook(),
         isMember: app.globalData.isMember,
         memberLevel: app.globalData.memberLevel
       })
       if (!app.globalData.isMember) {
-        this.showGuestTip()
+        this.showBookingTip(app.globalData.memberLevel, '')
       }
     }
   },
 
-  // 显示非会员提示
-  showGuestTip() {
+  // 显示预约权限提示（根据等级差异化）
+  showBookingTip(level, reason) {
+    let content = reason || ''
+    if (level === 'S') {
+      content = '当前为S级会员，无法预约场馆。\n开通SS会员可预约当天场馆，SSS会员可提前3天预约。'
+    } else if (level === 'SS' && !content) {
+      content = 'SS级会员仅可预约当天场馆。如需提前预约，请升级为SSS会员。'
+    }
+
     wx.showModal({
       title: '预约提示',
-      content: '您尚未开通会员，无法自行预约场馆。开通会员即可享受全部预约权益。',
-      confirmText: '开通会员',
+      content: content,
+      confirmText: '查看会员',
       cancelText: '知道了',
       success: (res) => {
         if (res.confirm) {
-          wx.navigateTo({
-            url: '/pages/member/member'
-          })
+          wx.navigateTo({ url: '/pages/member/member' })
         }
       }
     })
   },
 
-  // 初始化日期列表（7天）
+  // 初始化日期列表（根据会员等级限制天数）
   initDates() {
     const dates = []
     const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
     const today = new Date()
+    const level = app.globalData.memberLevel || 'S'
 
-    for (let i = 0; i < 7; i++) {
+    // SS仅当天, SSS提前3天, 默认7天
+    let maxDays = 7
+    if (level === 'SS') maxDays = 1
+    else if (level === 'SSS') maxDays = 4  // 今天 + 3天
+
+    for (let i = 0; i < maxDays; i++) {
       const date = new Date(today)
       date.setDate(today.getDate() + i)
       dates.push({

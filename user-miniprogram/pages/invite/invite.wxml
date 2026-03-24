@@ -1,0 +1,58 @@
+<view class="container">
+  <!-- 邀请统计 -->
+  <view class="stats-card">
+    <view class="stats-title">{{stats.month}} 邀请额度</view>
+    <view class="stats-row">
+      <view class="stat-item">
+        <text class="stat-num">{{stats.remaining}}</text>
+        <text class="stat-label">剩余次数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.used}}</text>
+        <text class="stat-label">已邀请</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.limit}}</text>
+        <text class="stat-label">总额度</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成邀请码 -->
+  <view class="invite-action">
+    <button class="generate-btn" bindtap="generateCode" disabled="{{generating || stats.remaining <= 0}}">
+      {{generating ? '生成中...' : (stats.remaining > 0 ? '生成邀请码' : '本月次数已用完')}}
+    </button>
+
+    <view class="code-display" wx:if="{{currentCode}}">
+      <text class="code-label">邀请码</text>
+      <text class="code-value">{{currentCode}}</text>
+      <view class="code-actions">
+        <text class="copy-btn" bindtap="copyCode">复制</text>
+        <button class="share-btn" open-type="share">分享给朋友</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 邀请历史 -->
+  <view class="history-section">
+    <view class="section-title">邀请记录</view>
+    <view class="history-list" wx:if="{{history.length > 0}}">
+      <view class="history-item" wx:for="{{history}}" wx:key="id">
+        <view class="history-left">
+          <text class="history-code">{{item.invite_code}}</text>
+          <text class="history-time">{{item.created_at}}</text>
+        </view>
+        <view class="history-right">
+          <text class="status status-{{item.status}}">
+            {{item.status === 'used' ? '已使用' : (item.status === 'expired' ? '已过期' : '待使用')}}
+          </text>
+          <text class="invitee" wx:if="{{item.invitee_name}}">{{item.invitee_name}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>
+      <text>暂无邀请记录</text>
+    </view>
+  </view>
+</view>

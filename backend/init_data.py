@@ -1,7 +1,9 @@
 """
-初始化数据脚本（单一会员制版本）
+初始化数据脚本（三级会员制版本: S/SS/SSS）
 运行: python init_data.py
 """
+import json
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
@@ -10,6 +12,7 @@ from app.models.venue import VenueType, Venue
 from app.models.member import MemberCard
 from app.models.finance import RechargePackage
 from app.models.review import ReviewPointConfig
+from app.models.coupon import CouponTemplate, CouponPack, CouponPackItem
 
 # 创建所有表
 Base.metadata.create_all(bind=engine)
@@ -132,25 +135,38 @@ def init_admin_user(db: Session, dept_id: int):
 
 
 def init_member_levels(db: Session):
-    """初始化会员等级（单一会员制：GUEST + MEMBER）"""
+    """初始化会员等级（三级会员制：S/SS/SSS）"""
     levels = [
         {
-            "name": "普通用户", "level": 0, "level_code": "GUEST",
+            "name": "S级会员", "level": 0, "level_code": "S",
             "discount": 1.00, "booking_range_days": 0, "booking_max_count": 0,
             "booking_period": "day", "food_discount_rate": 1.00,
-            "can_book_golf": False,
+            "can_book_golf": False, "can_book_venue": False,
+            "daily_free_hours": 0, "monthly_invite_count": 0,
             "theme_color": "#999999",
             "theme_gradient": "linear-gradient(135deg, #999999 0%, #BBBBBB 100%)",
-            "description": "注册即为普通用户，可浏览信息和餐饮点单",
+            "description": "注册即为S级会员，可浏览信息和餐饮点单",
         },
         {
-            "name": "尊享会员", "level": 1, "level_code": "MEMBER",
-            "discount": 1.00, "booking_range_days": 14, "booking_max_count": 0,
+            "name": "SS级会员", "level": 1, "level_code": "SS",
+            "discount": 1.00, "booking_range_days": 0, "booking_max_count": 0,
             "booking_period": "day", "food_discount_rate": 1.00,
-            "can_book_golf": True,
+            "can_book_golf": True, "can_book_venue": True,
+            "daily_free_hours": 0, "monthly_invite_count": 1,
             "theme_color": "#C9A962",
             "theme_gradient": "linear-gradient(135deg, #C9A962 0%, #E8D5A3 100%)",
-            "description": "尊享会员，享受全部场馆预约、商城、组队等权益",
+            "description": "SS级会员，可预约当天场馆，每月1次邀请朋友，月度券",
+        },
+        {
+            "name": "SSS级会员", "level": 2, "level_code": "SSS",
+            "discount": 1.00, "booking_range_days": 3, "booking_max_count": 0,
+            "booking_period": "day", "food_discount_rate": 1.00,
+            "can_book_golf": True, "can_book_venue": True,
+            "daily_free_hours": 3, "monthly_invite_count": 10,
+            "display_benefits": json.dumps(["专属储物柜", "免费停车位", "专车接送", "豪华卫浴", "包场权限", "饮品畅享"], ensure_ascii=False),
+            "theme_color": "#8B7355",
+            "theme_gradient": "linear-gradient(135deg, #8B7355 0%, #C9A962 50%, #E8D5A3 100%)",
+            "description": "SSS级会员，提前3天预约，每日3小时免费，每月10次邀请，顶级权益",
         },
     ]
 
@@ -168,39 +184,55 @@ def init_member_levels(db: Session):
 
 
 def init_member_cards(db: Session):
-    """初始化会员卡套餐（单一888元年卡）"""
-    member_level = db.query(MemberLevel).filter(
-        MemberLevel.level_code == "MEMBER"
-    ).first()
+    """初始化会员卡套餐（SS年卡 + SSS年卡）"""
+    cards_config = [
+        {
+            "level_code": "SS",
+            "name": "SS年卡",
+            "original_price": 1288,
+            "price": 888,
+            "duration_days": 365,
+            "bonus_coins": 100,
+            "bonus_points": 1000,
+            "description": "SS级会员年卡，当天场馆预约+月度券+1次邀请",
+            "highlights": json.dumps(["当天场馆预约", "月度场地券+饮品券", "每月1次邀请朋友", "入会优惠券包"], ensure_ascii=False),
+            "is_recommended": True,
+            "sort_order": 1,
+        },
+        {
+            "level_code": "SSS",
+            "name": "SSS年卡",
+            "original_price": 12888,
+            "price": 8888,
+            "duration_days": 365,
+            "bonus_coins": 500,
+            "bonus_points": 5000,
+            "description": "SSS级会员年卡，提前3天预约+每日3小时免费+10次邀请+顶级权益",
+            "highlights": json.dumps(["提前3天预约", "每日3小时免费", "每月10次邀请", "储物柜/停车/接送/卫浴", "包场权限", "饮品畅享"], ensure_ascii=False),
+            "is_recommended": False,
+            "sort_order": 2,
+        },
+    ]
 
-    if not member_level:
-        print("请先初始化会员等级")
-        return
+    for card_config in cards_config:
+        level_code = card_config.pop("level_code")
+        level = db.query(MemberLevel).filter(
+            MemberLevel.level_code == level_code
+        ).first()
+        if not level:
+            print(f"等级 {level_code} 不存在，跳过创建会员卡")
+            continue
 
-    existing = db.query(MemberCard).filter(
-        MemberCard.name == "尊享年卡"
-    ).first()
+        existing = db.query(MemberCard).filter(
+            MemberCard.name == card_config["name"]
+        ).first()
+        if not existing:
+            card = MemberCard(level_id=level.id, is_active=True, **card_config)
+            db.add(card)
+            print(f"创建会员卡套餐: {card_config['name']} ({card_config['price']}元/年)")
 
-    if not existing:
-        card = MemberCard(
-            name="尊享年卡",
-            level_id=member_level.id,
-            original_price=1288,
-            price=888,
-            duration_days=365,
-            bonus_coins=100,
-            bonus_points=1000,
-            description="开通尊享会员，全场馆预约+商城+组队，一年畅享",
-            highlights='["全场馆预约权限","14天提前预约","入会优惠券包","专属金色会员标识"]',
-            is_recommended=True,
-            sort_order=1,
-            is_active=True
-        )
-        db.add(card)
-        db.commit()
-        print("创建会员卡套餐: 尊享年卡 (888元/年)")
-    else:
-        print("会员卡套餐已存在")
+    db.commit()
+    print("会员卡套餐初始化完成")
 
 
 def init_recharge_packages(db: Session):
@@ -246,6 +278,94 @@ def init_review_config(db: Session):
         print("评论积分配置初始化完成")
     else:
         print("评论积分配置已存在")
+
+
+def init_monthly_coupon_templates(db: Session):
+    """初始化SS月度券模板"""
+    templates = [
+        {
+            "name": "SS月度场地券(1小时)",
+            "type": "cash",
+            "discount_value": 100,
+            "min_amount": 0,
+            "applicable_type": "venue",
+            "valid_days": 30,
+            "total_count": 0,
+            "per_limit": 99,
+            "is_active": True,
+            "description": "SS级会员每月赠送，可抵扣1小时场地费用",
+        },
+        {
+            "name": "SS月度饮品券",
+            "type": "gift",
+            "discount_value": 0,
+            "min_amount": 0,
+            "applicable_type": "food",
+            "valid_days": 30,
+            "total_count": 0,
+            "per_limit": 99,
+            "is_active": True,
+            "description": "SS级会员每月赠送，可兑换任意饮品一杯",
+        },
+    ]
+
+    for tpl_data in templates:
+        existing = db.query(CouponTemplate).filter(
+            CouponTemplate.name == tpl_data["name"]
+        ).first()
+        if not existing:
+            tpl = CouponTemplate(**tpl_data)
+            db.add(tpl)
+            print(f"创建月度券模板: {tpl_data['name']}")
+
+    db.commit()
+    print("月度券模板初始化完成")
+
+
+def init_welcome_coupon_packs(db: Session):
+    """初始化SS/SSS入会券包"""
+    packs_config = [
+        {
+            "name": "SS入会券包",
+            "description": "SS级会员入会赠送数字券包",
+            "level_code": "SS",
+        },
+        {
+            "name": "SSS入会券包",
+            "description": "SSS级会员入会赠送数字券包",
+            "level_code": "SSS",
+        },
+    ]
+
+    for pack_config in packs_config:
+        existing = db.query(CouponPack).filter(
+            CouponPack.name == pack_config["name"]
+        ).first()
+        if not existing:
+            pack = CouponPack(
+                name=pack_config["name"],
+                description=pack_config["description"],
+                is_active=True,
+            )
+            db.add(pack)
+            db.flush()
+            print(f"创建入会券包: {pack_config['name']}")
+
+            # 关联到对应等级的会员卡
+            level = db.query(MemberLevel).filter(
+                MemberLevel.level_code == pack_config["level_code"]
+            ).first()
+            if level:
+                card = db.query(MemberCard).filter(
+                    MemberCard.level_id == level.id,
+                    MemberCard.is_active == True
+                ).first()
+                if card:
+                    card.welcome_coupon_pack_id = pack.id
+                    print(f"  关联到会员卡: {card.name}")
+
+    db.commit()
+    print("入会券包初始化完成")
 
 
 def init_venues(db: Session):
@@ -342,6 +462,8 @@ def main():
         init_admin_user(db, dept_id)
         init_member_levels(db)
         init_member_cards(db)
+        init_monthly_coupon_templates(db)
+        init_welcome_coupon_packs(db)
         init_recharge_packages(db)
         init_review_config(db)
         init_venues(db)

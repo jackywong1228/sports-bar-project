@@ -31,7 +31,7 @@ class MemberLevel(Base, TimestampMixin):
     status = Column(Boolean, default=True, comment="状态")
 
     # 订阅会员制新增字段
-    level_code = Column(String(20), nullable=False, default='TRIAL', comment='等级代码: TRIAL/S/SS/SSS')
+    level_code = Column(String(20), nullable=False, default='S', comment='等级代码: S/SS/SSS')
     booking_range_days = Column(Integer, default=0, comment='可预约天数范围')
     booking_max_count = Column(Integer, default=0, comment='预约次数上限')
     booking_period = Column(String(20), default='day', comment='预约周期: day/week/month')
@@ -40,6 +40,12 @@ class MemberLevel(Base, TimestampMixin):
     can_book_golf = Column(Boolean, default=False, comment='是否可预约高尔夫')
     theme_color = Column(String(20), default='#999999', comment='UI主题颜色')
     theme_gradient = Column(String(100), nullable=True, comment='UI渐变色')
+
+    # 三级会员制新增字段
+    can_book_venue = Column(Boolean, default=False, comment='是否可预约场馆')
+    daily_free_hours = Column(Integer, default=0, comment='每日免费场馆小时数（SSS=3）')
+    monthly_invite_count = Column(Integer, default=0, comment='每月邀请朋友次数（SS=1, SSS=10）')
+    display_benefits = Column(Text, nullable=True, comment='展示型权益JSON数组')
 
     # 关系
     members = relationship("Member", back_populates="level")

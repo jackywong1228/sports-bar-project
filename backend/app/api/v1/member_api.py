@@ -33,6 +33,9 @@ router = APIRouter()
 # 配置日志
 logger = logging.getLogger(__name__)
 
+# 三级会员制等级名映射（兼容旧数据库数据）
+LEVEL_CODE_NAME_MAP = {"S": "S级会员", "SS": "SS级会员", "SSS": "SSS级会员"}
+
 
 # ==================== 认证相关 ====================
 
@@ -87,7 +90,7 @@ def member_login(
         and member.member_expire_time
         and member.member_expire_time > datetime.now()
     )
-    level_code = member.level.level_code if member.level else "GUEST"
+    level_code = member.level.level_code if member.level else "S"
 
     return ResponseModel(data={
         "access_token": access_token,
@@ -100,11 +103,12 @@ def member_login(
             "coin_balance": float(member.coin_balance or 0),
             "point_balance": member.point_balance or 0,
             "is_member": is_member,
-            "membership_type": "member" if is_member else "guest",
+            "level_code": level_code,
+            "membership_type": level_code,
             "member_expire_time": str(member.member_expire_time) if member.member_expire_time else None,
             # 兼容旧字段
-            "member_level": "MEMBER" if is_member else "GUEST",
-            "level_name": member.level.name if member.level else "普通用户"
+            "member_level": level_code,
+            "level_name": LEVEL_CODE_NAME_MAP.get(level_code, "S级会员")
         }
     })
 
@@ -187,8 +191,9 @@ async def member_wx_login(
             "phone": member.phone,
             "coin_balance": float(member.coin_balance or 0),
             "point_balance": member.point_balance or 0,
-            "member_level": member.level.level_code if member.level else "TRIAL",
-            "level_name": member.level.name if member.level else "体验会员"
+            "member_level": member.level.level_code if member.level else "S",
+            "level_code": member.level.level_code if member.level else "S",
+            "level_name": LEVEL_CODE_NAME_MAP.get(member.level.level_code if member.level else "S", "S级会员")
         }
     })
 
@@ -343,18 +348,34 @@ def get_member_profile(
         and current_member.member_expire_time
         and current_member.member_expire_time > datetime.now()
     )
-    level_code = current_member.level.level_code if current_member.level else "GUEST"
+    level_code = current_member.level.level_code if current_member.level else "S"
+    level = current_member.level
 
     level_info = {
-        "level_id": current_member.level.id if current_member.level else None,
-        "level_name": current_member.level.name if current_member.level else "普通用户",
+        "level_id": level.id if level else None,
+        "level_name": LEVEL_CODE_NAME_MAP.get(level_code, "S级会员"),
         "level_code": level_code,
-        "level_icon": current_member.level.icon if current_member.level else None,
-        "theme_color": current_member.level.theme_color if current_member.level else "#999999",
-        "theme_gradient": current_member.level.theme_gradient if current_member.level else None,
+        "level_icon": level.icon if level else None,
+        "theme_color": level.theme_color if level else "#999999",
+        "theme_gradient": level.theme_gradient if level else None,
         # 兼容旧字段
-        "member_level": "MEMBER" if is_member else "GUEST"
+        "member_level": level_code
     }
+
+    # 邀请和免费时长信息
+    extra_info = {}
+    if level:
+        from app.services.invitation_service import InvitationService
+        inv_service = InvitationService(db)
+        invite_stats = inv_service.get_monthly_stats(current_member.id)
+        extra_info["monthly_invite_remaining"] = invite_stats["remaining"]
+
+        daily_free_hours = getattr(level, 'daily_free_hours', 0) or 0
+        if daily_free_hours > 0:
+            from app.services.booking_service import BookingService
+            bs = BookingService(db)
+            used = bs._get_daily_used_minutes(current_member.id, date.today())
+            extra_info["daily_free_hours_remaining"] = max(0, (daily_free_hours * 60 - used) / 60)
 
     return ResponseModel(data={
         "id": current_member.id,
@@ -364,8 +385,9 @@ def get_member_profile(
         "real_name": current_member.real_name,
         "gender": current_member.gender,
         **level_info,
+        **extra_info,
         "is_member": is_member,
-        "membership_type": "member" if is_member else "guest",
+        "membership_type": level_code,
         "member_expire_time": str(current_member.member_expire_time) if current_member.member_expire_time else None,
         "coin_balance": float(current_member.coin_balance or 0),
         "point_balance": current_member.point_balance or 0
@@ -882,15 +904,8 @@ def create_reservation(
     current_member: Member = Depends(get_current_member),
     db: Session = Depends(get_db)
 ):
-    """创建预约（单一会员制版本：检查会员资格 + 时段定价 + 优惠券抵扣）"""
-    # 1. 会员资格检查
-    is_member = (
-        current_member.subscription_status == 'active'
-        and current_member.member_expire_time
-        and current_member.member_expire_time > datetime.now()
-    )
-    if not is_member:
-        raise HTTPException(status_code=403, detail="请先开通会员才能预约")
+    """创建预约（三级会员制版本：S拒绝/SS仅当天/SSS提前3天+免费小时上限）"""
+    from app.services.booking_service import BookingService
 
     venue_id = data.get("venue_id")
     coach_id = data.get("coach_id")
@@ -898,12 +913,33 @@ def create_reservation(
     start_time = data.get("start_time")
     end_time = data.get("end_time")
     duration = data.get("duration", 60)
-    coupon_id = data.get("coupon_id")  # 优惠券ID
-    pay_type = data.get("pay_type", "coin")  # coin/wechat
+    coupon_id = data.get("coupon_id")
+    pay_type = data.get("pay_type", "coin")
 
-    # 2. 计算场馆费用（按时段定价）
+    # 1. 预约权限检查（含等级、日期范围）
+    booking_date = datetime.strptime(reservation_date, "%Y-%m-%d").date() if isinstance(reservation_date, str) else reservation_date
+    booking_service = BookingService(db)
+    perm = booking_service.check_booking_permission(current_member, venue_id, booking_date)
+    if not perm["can_book"]:
+        raise HTTPException(status_code=403, detail=perm["reason"])
+
+    level = current_member.level
+    level_code = level.level_code if level else "S"
+
+    # 2. SSS级检查每日免费时长上限
+    daily_free_hours = getattr(level, 'daily_free_hours', 0) or 0
+    is_sss_free = False
+    if level_code == 'SSS' and daily_free_hours > 0:
+        free_check = booking_service.check_sss_free_limit(
+            current_member.id, booking_date, duration, daily_free_hours
+        )
+        if not free_check["allowed"]:
+            raise HTTPException(status_code=403, detail=free_check["reason"])
+        is_sss_free = True
+
+    # 3. 计算场馆费用（SSS级免费，其他按时段定价）
     venue_price = 0
-    if venue_id:
+    if venue_id and not is_sss_free:
         venue = db.query(Venue).filter(Venue.id == venue_id).first()
         if venue:
             from app.services.venue_pricing_service import VenuePricingService
@@ -913,16 +949,14 @@ def create_reservation(
                 start_hour = int(start_time.split(":")[0]) if isinstance(start_time, str) else start_time
                 end_hour = int(end_time.split(":")[0]) if isinstance(end_time, str) else end_time
                 price_result = pricing.calculate_booking_price(
-                    venue_id,
-                    datetime.strptime(reservation_date, "%Y-%m-%d").date() if isinstance(reservation_date, str) else reservation_date,
-                    start_hour, end_hour
+                    venue_id, booking_date, start_hour, end_hour
                 )
                 venue_price = price_result["total"]
             else:
                 hours = duration / 60
                 venue_price = float(venue.price or 0) * hours
 
-    # 3. 计算教练费用
+    # 4. 计算教练费用
     coach_price = 0
     if coach_id:
         coach = db.query(Coach).filter(Coach.id == coach_id).first()
@@ -932,7 +966,7 @@ def create_reservation(
 
     total_price = venue_price + coach_price
 
-    # 4. 优惠券抵扣
+    # 5. 优惠券抵扣
     coupon_discount = 0
     used_coupon = None
     if coupon_id:
@@ -945,17 +979,17 @@ def create_reservation(
             if coupon.type == 'cash':
                 coupon_discount = min(float(coupon.discount_value or 0), venue_price)
             elif coupon.type == 'gift':
-                coupon_discount = venue_price  # 免费券全额抵扣场地费
+                coupon_discount = venue_price
             used_coupon = coupon
 
     actual_price = max(0, total_price - coupon_discount)
 
-    # 5. 支付处理
+    # 6. 支付处理
     if actual_price > 0 and pay_type == "coin":
         if actual_price > float(current_member.coin_balance or 0):
             raise HTTPException(status_code=400, detail="金币余额不足")
 
-    # 6. 生成预约
+    # 7. 生成预约
     import uuid
     reservation_no = f"R{datetime.now().strftime('%Y%m%d%H%M%S')}{str(uuid.uuid4())[:4].upper()}"
 
@@ -968,14 +1002,14 @@ def create_reservation(
         start_time=start_time,
         end_time=end_time,
         duration=duration,
-        venue_price=venue_price,
+        venue_price=venue_price if not is_sss_free else 0,
         coach_price=coach_price,
         total_price=actual_price,
         status="pending"
     )
     db.add(reservation)
 
-    # 7. 扣费
+    # 8. 扣费
     if actual_price > 0 and pay_type == "coin":
         current_member.coin_balance = float(current_member.coin_balance or 0) - actual_price
         coin_record = CoinRecord(
@@ -988,27 +1022,27 @@ def create_reservation(
         )
         db.add(coin_record)
 
-    # 8. 核销优惠券
+    # 9. 核销优惠券
     if used_coupon:
         used_coupon.status = 'used'
         used_coupon.use_time = datetime.now()
         used_coupon.order_type = 'reservation'
-        used_coupon.order_id = None  # commit 后再更新
+        used_coupon.order_id = None
 
     db.commit()
 
-    # 更新优惠券关联的订单ID
     if used_coupon:
         used_coupon.order_id = reservation.id
         db.commit()
 
     return ResponseModel(message="预约成功", data={
         "reservation_no": reservation_no,
-        "venue_price": venue_price,
+        "venue_price": venue_price if not is_sss_free else 0,
         "coach_price": coach_price,
         "coupon_discount": coupon_discount,
         "actual_price": actual_price,
-        "pay_type": pay_type
+        "pay_type": pay_type,
+        "is_free": is_sss_free
     })
 
 
@@ -1887,15 +1921,15 @@ def get_member_cards(db: Session = Depends(get_db)):
 
     result = []
     for card in cards:
-        # 获取会员等级信息
-        level_name = ""
-        if card.level:
-            level_name = card.level.name
+        # 获取会员等级信息（使用 level_code 映射，兼容旧数据库数据）
+        level_code = card.level.level_code if card.level else ""
+        level_name = LEVEL_CODE_NAME_MAP.get(level_code, level_code)
 
         result.append({
             "id": card.id,
             "name": card.name,
             "level_name": level_name,
+            "level_code": level_code,
             "original_price": float(card.original_price or 0),
             "price": float(card.price or 0),
             "duration_days": card.duration_days,
@@ -1903,7 +1937,8 @@ def get_member_cards(db: Session = Depends(get_db)):
             "bonus_points": card.bonus_points or 0,
             "cover_image": card.cover_image,
             "description": card.description,
-            "is_recommended": card.is_recommended
+            "is_recommended": card.is_recommended,
+            "highlights": json.loads(card.highlights) if card.highlights else []
         })
 
     return ResponseModel(data=result)
@@ -2240,9 +2275,11 @@ def _process_member_card_payment(order: MemberCardOrder, transaction_id: str, db
     order.start_time = start_time
     order.expire_time = expire_time
 
-    # 升级会员等级
+    # 升级会员等级 + 修复subscription_status
     member.level_id = order.level_id
     member.member_expire_time = expire_time
+    member.subscription_status = 'active'
+    member.subscription_start_date = start_time if hasattr(start_time, 'date') else now.date()
 
     # 发放赠送金币
     if order.bonus_coins and float(order.bonus_coins) > 0:
@@ -2738,9 +2775,7 @@ def get_my_rank(
 
 # ==================== 订阅会员制新增接口 ====================
 
-from app.models.member_violation import MemberViolation
 from app.services.booking_service import BookingService
-from app.services.food_discount_service import FoodDiscountService
 
 
 @router.get("/profile-v2", response_model=ResponseModel)
@@ -2749,10 +2784,15 @@ def get_member_profile_v2(
     db: Session = Depends(get_db)
 ):
     """
-    获取会员信息（订阅会员制版本）
+    获取会员信息（三级会员制版本 S/SS/SSS）
 
-    返回包含等级信息、订阅状态、预约权限、惩罚信息、折扣信息等完整数据
+    返回包含等级信息、订阅状态、预约权限、邀请信息、免费时长等完整数据
     """
+    # SS级月度券自动发放
+    from app.services.monthly_coupon_service import MonthlyCouponService
+    coupon_service = MonthlyCouponService(db)
+    coupon_result = coupon_service.check_and_issue(current_member)
+
     # 基础信息
     profile = {
         "id": current_member.id,
@@ -2765,17 +2805,18 @@ def get_member_profile_v2(
         "point_balance": current_member.point_balance or 0
     }
 
+    level = current_member.level
+
     # 等级信息
     level_info = {
-        "level_code": "TRIAL",
-        "level_name": "体验会员",
+        "level_code": "S",
+        "level_name": "S级会员",
         "level": 0,
         "theme_color": "#999999",
         "theme_gradient": "linear-gradient(135deg, #999999, #666666)"
     }
 
-    if current_member.level:
-        level = current_member.level
+    if level:
         level_info = {
             "level_code": level.level_code,
             "level_name": level.name,
@@ -2783,7 +2824,8 @@ def get_member_profile_v2(
             "theme_color": level.theme_color or "#999999",
             "theme_gradient": level.theme_gradient or "linear-gradient(135deg, #999999, #666666)",
             "icon": level.icon,
-            "description": level.description
+            "description": level.description,
+            "display_benefits": json.loads(level.display_benefits) if level.display_benefits else []
         }
 
     # 订阅信息
@@ -2795,47 +2837,45 @@ def get_member_profile_v2(
     }
 
     # 预约权限信息
-    booking_service = BookingService(db)
-    booking_stats = booking_service.get_booking_stats(current_member)
-
+    can_book = bool(level and getattr(level, 'can_book_venue', False))
     booking_privileges = {
-        "can_book": current_member.level and current_member.level.level_code != 'TRIAL',
-        "booking_range_days": current_member.level.booking_range_days if current_member.level else 0,
-        "booking_max_count": current_member.level.booking_max_count if current_member.level else 0,
-        "booking_period": current_member.level.booking_period if current_member.level else "day",
-        "current_period_bookings": booking_stats["this_period_bookings"],
-        "remaining_bookings": booking_stats["remaining_quota"],
-        "can_book_golf": current_member.level.can_book_golf if current_member.level else False
+        "can_book": can_book,
+        "booking_range_days": level.booking_range_days if level else 0,
+        "can_book_golf": level.can_book_golf if level else False,
     }
 
-    # 如果处于惩罚期，覆盖预约权限
-    if current_member.penalty_status == 'penalized':
-        booking_privileges.update({
-            "booking_range_days": current_member.penalty_booking_range_days or 0,
-            "booking_max_count": current_member.penalty_booking_max_count or 0,
-            "booking_period": "day"
-        })
+    # 邀请信息
+    from app.services.invitation_service import InvitationService
+    inv_service = InvitationService(db)
+    invite_info = inv_service.get_monthly_stats(current_member.id)
 
-    # 惩罚信息
-    penalty_info = {
-        "is_penalized": current_member.penalty_status == 'penalized',
-        "penalty_reason": current_member.penalty_reason,
-        "penalty_start_at": str(current_member.penalty_start_at) if current_member.penalty_start_at else None,
-        "penalty_end_at": str(current_member.penalty_end_at) if current_member.penalty_end_at else None
-    }
+    # SSS免费时长信息
+    free_usage_info = None
+    daily_free_hours = getattr(level, 'daily_free_hours', 0) or 0 if level else 0
+    if daily_free_hours > 0:
+        booking_service = BookingService(db)
+        used_minutes = booking_service._get_daily_used_minutes(current_member.id, date.today())
+        remaining = max(0, daily_free_hours * 60 - used_minutes)
+        free_usage_info = {
+            "daily_free_hours": daily_free_hours,
+            "used_minutes": used_minutes,
+            "remaining_minutes": remaining,
+            "remaining_hours": round(remaining / 60, 1)
+        }
 
-    # 折扣信息
-    discount_service = FoodDiscountService()
-    discount_info = discount_service.get_discount_info(current_member)
-
-    return ResponseModel(data={
+    result = {
         **profile,
         "level_info": level_info,
         "subscription_info": subscription_info,
         "booking_privileges": booking_privileges,
-        "penalty_info": penalty_info,
-        "discount_info": discount_info
-    })
+        "invite_info": invite_info,
+    }
+    if free_usage_info:
+        result["free_usage_info"] = free_usage_info
+    if coupon_result:
+        result["monthly_coupon_issued"] = coupon_result
+
+    return ResponseModel(data=result)
 
 
 @router.get("/booking-permission", response_model=ResponseModel)
@@ -2920,79 +2960,6 @@ def verify_reservation(
         "can_book_again": True,
         "remaining_quota": stats["remaining_quota"]
     })
-
-
-@router.get("/violations", response_model=ResponseModel)
-def get_violations(
-    current_member: Member = Depends(get_current_member),
-    db: Session = Depends(get_db)
-):
-    """
-    获取会员违约记录
-
-    返回违约历史和统计信息
-    """
-    # 查询违约记录
-    violations = db.query(MemberViolation).filter(
-        MemberViolation.member_id == current_member.id
-    ).order_by(MemberViolation.violation_date.desc()).limit(20).all()
-
-    # 计算统计信息
-    total_violations = len(violations)
-
-    # 当前周期违约数（根据会员等级计算）
-    if current_member.level and current_member.level.level_code == 'SSS':
-        cutoff_date = date.today() - timedelta(days=30)
-    elif current_member.level and current_member.level.level_code == 'SS':
-        cutoff_date = date.today() - timedelta(days=7)
-    else:
-        cutoff_date = date.today() - timedelta(days=2)
-
-    current_period_violations = sum(
-        1 for v in violations if v.violation_date >= cutoff_date
-    )
-
-    # 惩罚阈值
-    penalty_threshold_map = {'SSS': 3, 'SS': 1, 'S': 1}
-    level_code = current_member.level.level_code if current_member.level else 'TRIAL'
-    penalty_threshold = penalty_threshold_map.get(level_code, 0)
-
-    # 违约详情列表
-    violation_list = []
-    for v in violations:
-        reservation = db.query(Reservation).filter(Reservation.id == v.reservation_id).first()
-        violation_list.append({
-            "id": v.id,
-            "reservation_no": reservation.reservation_no if reservation else None,
-            "venue_name": reservation.venue.name if reservation and reservation.venue else None,
-            "reservation_date": str(v.violation_date),
-            "violation_type": v.violation_type,
-            "created_at": str(v.created_at),
-            "penalty_applied": v.penalty_applied
-        })
-
-    return ResponseModel(data={
-        "total_violations": total_violations,
-        "current_period_violations": current_period_violations,
-        "penalty_threshold": penalty_threshold,
-        "violations": violation_list
-    })
-
-
-@router.get("/food-discount", response_model=ResponseModel)
-def get_food_discount(
-    current_member: Member = Depends(get_current_member),
-    db: Session = Depends(get_db)
-):
-    """
-    获取餐食折扣信息
-
-    返回当前时段的折扣信息
-    """
-    discount_service = FoodDiscountService()
-    discount_info = discount_service.get_discount_info(current_member)
-
-    return ResponseModel(data=discount_info)
 
 
 # ==================== 公告相关 ====================
@@ -3144,6 +3111,61 @@ def get_recharge_packages(db: Session = Depends(get_db)):
             "bonus_coins": pkg.bonus_coins,
             "total_coins": pkg.coin_amount + pkg.bonus_coins
         })
+    return ResponseModel(data=result)
+
+
+# ==================== 邀请功能 ====================
+
+@router.post("/invite/generate", response_model=ResponseModel)
+def generate_invite_code(
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """生成邀请码"""
+    from app.services.invitation_service import InvitationService
+    service = InvitationService(db)
+    result = service.generate_invite(current_member)
+    if not result["success"]:
+        return ResponseModel(code=400, message=result["reason"], data=result)
+    return ResponseModel(data=result)
+
+
+@router.get("/invite/stats", response_model=ResponseModel)
+def get_invite_stats(
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取本月邀请统计"""
+    from app.services.invitation_service import InvitationService
+    service = InvitationService(db)
+    return ResponseModel(data=service.get_monthly_stats(current_member.id))
+
+
+@router.get("/invite/history", response_model=ResponseModel)
+def get_invite_history(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取邀请记录"""
+    from app.services.invitation_service import InvitationService
+    service = InvitationService(db)
+    return ResponseModel(data=service.get_history(current_member.id, page, page_size))
+
+
+@router.post("/invite/{code}/accept", response_model=ResponseModel)
+def accept_invite_code(
+    code: str,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """使用邀请码"""
+    from app.services.invitation_service import InvitationService
+    service = InvitationService(db)
+    result = service.accept_invite(code, current_member)
+    if not result["success"]:
+        return ResponseModel(code=400, message=result["reason"])
     return ResponseModel(data=result)
 
 

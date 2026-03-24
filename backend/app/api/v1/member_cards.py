@@ -30,6 +30,7 @@ def get_member_levels(
         "id": item.id,
         "name": item.name,
         "level": item.level,
+        "level_code": item.level_code,
         "type": item.type,
         "discount": float(item.discount) if item.discount else 1.0,
         "icon": item.icon,
@@ -37,6 +38,12 @@ def get_member_levels(
         "venue_permissions": json.loads(item.venue_permissions) if item.venue_permissions else None,
         "benefits": item.benefits,
         "status": item.status,
+        "can_book_venue": item.can_book_venue if hasattr(item, 'can_book_venue') else False,
+        "daily_free_hours": item.daily_free_hours if hasattr(item, 'daily_free_hours') else 0,
+        "monthly_invite_count": item.monthly_invite_count if hasattr(item, 'monthly_invite_count') else 0,
+        "display_benefits": json.loads(item.display_benefits) if item.display_benefits else [],
+        "booking_range_days": item.booking_range_days,
+        "theme_color": item.theme_color,
         "created_at": item.created_at.strftime("%Y-%m-%d %H:%M:%S") if item.created_at else None
     } for item in levels])
 
