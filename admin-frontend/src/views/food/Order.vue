@@ -143,14 +143,14 @@ const detail = ref<any>({})
 // ==================== 新订单提醒 ====================
 const autoRefresh = ref(true)
 let pollTimer: ReturnType<typeof setInterval> | null = null
-let lastKnownTotal = -1  // -1 表示首次加载
+let lastMaxOrderId = 0  // 追踪最大订单 ID（比总数更可靠）
+let isFirstPoll = true
 let newOrderIds = new Set<number>()
 
 // 用 Web Audio API 生成提示音（无需音频文件）
 function playNotificationSound() {
   try {
     const ctx = new AudioContext()
-    // 双音提示（更醒目）
     const playTone = (freq: number, startTime: number, duration: number) => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -158,15 +158,19 @@ function playNotificationSound() {
       gain.connect(ctx.destination)
       osc.frequency.value = freq
       osc.type = 'sine'
-      gain.gain.setValueAtTime(0.3, startTime)
+      gain.gain.setValueAtTime(0.4, startTime)
       gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration)
       osc.start(startTime)
       osc.stop(startTime + duration)
     }
     const now = ctx.currentTime
-    playTone(880, now, 0.15)        // A5
-    playTone(1100, now + 0.18, 0.15) // ~C#6
-    playTone(1320, now + 0.36, 0.2)  // E6
+    // 三声上升音调，重复两遍更醒目
+    for (let round = 0; round < 2; round++) {
+      const offset = round * 0.6
+      playTone(880, now + offset, 0.15)
+      playTone(1100, now + offset + 0.18, 0.15)
+      playTone(1320, now + offset + 0.36, 0.2)
+    }
   } catch (e) {
     console.warn('无法播放提示音:', e)
   }
@@ -177,63 +181,77 @@ const rowClassName = ({ row }: { row: any }) => {
   return newOrderIds.has(row.id) ? 'new-order-highlight' : ''
 }
 
-// 轮询检查新订单
+// 轮询检查新订单（基于最大订单 ID，不受状态变更影响）
 async function checkNewOrders() {
   try {
+    // 查询所有状态的最新订单（按 ID 倒序，取前 10 条）
     const res = await request.get('/foods/orders', {
-      params: { page: 1, page_size: 10, status: 'paid' }
+      params: { page: 1, page_size: 10 }
     })
-    const currentTotal = res.data.total || 0
-    const currentList = res.data.list || []
+    const list: any[] = res.data.list || []
+    if (list.length === 0) return
 
-    if (lastKnownTotal >= 0 && currentTotal > lastKnownTotal) {
-      const newCount = currentTotal - lastKnownTotal
+    // 找到当前最大订单 ID
+    const currentMaxId = Math.max(...list.map((o: any) => o.id))
 
-      // 标记新订单 ID 用于高亮
-      const existingIds = new Set(tableData.value.map((r: any) => r.id))
-      currentList.forEach((order: any) => {
-        if (!existingIds.has(order.id)) {
-          newOrderIds.add(order.id)
-        }
-      })
-
-      // 播放提示音
-      playNotificationSound()
-
-      // 弹窗提醒
-      const firstNew = currentList[0]
-      ElNotification({
-        title: `🔔 新订单提醒 (${newCount}单)`,
-        message: firstNew
-          ? `桌号: ${firstNew.table_no || '-'} | ${firstNew.member_nickname || '会员'} | ¥${firstNew.pay_amount}`
-          : `有 ${newCount} 笔新的已支付订单待处理`,
-        type: 'warning',
-        duration: 10000,
-        position: 'top-right'
-      })
-
-      // 刷新当前列表
-      fetchList()
-
-      // 5秒后取消高亮
-      setTimeout(() => {
-        newOrderIds.clear()
-        // 触发重新渲染
-        tableData.value = [...tableData.value]
-      }, 5000)
+    if (isFirstPoll) {
+      // 首次加载：仅记录当前最大 ID，不触发通知
+      lastMaxOrderId = currentMaxId
+      isFirstPoll = false
+      console.log('[订单提醒] 初始化，当前最大订单ID:', lastMaxOrderId)
+      return
     }
 
-    lastKnownTotal = currentTotal
+    if (currentMaxId > lastMaxOrderId) {
+      // 找出所有新订单（ID > lastMaxOrderId 且状态为需要处理的）
+      const newOrders = list.filter((o: any) =>
+        o.id > lastMaxOrderId && o.status !== 'cancelled'
+      )
+
+      if (newOrders.length > 0) {
+        console.log('[订单提醒] 发现新订单:', newOrders.map((o: any) => o.id))
+
+        // 标记新订单 ID 用于高亮
+        newOrders.forEach((o: any) => newOrderIds.add(o.id))
+
+        // 播放提示音
+        playNotificationSound()
+
+        // 弹窗提醒（显示每个新订单）
+        newOrders.forEach((order: any) => {
+          const statusLabel = statusMap[order.status]?.label || order.status
+          ElNotification({
+            title: '新订单提醒',
+            message: `#${order.order_no.slice(-6)} | 桌号: ${order.table_no || '-'} | ${order.member_nickname || '会员'} | ${order.pay_amount}金币 | ${statusLabel}`,
+            type: 'warning',
+            duration: 15000,
+            position: 'top-right'
+          })
+        })
+
+        // 刷新当前列表
+        fetchList()
+
+        // 8秒后取消高亮
+        setTimeout(() => {
+          newOrderIds.clear()
+          tableData.value = [...tableData.value]
+        }, 8000)
+      }
+
+      lastMaxOrderId = currentMaxId
+    }
   } catch (e) {
     // 静默失败，不影响用户操作
+    console.warn('[订单提醒] 轮询失败:', e)
   }
 }
 
 function startPolling() {
   if (pollTimer) return
-  lastKnownTotal = -1
-  checkNewOrders() // 立即执行一次初始化 lastKnownTotal
-  pollTimer = setInterval(checkNewOrders, 15000)
+  isFirstPoll = true
+  checkNewOrders()
+  pollTimer = setInterval(checkNewOrders, 10000) // 10秒轮询
 }
 
 function stopPolling() {
