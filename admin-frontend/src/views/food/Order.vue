@@ -19,15 +19,27 @@
           <el-button type="primary" @click="fetchList">查询</el-button>
           <el-button @click="resetSearch">重置</el-button>
         </el-form-item>
+        <el-form-item style="margin-left: auto;">
+          <el-switch
+            v-model="autoRefresh"
+            active-text="新订单提醒"
+            @change="toggleAutoRefresh"
+          />
+        </el-form-item>
       </el-form>
     </el-card>
 
     <el-card class="table-card">
       <template #header>
-        <span>餐饮订单</span>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span>餐饮订单</span>
+          <el-tag v-if="autoRefresh" type="success" size="small" effect="light">
+            自动刷新中 (15s)
+          </el-tag>
+        </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
+      <el-table :data="tableData" v-loading="loading" stripe :row-class-name="rowClassName">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="order_no" label="订单号" width="180" />
         <el-table-column prop="member_nickname" label="会员" width="120" />
@@ -107,8 +119,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ElMessage, ElNotification } from 'element-plus'
 import request from '@/utils/request'
 
 const statusMap: Record<string, { label: string; type: string }> = {
@@ -127,6 +139,119 @@ const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
 
 const detailVisible = ref(false)
 const detail = ref<any>({})
+
+// ==================== 新订单提醒 ====================
+const autoRefresh = ref(true)
+let pollTimer: ReturnType<typeof setInterval> | null = null
+let lastKnownTotal = -1  // -1 表示首次加载
+let newOrderIds = new Set<number>()
+
+// 用 Web Audio API 生成提示音（无需音频文件）
+function playNotificationSound() {
+  try {
+    const ctx = new AudioContext()
+    // 双音提示（更醒目）
+    const playTone = (freq: number, startTime: number, duration: number) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.value = freq
+      osc.type = 'sine'
+      gain.gain.setValueAtTime(0.3, startTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration)
+      osc.start(startTime)
+      osc.stop(startTime + duration)
+    }
+    const now = ctx.currentTime
+    playTone(880, now, 0.15)        // A5
+    playTone(1100, now + 0.18, 0.15) // ~C#6
+    playTone(1320, now + 0.36, 0.2)  // E6
+  } catch (e) {
+    console.warn('无法播放提示音:', e)
+  }
+}
+
+// 高亮新订单行
+const rowClassName = ({ row }: { row: any }) => {
+  return newOrderIds.has(row.id) ? 'new-order-highlight' : ''
+}
+
+// 轮询检查新订单
+async function checkNewOrders() {
+  try {
+    const res = await request.get('/foods/orders', {
+      params: { page: 1, page_size: 10, status: 'paid' }
+    })
+    const currentTotal = res.data.total || 0
+    const currentList = res.data.list || []
+
+    if (lastKnownTotal >= 0 && currentTotal > lastKnownTotal) {
+      const newCount = currentTotal - lastKnownTotal
+
+      // 标记新订单 ID 用于高亮
+      const existingIds = new Set(tableData.value.map((r: any) => r.id))
+      currentList.forEach((order: any) => {
+        if (!existingIds.has(order.id)) {
+          newOrderIds.add(order.id)
+        }
+      })
+
+      // 播放提示音
+      playNotificationSound()
+
+      // 弹窗提醒
+      const firstNew = currentList[0]
+      ElNotification({
+        title: `🔔 新订单提醒 (${newCount}单)`,
+        message: firstNew
+          ? `桌号: ${firstNew.table_no || '-'} | ${firstNew.member_nickname || '会员'} | ¥${firstNew.pay_amount}`
+          : `有 ${newCount} 笔新的已支付订单待处理`,
+        type: 'warning',
+        duration: 10000,
+        position: 'top-right'
+      })
+
+      // 刷新当前列表
+      fetchList()
+
+      // 5秒后取消高亮
+      setTimeout(() => {
+        newOrderIds.clear()
+        // 触发重新渲染
+        tableData.value = [...tableData.value]
+      }, 5000)
+    }
+
+    lastKnownTotal = currentTotal
+  } catch (e) {
+    // 静默失败，不影响用户操作
+  }
+}
+
+function startPolling() {
+  if (pollTimer) return
+  lastKnownTotal = -1
+  checkNewOrders() // 立即执行一次初始化 lastKnownTotal
+  pollTimer = setInterval(checkNewOrders, 15000)
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function toggleAutoRefresh(val: boolean) {
+  if (val) {
+    startPolling()
+  } else {
+    stopPolling()
+  }
+}
+
+// ==================== 基础功能 ====================
 
 const fetchList = async () => {
   loading.value = true
@@ -160,10 +285,31 @@ const handleStatusChange = async (row: any, status: string) => {
   fetchList()
 }
 
-onMounted(() => { fetchList() })
+onMounted(() => {
+  fetchList()
+  if (autoRefresh.value) {
+    startPolling()
+  }
+})
+
+onUnmounted(() => {
+  stopPolling()
+})
 </script>
 
 <style scoped>
 .page-container { padding: 20px; }
 .search-card { margin-bottom: 16px; }
+</style>
+
+<style>
+/* 新订单高亮动画（全局样式，不能 scoped） */
+.new-order-highlight td {
+  animation: orderFlash 1s ease-in-out 3;
+}
+
+@keyframes orderFlash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: #fef0e0; }
+}
 </style>
