@@ -56,13 +56,10 @@
     <view class="creator-card">
       <view class="card-title">发起人</view>
       <view class="creator-info">
-        <image class="creator-avatar" src="{{team.creator.avatar || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <image class="creator-avatar" src="{{team.creator.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
         <view class="creator-detail">
           <text class="creator-name">{{team.creator.nickname || '匿名用户'}}</text>
           <text class="creator-tag" wx:if="{{isCreator}}">我发起的</text>
-        </view>
-        <view class="contact-btn" bindtap="contactCreator" wx:if="{{!isCreator && team.creator.phone}}">
-          <text>联系TA</text>
         </view>
       </view>
     </view>
@@ -72,7 +69,7 @@
       <view class="card-title">已加入成员（{{team.current_members}}人）</view>
       <view class="members-list">
         <view class="member-item" wx:for="{{team.members}}" wx:key="id" wx:if="{{item.status === 'joined'}}">
-          <image class="member-avatar" src="{{item.member.avatar || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+          <image class="member-avatar" src="{{item.member.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
           <text class="member-name">{{item.member.nickname || '匿名'}}</text>
         </view>
       </view>

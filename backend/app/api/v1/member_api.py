@@ -2227,15 +2227,13 @@ def get_team_detail(
     creator_info = {
         "id": team.creator_id,
         "nickname": "匿名用户",
-        "avatar": None,
-        "phone": None
+        "avatar": None
     }
     if team.creator:
         creator_info = {
             "id": team.creator.id,
-            "nickname": team.creator.nickname or team.creator.phone or "匿名用户",
-            "avatar": team.creator.avatar,
-            "phone": team.creator.phone
+            "nickname": team.creator.nickname or "匿名用户",
+            "avatar": team.creator.avatar
         }
 
     # 获取成员列表（前端期望: item.member_id, item.status, item.member.avatar）
