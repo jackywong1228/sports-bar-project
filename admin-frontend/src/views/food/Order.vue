@@ -34,7 +34,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <span>餐饮订单</span>
           <el-tag v-if="autoRefresh" type="success" size="small" effect="light">
-            自动刷新中 (15s)
+            自动刷新中 (10s)
           </el-tag>
         </div>
       </template>
@@ -143,11 +143,22 @@ const detail = ref<any>({})
 // ==================== 新订单提醒 ====================
 const autoRefresh = ref(true)
 let pollTimer: ReturnType<typeof setInterval> | null = null
-let lastMaxOrderId = 0  // 追踪最大订单 ID（比总数更可靠）
-let isFirstPoll = true
+const STORAGE_KEY = 'food_order_last_max_id'
+let lastMaxOrderId = 0
 let newOrderIds = new Set<number>()
 
-// 用 Web Audio API 生成提示音（无需音频文件）
+// 从 localStorage 读取上次已知的最大订单 ID（跨页面刷新持久化）
+function loadLastMaxId(): number {
+  const stored = localStorage.getItem(STORAGE_KEY)
+  return stored ? parseInt(stored) : 0
+}
+
+function saveLastMaxId(id: number) {
+  lastMaxOrderId = id
+  localStorage.setItem(STORAGE_KEY, String(id))
+}
+
+// 用 Web Audio API 生成提示音
 function playNotificationSound() {
   try {
     const ctx = new AudioContext()
@@ -158,13 +169,12 @@ function playNotificationSound() {
       gain.connect(ctx.destination)
       osc.frequency.value = freq
       osc.type = 'sine'
-      gain.gain.setValueAtTime(0.4, startTime)
+      gain.gain.setValueAtTime(0.5, startTime)
       gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration)
       osc.start(startTime)
       osc.stop(startTime + duration)
     }
     const now = ctx.currentTime
-    // 三声上升音调，重复两遍更醒目
     for (let round = 0; round < 2; round++) {
       const offset = round * 0.6
       playTone(880, now + offset, 0.15)
@@ -181,29 +191,26 @@ const rowClassName = ({ row }: { row: any }) => {
   return newOrderIds.has(row.id) ? 'new-order-highlight' : ''
 }
 
-// 轮询检查新订单（基于最大订单 ID，不受状态变更影响）
+// 轮询检查新订单（基于 localStorage 持久化的最大订单 ID）
 async function checkNewOrders() {
   try {
-    // 查询所有状态的最新订单（按 ID 倒序，取前 10 条）
     const res = await request.get('/foods/orders', {
-      params: { page: 1, page_size: 10 }
+      params: { page: 1, page_size: 20 }
     })
     const list: any[] = res.data.list || []
     if (list.length === 0) return
 
-    // 找到当前最大订单 ID
     const currentMaxId = Math.max(...list.map((o: any) => o.id))
 
-    if (isFirstPoll) {
-      // 首次加载：仅记录当前最大 ID，不触发通知
-      lastMaxOrderId = currentMaxId
-      isFirstPoll = false
-      console.log('[订单提醒] 初始化，当前最大订单ID:', lastMaxOrderId)
+    // 首次使用（localStorage 无记录）：记录当前值，不通知
+    if (lastMaxOrderId === 0) {
+      saveLastMaxId(currentMaxId)
+      console.log('[订单提醒] 首次初始化，最大订单ID:', currentMaxId)
       return
     }
 
     if (currentMaxId > lastMaxOrderId) {
-      // 找出所有新订单（ID > lastMaxOrderId 且状态为需要处理的）
+      // 找出所有新订单
       const newOrders = list.filter((o: any) =>
         o.id > lastMaxOrderId && o.status !== 'cancelled'
       )
@@ -211,13 +218,13 @@ async function checkNewOrders() {
       if (newOrders.length > 0) {
         console.log('[订单提醒] 发现新订单:', newOrders.map((o: any) => o.id))
 
-        // 标记新订单 ID 用于高亮
+        // 标记高亮
         newOrders.forEach((o: any) => newOrderIds.add(o.id))
 
         // 播放提示音
         playNotificationSound()
 
-        // 弹窗提醒（显示每个新订单）
+        // 每个新订单单独弹窗
         newOrders.forEach((order: any) => {
           const statusLabel = statusMap[order.status]?.label || order.status
           ElNotification({
@@ -229,7 +236,7 @@ async function checkNewOrders() {
           })
         })
 
-        // 刷新当前列表
+        // 刷新列表
         fetchList()
 
         // 8秒后取消高亮
@@ -239,19 +246,21 @@ async function checkNewOrders() {
         }, 8000)
       }
 
-      lastMaxOrderId = currentMaxId
+      saveLastMaxId(currentMaxId)
     }
   } catch (e) {
-    // 静默失败，不影响用户操作
     console.warn('[订单提醒] 轮询失败:', e)
   }
 }
 
 function startPolling() {
   if (pollTimer) return
-  isFirstPoll = true
+  // 从 localStorage 恢复状态（跨刷新持久化）
+  lastMaxOrderId = loadLastMaxId()
+  console.log('[订单提醒] 启动轮询，上次最大订单ID:', lastMaxOrderId)
+  // 立即执行一次检查
   checkNewOrders()
-  pollTimer = setInterval(checkNewOrders, 10000) // 10秒轮询
+  pollTimer = setInterval(checkNewOrders, 10000)
 }
 
 function stopPolling() {
