@@ -2223,14 +2223,22 @@ def get_team_detail(
     if not team:
         raise HTTPException(status_code=404, detail="组队不存在")
 
-    # 获取发起人信息
-    creator_name = "匿名用户"
-    creator_avatar = None
+    # 获取发起人信息（前端期望嵌套对象: team.creator.nickname / team.creator.avatar）
+    creator_info = {
+        "id": team.creator_id,
+        "nickname": "匿名用户",
+        "avatar": None,
+        "phone": None
+    }
     if team.creator:
-        creator_name = team.creator.nickname or team.creator.phone or "匿名用户"
-        creator_avatar = team.creator.avatar
+        creator_info = {
+            "id": team.creator.id,
+            "nickname": team.creator.nickname or team.creator.phone or "匿名用户",
+            "avatar": team.creator.avatar,
+            "phone": team.creator.phone
+        }
 
-    # 获取成员列表
+    # 获取成员列表（前端期望: item.member_id, item.status, item.member.avatar）
     members = db.query(TeamMember).filter(
         TeamMember.team_id == team_id,
         TeamMember.status == "joined"
@@ -2238,13 +2246,24 @@ def get_team_detail(
 
     member_list = []
     for m in members:
-        if m.member:
-            member_list.append({
+        member_info = {
+            "id": m.id,
+            "member_id": m.member_id,
+            "status": m.status,
+            "is_creator": m.member_id == team.creator_id,
+            "member": {
                 "id": m.member.id,
                 "nickname": m.member.nickname or m.member.phone or "匿名用户",
-                "avatar": m.member.avatar,
-                "is_creator": m.member_id == team.creator_id
-            })
+                "avatar": m.member.avatar
+            }
+        } if m.member else {
+            "id": m.id,
+            "member_id": m.member_id,
+            "status": m.status,
+            "is_creator": False,
+            "member": {"id": m.member_id, "nickname": "匿名用户", "avatar": None}
+        }
+        member_list.append(member_info)
 
     return ResponseModel(data={
         "id": team.id,
@@ -2261,8 +2280,7 @@ def get_team_detail(
         "fee_amount": team.fee_amount,
         "status": team.status,
         "creator_id": team.creator_id,
-        "creator_name": creator_name,
-        "creator_avatar": creator_avatar,
+        "creator": creator_info,
         "members": member_list,
         "created_at": str(team.created_at) if team.created_at else None
     })
