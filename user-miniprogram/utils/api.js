@@ -490,8 +490,11 @@ const getMyRank = (params = {}) => {
 /**
  * 获取我的优惠券
  */
-const getMyCoupons = (status = '') => {
-  return get('/coupons/mine', { status })
+const getMyCoupons = (status = '', applicableType = '') => {
+  const params = {}
+  if (status) params.status = status
+  if (applicableType) params.applicable_type = applicableType
+  return get('/member/coupons', params)
 }
 
 /**

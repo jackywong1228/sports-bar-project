@@ -636,3 +636,111 @@
 .pay-confirm-btn::after {
   border: none;
 }
+
+/* 优惠券抵扣信息 */
+.pay-coupon-info {
+  margin-top: 8rpx;
+}
+
+.coupon-discount-text {
+  font-size: 24rpx;
+  color: #e64a19;
+  font-weight: 500;
+}
+
+/* 优惠券选择区 */
+.coupon-section {
+  margin-bottom: 24rpx;
+}
+
+.coupon-section-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.coupon-empty {
+  font-size: 24rpx;
+  color: #999;
+  text-align: center;
+  padding: 20rpx 0;
+}
+
+.coupon-card {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  border: 2rpx solid #eee;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+  transition: all 0.2s;
+}
+
+.coupon-card.selected {
+  border-color: #1A5D3A;
+  background: #f0f7f2;
+}
+
+.coupon-card-left {
+  min-width: 100rpx;
+  text-align: center;
+  padding-right: 20rpx;
+  border-right: 2rpx dashed #ddd;
+  margin-right: 20rpx;
+}
+
+.coupon-value {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #1A5D3A;
+  display: block;
+}
+
+.coupon-unit {
+  font-size: 20rpx;
+  color: #999;
+}
+
+.coupon-card-right {
+  flex: 1;
+}
+
+.coupon-name {
+  font-size: 26rpx;
+  color: #333;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.coupon-expire {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.coupon-check {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 2rpx solid #ddd;
+  margin-left: 16rpx;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.coupon-check.checked {
+  border-color: #1A5D3A;
+  background: #1A5D3A;
+}
+
+.coupon-check.checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14rpx;
+  height: 8rpx;
+  border-left: 3rpx solid #fff;
+  border-bottom: 3rpx solid #fff;
+  transform: translate(-50%, -60%) rotate(-45deg);
+}

@@ -64,10 +64,38 @@
     <textarea class="remark" placeholder="口味偏好、过敏信息等（选填）" bindinput="onRemarkInput" value="{{remark}}"></textarea>
   </view>
 
+  <!-- 优惠券选择 -->
+  <view class="section">
+    <view class="title">优惠券</view>
+    <view wx:if="{{availableCoupons.length === 0}}" class="coupon-empty">暂无可用优惠券</view>
+    <view
+      wx:for="{{availableCoupons}}"
+      wx:key="id"
+      class="coupon-card {{selectedCouponIndex === index ? 'selected' : ''}}"
+      bindtap="selectCoupon"
+      data-index="{{index}}"
+    >
+      <view class="coupon-card-left">
+        <text class="coupon-value" wx:if="{{item.type === 'cash'}}">{{item.discount_value}}</text>
+        <text class="coupon-value" wx:elif="{{item.type === 'gift'}}">免单</text>
+        <text class="coupon-unit" wx:if="{{item.type === 'cash'}}">金币</text>
+      </view>
+      <view class="coupon-card-right">
+        <text class="coupon-name">{{item.name}}</text>
+        <text class="coupon-expire">{{item.end_time}}</text>
+      </view>
+      <view class="coupon-check {{selectedCouponIndex === index ? 'checked' : ''}}"></view>
+    </view>
+  </view>
+
   <!-- 底部结算栏 -->
   <view class="bottom-bar">
     <view class="total-info">
-      <view class="total">合计: <text class="price">{{total}}金币</text></view>
+      <view class="total" wx:if="{{couponDiscount > 0}}">
+        实付: <text class="price">{{payAmount}}金币</text>
+        <text class="original-price">{{total}}金币</text>
+      </view>
+      <view class="total" wx:else>合计: <text class="price">{{total}}金币</text></view>
       <view class="schedule-time" wx:if="{{orderType === 'scheduled'}}">
         {{dateOptions[selectedDateIndex].label}} {{timeOptions[selectedTimeIndex].label}} 取餐
       </view>

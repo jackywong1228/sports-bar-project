@@ -981,12 +981,32 @@ def create_reservation(
             MemberCoupon.member_id == current_member.id,
             MemberCoupon.status == 'unused'
         ).first()
-        if coupon:
-            if coupon.type == 'cash':
-                coupon_discount = min(float(coupon.discount_value or 0), venue_price)
-            elif coupon.type == 'gift':
-                coupon_discount = venue_price
-            used_coupon = coupon
+        if not coupon:
+            raise HTTPException(status_code=400, detail="优惠券不存在或已使用")
+        # 有效期校验
+        now = datetime.now()
+        if coupon.start_time and coupon.start_time > now:
+            raise HTTPException(status_code=400, detail="优惠券尚未生效")
+        if coupon.end_time and coupon.end_time < now:
+            raise HTTPException(status_code=400, detail="优惠券已过期")
+        # applicable_type 校验
+        template = db.query(CouponTemplate).filter(CouponTemplate.id == coupon.template_id).first()
+        if not template:
+            raise HTTPException(status_code=400, detail="优惠券模板不存在")
+        if template.applicable_type not in ('venue', 'all'):
+            raise HTTPException(status_code=400, detail="该优惠券不适用于场馆预约")
+        # 体验券不可用于支付抵扣
+        if coupon.type == 'experience':
+            raise HTTPException(status_code=400, detail="体验券不可用于支付抵扣")
+        # min_amount 校验
+        if coupon.min_amount and float(coupon.min_amount) > venue_price:
+            raise HTTPException(status_code=400, detail=f"未达到最低消费 {coupon.min_amount} 金币")
+        # 计算抵扣
+        if coupon.type == 'cash':
+            coupon_discount = min(float(coupon.discount_value or 0), venue_price)
+        elif coupon.type == 'gift':
+            coupon_discount = venue_price
+        used_coupon = coupon
 
     actual_price = max(0, total_price - coupon_discount)
 
@@ -1638,6 +1658,7 @@ class FoodOrderCreate(BaseModel):
     order_type: str = "immediate"  # immediate立即取餐/scheduled预约取餐
     scheduled_date: Optional[str] = None  # 预约日期 YYYY-MM-DD
     scheduled_time: Optional[str] = None  # 预约时间 HH:MM
+    coupon_id: Optional[int] = None  # 优惠券ID
 
 @router.post("/food-orders", response_model=ResponseModel)
 def create_food_order(
@@ -1657,6 +1678,39 @@ def create_food_order(
     # 计算总金额
     total_amount = sum(item.price * item.quantity for item in data.items)
 
+    # 优惠券抵扣
+    coupon_discount = 0
+    used_coupon = None
+    if data.coupon_id:
+        coupon = db.query(MemberCoupon).filter(
+            MemberCoupon.id == data.coupon_id,
+            MemberCoupon.member_id == current_member.id,
+            MemberCoupon.status == 'unused'
+        ).first()
+        if not coupon:
+            raise HTTPException(status_code=400, detail="优惠券不存在或已使用")
+        now = datetime.now()
+        if coupon.start_time and coupon.start_time > now:
+            raise HTTPException(status_code=400, detail="优惠券尚未生效")
+        if coupon.end_time and coupon.end_time < now:
+            raise HTTPException(status_code=400, detail="优惠券已过期")
+        template = db.query(CouponTemplate).filter(CouponTemplate.id == coupon.template_id).first()
+        if not template:
+            raise HTTPException(status_code=400, detail="优惠券模板不存在")
+        if template.applicable_type not in ('food', 'all'):
+            raise HTTPException(status_code=400, detail="该优惠券不适用于餐饮消费")
+        if coupon.type == 'experience':
+            raise HTTPException(status_code=400, detail="体验券不可用于支付抵扣")
+        if coupon.min_amount and float(coupon.min_amount) > total_amount:
+            raise HTTPException(status_code=400, detail=f"未达到最低消费 {coupon.min_amount} 金币")
+        if coupon.type == 'cash':
+            coupon_discount = min(float(coupon.discount_value or 0), total_amount)
+        elif coupon.type == 'gift':
+            coupon_discount = total_amount
+        used_coupon = coupon
+
+    pay_amount = max(0, total_amount - coupon_discount)
+
     # 生成订单号
     import uuid
     order_no = datetime.now().strftime("%Y%m%d%H%M%S") + str(uuid.uuid4().hex[:8]).upper()
@@ -1666,7 +1720,7 @@ def create_food_order(
         order_no=order_no,
         member_id=current_member.id,
         total_amount=total_amount,
-        pay_amount=total_amount,
+        pay_amount=pay_amount,
         status="paid",  # 金币支付，直接已支付状态
         remark=data.remark,
         table_no=data.table_no,
@@ -1696,22 +1750,28 @@ def create_food_order(
             FoodItem.sales: FoodItem.sales + item.quantity
         })
 
-    # 扣除金币
-    if current_member.coin_balance < total_amount:
-        raise HTTPException(status_code=400, detail="金币余额不足")
+    # 扣除金币（使用优惠后的实付金额）
+    if pay_amount > 0:
+        if current_member.coin_balance < pay_amount:
+            raise HTTPException(status_code=400, detail="金币余额不足")
+        current_member.coin_balance -= int(pay_amount)
+        # 记录金币消费
+        coin_record = CoinRecord(
+            member_id=current_member.id,
+            type="consume",
+            amount=-int(pay_amount),
+            balance=current_member.coin_balance,
+            description=f"餐饮消费-订单{order_no}",
+            related_order_no=order_no
+        )
+        db.add(coin_record)
 
-    current_member.coin_balance -= int(total_amount)
-
-    # 记录金币消费
-    coin_record = CoinRecord(
-        member_id=current_member.id,
-        type="consume",
-        amount=-int(total_amount),
-        balance=current_member.coin_balance,
-        description=f"餐饮消费-订单{order_no}",
-        related_order_no=order_no
-    )
-    db.add(coin_record)
+    # 核销优惠券
+    if used_coupon:
+        used_coupon.status = 'used'
+        used_coupon.use_time = datetime.now()
+        used_coupon.order_type = 'food'
+        used_coupon.order_id = order.id
 
     db.commit()
 
@@ -1726,6 +1786,8 @@ def create_food_order(
             "order_id": order.id,
             "order_no": order_no,
             "total_amount": float(total_amount),
+            "coupon_discount": float(coupon_discount),
+            "pay_amount": float(pay_amount),
             "order_type": data.order_type,
             "scheduled_time": scheduled_info
         }
@@ -2222,23 +2284,32 @@ def get_member_cards(db: Session = Depends(get_db)):
 @router.get("/coupons", response_model=ResponseModel)
 def get_member_coupons(
     status: Optional[str] = None,
+    applicable_type: Optional[str] = None,
     page: int = 1,
     limit: int = 20,
     current_member: Member = Depends(get_current_member),
     db: Session = Depends(get_db)
 ):
     """获取用户优惠券列表"""
-    query = db.query(MemberCoupon).filter(
+    # 始终 JOIN CouponTemplate 以获取 applicable_type
+    query = db.query(MemberCoupon, CouponTemplate.applicable_type).outerjoin(
+        CouponTemplate, MemberCoupon.template_id == CouponTemplate.id
+    ).filter(
         MemberCoupon.member_id == current_member.id
     )
 
     if status:
         query = query.filter(MemberCoupon.status == status)
 
-    coupons = query.order_by(MemberCoupon.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    if applicable_type:
+        query = query.filter(
+            CouponTemplate.applicable_type.in_([applicable_type, 'all'])
+        )
+
+    rows = query.order_by(MemberCoupon.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
 
     result = []
-    for coupon in coupons:
+    for coupon, tpl_applicable_type in rows:
         # 获取体验券关联的会员等级名称
         experience_level_name = None
         if coupon.type == "experience" and coupon.experience_level_id:
@@ -2250,6 +2321,7 @@ def get_member_coupons(
             "id": coupon.id,
             "name": coupon.name,
             "type": coupon.type,
+            "applicable_type": tpl_applicable_type or "all",
             "discount_value": float(coupon.discount_value or 0),
             "min_amount": float(coupon.min_amount or 0),
             "start_time": coupon.start_time.strftime("%Y-%m-%d %H:%M:%S") if coupon.start_time else None,

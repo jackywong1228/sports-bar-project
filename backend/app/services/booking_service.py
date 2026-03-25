@@ -4,7 +4,7 @@ from typing import Dict, List
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
-from app.models import Member, MemberLevel, Reservation, MemberCoupon
+from app.models import Member, MemberLevel, Reservation, MemberCoupon, CouponTemplate
 
 
 class BookingService:
@@ -168,14 +168,18 @@ class BookingService:
         return int(result)
 
     def _get_available_coupons(self, member_id: int, applicable_type: str) -> List[Dict]:
-        """获取可用优惠券列表"""
+        """获取可用优惠券列表（按 applicable_type 过滤，排除体验券）"""
         now = datetime.now()
 
-        coupons = self.db.query(MemberCoupon).filter(
+        rows = self.db.query(MemberCoupon, CouponTemplate.applicable_type).join(
+            CouponTemplate, MemberCoupon.template_id == CouponTemplate.id
+        ).filter(
             MemberCoupon.member_id == member_id,
             MemberCoupon.status == 'unused',
             MemberCoupon.start_time <= now,
-            MemberCoupon.end_time >= now
+            MemberCoupon.end_time >= now,
+            MemberCoupon.type != 'experience',
+            CouponTemplate.applicable_type.in_([applicable_type, 'all'])
         ).all()
 
         return [
@@ -183,8 +187,10 @@ class BookingService:
                 "id": c.id,
                 "name": c.name,
                 "type": c.type,
+                "applicable_type": tpl_applicable_type or "all",
                 "discount_value": float(c.discount_value) if c.discount_value else None,
+                "min_amount": float(c.min_amount) if c.min_amount else 0,
                 "end_time": c.end_time.isoformat() if c.end_time else None
             }
-            for c in coupons
+            for c, tpl_applicable_type in rows
         ]

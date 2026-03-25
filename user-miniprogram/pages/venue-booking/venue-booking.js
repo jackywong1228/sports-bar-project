@@ -42,7 +42,12 @@ Page({
     showPayModal: false,
     selectedPayType: 'coin',
     coinBalance: 0,
-    estimatedPrice: 0
+    estimatedPrice: 0,
+    // 优惠券相关
+    availableCoupons: [],
+    selectedCouponIndex: -1,
+    couponDiscount: 0,
+    actualPrice: 0
   },
 
   onLoad(options) {
@@ -347,10 +352,14 @@ Page({
       return
     }
 
-    // 弹出支付方式选择
+    // 加载优惠券并弹出支付弹窗
+    this.loadAvailableCoupons(estimatedPrice)
     this.setData({
       estimatedPrice,
+      actualPrice: estimatedPrice,
       selectedPayType: 'coin',
+      selectedCouponIndex: -1,
+      couponDiscount: 0,
       showPayModal: true
     })
   },
@@ -366,6 +375,52 @@ Page({
   // 关闭支付弹窗
   closePayModal() {
     this.setData({ showPayModal: false })
+  },
+
+  // 加载可用优惠券
+  async loadAvailableCoupons(totalPrice) {
+    try {
+      const res = await api.getMyCoupons('unused', 'venue')
+      const coupons = (res.data || []).filter(c => {
+        if (c.type === 'experience') return false
+        if (c.min_amount && c.min_amount > totalPrice) return false
+        // 严格过滤：只允许 venue 和 all 类型的券用于场馆预约
+        if (c.applicable_type && c.applicable_type !== 'venue' && c.applicable_type !== 'all') return false
+        return true
+      })
+      this.setData({ availableCoupons: coupons })
+    } catch (err) {
+      console.error('加载优惠券失败:', err)
+      this.setData({ availableCoupons: [] })
+    }
+  },
+
+  // 选择/取消优惠券
+  selectCoupon(e) {
+    const index = e.currentTarget.dataset.index
+    const { availableCoupons, selectedCouponIndex, estimatedPrice } = this.data
+
+    if (index === selectedCouponIndex) {
+      // 取消选中
+      this.setData({
+        selectedCouponIndex: -1,
+        couponDiscount: 0,
+        actualPrice: estimatedPrice
+      })
+    } else {
+      const coupon = availableCoupons[index]
+      let discount = 0
+      if (coupon.type === 'cash') {
+        discount = Math.min(coupon.discount_value || 0, estimatedPrice)
+      } else if (coupon.type === 'gift') {
+        discount = estimatedPrice
+      }
+      this.setData({
+        selectedCouponIndex: index,
+        couponDiscount: discount,
+        actualPrice: Math.max(0, estimatedPrice - discount)
+      })
+    }
   },
 
   // 确认支付方式后提交
@@ -384,6 +439,10 @@ Page({
       const startHour = slots[0].hour
       const endHour = slots[slots.length - 1].hour + 1
 
+      // 获取选中的优惠券ID
+      const { availableCoupons, selectedCouponIndex } = this.data
+      const couponId = selectedCouponIndex >= 0 ? availableCoupons[selectedCouponIndex].id : null
+
       const res = await app.request({
         url: '/member/reservations',
         method: 'POST',
@@ -393,7 +452,8 @@ Page({
           start_time: `${String(startHour).padStart(2, '0')}:00`,
           end_time: `${String(endHour).padStart(2, '0')}:00`,
           duration: this.data.selectedSlots.length * 60,
-          pay_type: payType
+          pay_type: payType,
+          coupon_id: couponId
         }
       })
 

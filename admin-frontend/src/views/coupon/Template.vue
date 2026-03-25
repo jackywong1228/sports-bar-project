@@ -196,11 +196,24 @@
     <!-- 发放弹窗 -->
     <el-dialog v-model="issueDialogVisible" title="发放优惠券" width="500px">
       <el-form label-width="80px">
-        <el-form-item label="选择会员">
+        <el-form-item label="发放方式">
+          <el-radio-group v-model="issueMode">
+            <el-radio label="select">指定会员</el-radio>
+            <el-radio label="all">全部会员</el-radio>
+            <el-radio label="level">按等级</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="issueMode === 'select'" label="选择会员">
           <el-select v-model="selectedMembers" multiple filterable remote reserve-keyword placeholder="搜索会员" :remote-method="searchMembers" :loading="memberLoading" style="width: 100%;">
             <el-option v-for="m in memberOptions" :key="m.id" :label="`${m.nickname} (${m.phone})`" :value="m.id" />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="issueMode === 'level'" label="会员等级">
+          <el-select v-model="selectedLevelId" placeholder="请选择等级" style="width: 100%;">
+            <el-option v-for="level in memberLevels" :key="level.id" :label="level.name" :value="level.id" />
+          </el-select>
+        </el-form-item>
+        <el-alert v-if="issueMode === 'all'" title="将向所有会员发放该优惠券" type="warning" :closable="false" show-icon style="margin-bottom: 12px;" />
       </el-form>
       <template #footer>
         <el-button @click="issueDialogVisible = false">取消</el-button>
@@ -244,7 +257,9 @@ const formRules = {
 
 const issueDialogVisible = ref(false)
 const issuing = ref(false)
+const issueMode = ref<'select' | 'all' | 'level'>('select')
 const selectedMembers = ref<number[]>([])
+const selectedLevelId = ref<number | null>(null)
 const memberOptions = ref<any[]>([])
 const memberLoading = ref(false)
 let currentTemplateId = 0
@@ -326,7 +341,9 @@ const handleDelete = (row: any) => {
 
 const handleIssue = (row: any) => {
   currentTemplateId = row.id
+  issueMode.value = 'select'
   selectedMembers.value = []
+  selectedLevelId.value = null
   memberOptions.value = []
   issueDialogVisible.value = true
 }
@@ -343,14 +360,54 @@ const searchMembers = async (query: string) => {
 }
 
 const handleIssueSubmit = async () => {
-  if (!selectedMembers.value.length) {
-    ElMessage.warning('请选择要发放的会员')
-    return
+  let memberIds: number[] = []
+
+  if (issueMode.value === 'select') {
+    if (!selectedMembers.value.length) {
+      ElMessage.warning('请选择要发放的会员')
+      return
+    }
+    memberIds = selectedMembers.value
+  } else if (issueMode.value === 'all') {
+    issuing.value = true
+    try {
+      const res = await request.get('/members', { params: { page_size: 9999 } })
+      memberIds = (res.data.items || []).map((m: any) => m.id)
+    } catch {
+      ElMessage.error('获取会员列表失败')
+      issuing.value = false
+      return
+    }
+    if (!memberIds.length) {
+      ElMessage.warning('暂无会员可发放')
+      issuing.value = false
+      return
+    }
+  } else if (issueMode.value === 'level') {
+    if (!selectedLevelId.value) {
+      ElMessage.warning('请选择会员等级')
+      return
+    }
+    issuing.value = true
+    try {
+      const res = await request.get('/members', { params: { level_id: selectedLevelId.value, page_size: 9999 } })
+      memberIds = (res.data.items || []).map((m: any) => m.id)
+    } catch {
+      ElMessage.error('获取会员列表失败')
+      issuing.value = false
+      return
+    }
+    if (!memberIds.length) {
+      ElMessage.warning('该等级暂无会员')
+      issuing.value = false
+      return
+    }
   }
+
   issuing.value = true
   try {
-    await request.post(`/coupons/templates/${currentTemplateId}/issue`, { member_ids: selectedMembers.value })
-    ElMessage.success('发放成功')
+    await request.post(`/coupons/templates/${currentTemplateId}/issue`, { member_ids: memberIds })
+    ElMessage.success(`发放成功，共 ${memberIds.length} 人`)
     issueDialogVisible.value = false
     fetchList()
   } finally {

@@ -1,5 +1,6 @@
 const app = getApp()
 const util = require('../../utils/util.js')
+const api = require('../../utils/api.js')
 
 Page({
   data: {
@@ -14,7 +15,12 @@ Page({
     selectedDateIndex: 0,
     // 预约时间选项
     timeOptions: [],
-    selectedTimeIndex: 0
+    selectedTimeIndex: 0,
+    // 优惠券相关
+    availableCoupons: [],
+    selectedCouponIndex: -1,
+    couponDiscount: 0,
+    payAmount: 0
   },
 
   onLoad() {
@@ -29,9 +35,57 @@ Page({
     this.setData({
       cart,
       total,
+      payAmount: total,
       dateOptions,
       timeOptions
     })
+
+    this.loadAvailableCoupons(total)
+  },
+
+  // 加载可用优惠券
+  async loadAvailableCoupons(totalPrice) {
+    try {
+      const res = await api.getMyCoupons('unused', 'food')
+      const coupons = (res.data || []).filter(c => {
+        if (c.type === 'experience') return false
+        if (c.min_amount && c.min_amount > totalPrice) return false
+        // 严格过滤：只允许 food 和 all 类型的券用于餐饮消费
+        if (c.applicable_type && c.applicable_type !== 'food' && c.applicable_type !== 'all') return false
+        return true
+      })
+      this.setData({ availableCoupons: coupons })
+    } catch (err) {
+      console.error('加载优惠券失败:', err)
+      this.setData({ availableCoupons: [] })
+    }
+  },
+
+  // 选择/取消优惠券
+  selectCoupon(e) {
+    const index = e.currentTarget.dataset.index
+    const { availableCoupons, selectedCouponIndex, total } = this.data
+
+    if (index === selectedCouponIndex) {
+      this.setData({
+        selectedCouponIndex: -1,
+        couponDiscount: 0,
+        payAmount: total
+      })
+    } else {
+      const coupon = availableCoupons[index]
+      let discount = 0
+      if (coupon.type === 'cash') {
+        discount = Math.min(coupon.discount_value || 0, total)
+      } else if (coupon.type === 'gift') {
+        discount = total
+      }
+      this.setData({
+        selectedCouponIndex: index,
+        couponDiscount: discount,
+        payAmount: Math.max(0, total - discount)
+      })
+    }
   },
 
   // 生成日期选项
@@ -110,11 +164,16 @@ Page({
       return
     }
 
+    // 获取选中的优惠券ID
+    const { availableCoupons, selectedCouponIndex } = this.data
+    const couponId = selectedCouponIndex >= 0 ? availableCoupons[selectedCouponIndex].id : null
+
     // 构建请求数据
     const requestData = {
       items: cart,
       remark: remark,
-      order_type: orderType
+      order_type: orderType,
+      coupon_id: couponId
     }
 
     // 如果是预约取餐，添加预约时间
