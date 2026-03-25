@@ -1226,7 +1226,7 @@ def get_member_orders(
                 "type": "reservation",
                 "type_name": "场馆预约" if not r.coach_id else "教练预约",
                 "title": r.venue.name if r.venue else (r.coach.name if r.coach else "预约"),
-                "image": r.venue.image if r.venue else None,
+                "image": r.venue.images if r.venue else None,
                 "amount": float(r.total_price or 0),
                 "status": r.status,
                 "status_text": {
