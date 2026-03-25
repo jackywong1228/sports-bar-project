@@ -201,6 +201,8 @@
 /* 预约按钮 - 墨绿渐变 */
 .venue-action {
   padding: 0 20rpx 20rpx;
+  display: flex;
+  justify-content: center;
 }
 
 .btn-book {
@@ -214,6 +216,10 @@
   border-radius: 40rpx;
   border: none;
   box-shadow: 0 4rpx 16rpx rgba(26, 93, 58, 0.25);
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .btn-book::after {

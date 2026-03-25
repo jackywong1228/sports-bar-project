@@ -96,6 +96,9 @@
 /* 主CTA按钮 */
 .hero-cta {
   margin-bottom: 80rpx;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .btn-hero {
@@ -107,9 +110,13 @@
   font-size: 34rpx;
   font-weight: 600;
   letter-spacing: 8rpx;
+  padding-left: 8rpx;
   border-radius: 50rpx;
   border: none;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+  margin: 0;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .btn-hero::after {
