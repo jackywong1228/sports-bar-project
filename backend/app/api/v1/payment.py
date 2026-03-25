@@ -11,6 +11,8 @@ from app.core.database import get_db
 from app.core.wechat_pay import wechat_pay
 from app.models.finance import RechargeOrder
 from app.models.member import Member, CoinRecord, PointRecord, MemberCardOrder, MemberCard
+from app.models import Reservation
+from app.models.coupon import MemberCoupon
 from app.schemas.response import ResponseModel
 
 router = APIRouter()
@@ -145,11 +147,15 @@ async def payment_notify(
         out_trade_no = decrypted.get("out_trade_no")
         transaction_id = decrypted.get("transaction_id")
         trade_state = decrypted.get("trade_state")
+        attach = decrypted.get("attach")
 
         # 根据订单号前缀判断订单类型
         if out_trade_no.startswith("MC"):
             # 会员卡订单
             return _handle_member_card_notify(out_trade_no, transaction_id, trade_state, db)
+        elif out_trade_no.startswith("RV"):
+            # 场馆预约订单
+            return _handle_reservation_notify(out_trade_no, transaction_id, trade_state, attach, db)
         else:
             # 充值订单（默认）
             return _handle_recharge_notify(out_trade_no, transaction_id, trade_state, db)
@@ -284,6 +290,64 @@ def _handle_member_card_notify(out_trade_no: str, transaction_id: str, trade_sta
             db.commit()
         else:
             db.rollback()
+
+        return {"code": "SUCCESS", "message": "成功"}
+    except Exception as e:
+        db.rollback()
+        return {"code": "FAIL", "message": f"处理失败: {str(e)}"}
+
+
+def _handle_reservation_notify(out_trade_no: str, transaction_id: str, trade_state: str, attach: str, db: Session):
+    """处理场馆预约订单支付回调"""
+    try:
+        reservation = db.query(Reservation).filter(
+            Reservation.out_trade_no == out_trade_no
+        ).with_for_update().first()
+
+        if not reservation:
+            db.rollback()
+            return {"code": "FAIL", "message": "预约订单不存在"}
+
+        # 幂等性检查
+        if reservation.status != "unpaid":
+            db.rollback()
+            return {"code": "SUCCESS", "message": "成功"}
+
+        # 解析attach数据
+        try:
+            attach_data = json.loads(attach) if attach else {}
+        except (json.JSONDecodeError, TypeError):
+            attach_data = {}
+        coupon_id = attach_data.get("coupon_id")
+
+        if trade_state == "SUCCESS":
+            reservation.status = "pending"
+            reservation.transaction_id = transaction_id
+            if coupon_id:
+                coupon = db.query(MemberCoupon).filter(
+                    MemberCoupon.id == coupon_id,
+                    MemberCoupon.member_id == reservation.member_id,
+                    MemberCoupon.status.in_(['locked', 'unused'])
+                ).with_for_update().first()
+                if coupon:
+                    coupon.status = 'used'
+                    coupon.use_time = datetime.now()
+                    coupon.order_type = 'reservation'
+                    coupon.order_id = reservation.id
+
+            db.commit()
+        else:
+            # 支付失败：取消预约，解锁优惠券
+            reservation.status = "cancelled"
+            if coupon_id:
+                coupon = db.query(MemberCoupon).filter(
+                    MemberCoupon.id == coupon_id,
+                    MemberCoupon.member_id == reservation.member_id,
+                    MemberCoupon.status == 'locked'
+                ).first()
+                if coupon:
+                    coupon.status = 'unused'
+            db.commit()
 
         return {"code": "SUCCESS", "message": "成功"}
     except Exception as e:

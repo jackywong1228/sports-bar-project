@@ -46,6 +46,11 @@ class Reservation(Base, TimestampMixin, SoftDeleteMixin):
     rating = Column(Integer, nullable=True, comment="评分 1-5")
     comment = Column(Text, nullable=True, comment="评价内容")
 
+    # 支付方式
+    pay_type = Column(String(20), default="coin", comment="支付方式: coin/wechat")
+    out_trade_no = Column(String(50), nullable=True, unique=True, comment="微信订单号")
+    transaction_id = Column(String(100), nullable=True, comment="微信交易流水号")
+
     # 其他
     remark = Column(String(255), nullable=True, comment="备注")
     cancel_reason = Column(String(255), nullable=True, comment="取消原因")

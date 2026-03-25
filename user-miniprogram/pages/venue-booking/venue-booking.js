@@ -37,7 +37,12 @@ Page({
     isMember: false,
     memberLevel: 'S',
     permissionReason: '',
-    freeUsageInfo: null  // SSS免费时长信息
+    freeUsageInfo: null,  // SSS免费时长信息
+    // 支付相关
+    showPayModal: false,
+    selectedPayType: 'coin',
+    coinBalance: 0,
+    estimatedPrice: 0
   },
 
   onLoad(options) {
@@ -58,6 +63,19 @@ Page({
       this.loadCalendarData()
     }
     this.checkMemberPermission()
+    this.loadCoinBalance()
+  },
+
+  // 加载金币余额
+  async loadCoinBalance() {
+    try {
+      const res = await app.request({ url: '/member/profile' })
+      if (res.data) {
+        this.setData({ coinBalance: parseFloat(res.data.coin_balance || 0) })
+      }
+    } catch (err) {
+      console.error('加载余额失败:', err)
+    }
   },
 
   // 检查会员预约权限（三级会员制）
@@ -306,22 +324,56 @@ Page({
     })
   },
 
-  // 提交预约
-  async submitBooking() {
+  // 提交预约 — 弹出支付选择
+  submitBooking() {
     if (this.data.selectedSlots.length === 0) {
-      wx.showToast({
-        title: '请选择时间段',
-        icon: 'none'
-      })
+      wx.showToast({ title: '请选择时间段', icon: 'none' })
       return
     }
 
-    // 检查预约权限
     if (!this.data.canBook) {
-      this.showGuestTip()
+      this.showBookingTip(this.data.memberLevel, this.data.permissionReason)
       return
     }
 
+    // 计算预估价格
+    const estimatedPrice = this.data.selectedVenuePrice * this.data.selectedSlots.length
+
+    // SSS免费时段（尚有剩余免费分钟数）或价格为0，直接提交
+    const freeInfo = this.data.freeUsageInfo
+    const isSSSFree = this.data.memberLevel === 'SSS' && freeInfo && freeInfo.remaining_free_minutes > 0
+    if (estimatedPrice <= 0 || isSSSFree) {
+      this.doSubmit('coin')
+      return
+    }
+
+    // 弹出支付方式选择
+    this.setData({
+      estimatedPrice,
+      selectedPayType: 'coin',
+      showPayModal: true
+    })
+  },
+
+  // 选择支付方式
+  selectPayType(e) {
+    this.setData({ selectedPayType: e.currentTarget.dataset.type })
+  },
+
+  // 关闭支付弹窗
+  closePayModal() {
+    this.setData({ showPayModal: false })
+  },
+
+  // 确认支付方式后提交
+  confirmPay() {
+    this.setData({ showPayModal: false })
+    this.doSubmit(this.data.selectedPayType)
+  },
+
+  // 实际提交预约
+  async doSubmit(payType) {
+    if (this.data.submitting) return
     this.setData({ submitting: true })
 
     try {
@@ -329,7 +381,7 @@ Page({
       const startHour = slots[0].hour
       const endHour = slots[slots.length - 1].hour + 1
 
-      await app.request({
+      const res = await app.request({
         url: '/member/reservations',
         method: 'POST',
         data: {
@@ -337,35 +389,95 @@ Page({
           reservation_date: this.data.selectedDate,
           start_time: `${String(startHour).padStart(2, '0')}:00`,
           end_time: `${String(endHour).padStart(2, '0')}:00`,
-          duration: this.data.selectedSlots.length * 60
+          duration: this.data.selectedSlots.length * 60,
+          pay_type: payType
         }
       })
 
-      wx.showToast({
-        title: '预约成功',
-        icon: 'success'
-      })
+      const data = res.data || {}
 
-      // 清空选择并刷新数据
-      this.setData({
-        selectedSlots: [],
-        selectedVenueId: null,
-        selectedVenueName: '',
-        selectedVenuePrice: 0
-      })
+      // 微信支付：拉起支付
+      if (data.pay_params) {
+        this.handleWechatPay(data)
+        return
+      }
 
-      setTimeout(() => {
-        this.loadCalendarData()
-      }, 1000)
+      // 金币支付或免费：直接成功
+      wx.showToast({ title: '预约成功', icon: 'success' })
+      this.resetAndRefresh()
 
     } catch (err) {
       console.error('预约失败:', err)
-      wx.showToast({
-        title: err.message || '预约失败',
-        icon: 'none'
-      })
+      wx.showToast({ title: err.message || '预约失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })
     }
+  },
+
+  // 处理微信支付
+  handleWechatPay(data) {
+    const { reservation_id, pay_params } = data
+
+    wx.requestPayment({
+      ...pay_params,
+      success: () => {
+        wx.showLoading({ title: '支付确认中...' })
+        this.pollPaymentStatus(reservation_id, 0)
+      },
+      fail: (err) => {
+        this.setData({ submitting: false })
+        if (err.errMsg && err.errMsg.includes('cancel')) {
+          wx.showToast({ title: '已取消支付', icon: 'none' })
+        } else {
+          wx.showToast({ title: '支付失败', icon: 'none' })
+        }
+      }
+    })
+  },
+
+  // 轮询支付状态
+  async pollPaymentStatus(reservationId, attempt) {
+    if (attempt >= 10) {
+      wx.hideLoading()
+      this.setData({ submitting: false })
+      wx.showToast({ title: '支付处理中，请稍后查看', icon: 'none' })
+      this.resetAndRefresh()
+      return
+    }
+
+    try {
+      const res = await app.request({
+        url: `/member/reservations/${reservationId}/pay-status`
+      })
+
+      if (res.data && res.data.status === 'pending') {
+        wx.hideLoading()
+        this.setData({ submitting: false })
+        wx.showToast({ title: '预约成功', icon: 'success' })
+        this.resetAndRefresh()
+        return
+      }
+    } catch (err) {
+      console.error('查询支付状态失败:', err)
+    }
+
+    // 1秒后重试
+    setTimeout(() => {
+      this.pollPaymentStatus(reservationId, attempt + 1)
+    }, 1000)
+  },
+
+  // 重置选择并刷新数据
+  resetAndRefresh() {
+    this.setData({
+      selectedSlots: [],
+      selectedVenueId: null,
+      selectedVenueName: '',
+      selectedVenuePrice: 0
+    })
+    this.loadCoinBalance()
+    setTimeout(() => {
+      this.loadCalendarData()
+    }, 1000)
   }
 })

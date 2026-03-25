@@ -409,8 +409,9 @@ class UpdateProfileRequest(BaseModel):
 
     @validator('avatar')
     def validate_avatar(cls, v):
-        if v is not None and not v.startswith('/uploads/'):
-            raise ValueError('无效的头像地址')
+        if v is not None:
+            if not v.startswith('/uploads/') and not v.startswith('https://'):
+                raise ValueError('无效的头像地址')
         return v
 
 
@@ -915,6 +916,8 @@ def create_reservation(
     duration = data.get("duration", 60)
     coupon_id = data.get("coupon_id")
     pay_type = data.get("pay_type", "coin")
+    if pay_type not in ("coin", "wechat"):
+        raise HTTPException(status_code=400, detail="无效的支付方式")
 
     # 1. 预约权限检查（含等级、日期范围）
     booking_date = datetime.strptime(reservation_date, "%Y-%m-%d").date() if isinstance(reservation_date, str) else reservation_date
@@ -988,10 +991,18 @@ def create_reservation(
     if actual_price > 0 and pay_type == "coin":
         if actual_price > float(current_member.coin_balance or 0):
             raise HTTPException(status_code=400, detail="金币余额不足")
+    elif actual_price > 0 and pay_type == "wechat":
+        if not current_member.openid:
+            raise HTTPException(status_code=400, detail="请先完成微信授权")
 
     # 7. 生成预约
     import uuid
     reservation_no = f"R{datetime.now().strftime('%Y%m%d%H%M%S')}{str(uuid.uuid4())[:4].upper()}"
+
+    # 微信支付时生成微信订单号，状态为unpaid
+    out_trade_no = None
+    if actual_price > 0 and pay_type == "wechat":
+        out_trade_no = wechat_pay.generate_out_trade_no("RV")
 
     reservation = Reservation(
         reservation_no=reservation_no,
@@ -1005,11 +1016,14 @@ def create_reservation(
         venue_price=venue_price if not is_sss_free else 0,
         coach_price=coach_price,
         total_price=actual_price,
-        status="pending"
+        pay_type=pay_type,
+        out_trade_no=out_trade_no,
+        status="unpaid" if (actual_price > 0 and pay_type == "wechat") else "pending",
+        remark=json.dumps({"coupon_id": coupon_id}) if (pay_type == "wechat" and coupon_id) else None
     )
     db.add(reservation)
 
-    # 8. 扣费
+    # 8. 金币支付：立即扣费
     if actual_price > 0 and pay_type == "coin":
         current_member.coin_balance = float(current_member.coin_balance or 0) - actual_price
         coin_record = CoinRecord(
@@ -1024,16 +1038,57 @@ def create_reservation(
 
     # 9. 核销优惠券
     if used_coupon:
-        used_coupon.status = 'used'
-        used_coupon.use_time = datetime.now()
-        used_coupon.order_type = 'reservation'
-        used_coupon.order_id = None
+        if pay_type == "wechat":
+            # 微信支付：锁定优惠券，回调成功后正式核销
+            used_coupon.status = 'locked'
+            used_coupon.order_type = 'reservation'
+        else:
+            # 金币支付：直接核销
+            used_coupon.status = 'used'
+            used_coupon.use_time = datetime.now()
+            used_coupon.order_type = 'reservation'
+            used_coupon.order_id = None
 
     db.commit()
 
-    if used_coupon:
+    if used_coupon and pay_type != "wechat":
         used_coupon.order_id = reservation.id
         db.commit()
+
+    # 10. 微信支付：创建预支付订单
+    if actual_price > 0 and pay_type == "wechat":
+        total_amount_fen = round(actual_price * 100)
+        venue = db.query(Venue).filter(Venue.id == venue_id).first()
+        description = f"场馆预约-{venue.name if venue else '场馆'}"
+        attach = json.dumps({
+            "reservation_id": reservation.id,
+            "type": "reservation",
+            "coupon_id": coupon_id
+        })
+        result = wechat_pay.create_jsapi_order(
+            out_trade_no=out_trade_no,
+            total_amount=total_amount_fen,
+            description=description,
+            openid=current_member.openid,
+            attach=attach
+        )
+        if "error" in result:
+            reservation.status = "cancelled"
+            db.commit()
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        return ResponseModel(message="请完成微信支付", data={
+            "reservation_id": reservation.id,
+            "reservation_no": reservation_no,
+            "order_no": out_trade_no,
+            "venue_price": venue_price if not is_sss_free else 0,
+            "coach_price": coach_price,
+            "coupon_discount": coupon_discount,
+            "actual_price": actual_price,
+            "pay_type": "wechat",
+            "pay_params": result,
+            "is_free": False
+        })
 
     return ResponseModel(message="预约成功", data={
         "reservation_no": reservation_no,
@@ -1043,6 +1098,61 @@ def create_reservation(
         "actual_price": actual_price,
         "pay_type": pay_type,
         "is_free": is_sss_free
+    })
+
+
+@router.get("/reservations/{reservation_id}/pay-status", response_model=ResponseModel)
+def query_reservation_pay_status(
+    reservation_id: int,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """查询预约支付状态（用于微信支付后轮询确认）"""
+    reservation = db.query(Reservation).filter(
+        Reservation.id == reservation_id,
+        Reservation.member_id == current_member.id,
+        Reservation.is_deleted == False
+    ).first()
+
+    if not reservation:
+        raise HTTPException(status_code=404, detail="预约记录不存在")
+
+    # 如果是微信支付且尚未支付，主动查询微信订单状态补偿确认
+    if reservation.pay_type == "wechat" and reservation.status == "unpaid" and reservation.out_trade_no:
+        result = wechat_pay.query_order(reservation.out_trade_no)
+        if result.get("trade_state") == "SUCCESS":
+            # 加锁更新，防止与回调并发
+            reservation = db.query(Reservation).filter(
+                Reservation.id == reservation_id
+            ).with_for_update().first()
+            if reservation and reservation.status == "unpaid":
+                reservation.status = "pending"
+                reservation.transaction_id = result.get("transaction_id")
+                # 核销优惠券（补偿路径）
+                if reservation.remark:
+                    try:
+                        attach_data = json.loads(reservation.remark)
+                        coupon_id = attach_data.get("coupon_id")
+                        if coupon_id:
+                            coupon = db.query(MemberCoupon).filter(
+                                MemberCoupon.id == coupon_id,
+                                MemberCoupon.member_id == reservation.member_id,
+                                MemberCoupon.status.in_(['locked', 'unused'])
+                            ).with_for_update().first()
+                            if coupon:
+                                coupon.status = 'used'
+                                coupon.use_time = datetime.now()
+                                coupon.order_type = 'reservation'
+                                coupon.order_id = reservation.id
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                db.commit()
+
+    return ResponseModel(data={
+        "id": reservation.id,
+        "status": reservation.status,
+        "pay_type": reservation.pay_type,
+        "total_price": float(reservation.total_price or 0)
     })
 
 

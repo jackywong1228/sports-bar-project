@@ -466,3 +466,173 @@
 .bottom-placeholder {
   height: 200rpx;
 }
+
+/* 支付弹窗 */
+.pay-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.pay-modal {
+  width: 100%;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 40rpx 30rpx;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.pay-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30rpx;
+}
+
+.pay-modal-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.pay-modal-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pay-modal-close text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+.pay-modal-price {
+  text-align: center;
+  padding: 30rpx 0;
+  margin-bottom: 20rpx;
+}
+
+.pay-price-label {
+  font-size: 26rpx;
+  color: #999;
+  margin-right: 10rpx;
+}
+
+.pay-price-value {
+  font-size: 56rpx;
+  font-weight: bold;
+  color: #1A5D3A;
+}
+
+.pay-price-unit {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 6rpx;
+}
+
+.pay-options {
+  margin-bottom: 30rpx;
+}
+
+.pay-option {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 20rpx;
+  border: 2rpx solid #eee;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  transition: all 0.2s;
+}
+
+.pay-option.active {
+  border-color: #1A5D3A;
+  background: #f0f7f2;
+}
+
+.pay-option-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-right: 20rpx;
+}
+
+.coin-icon {
+  background: linear-gradient(135deg, #C9A962 0%, #DAC07A 100%);
+}
+
+.wechat-icon {
+  background: linear-gradient(135deg, #07C160 0%, #06AD56 100%);
+}
+
+.pay-option-info {
+  flex: 1;
+}
+
+.pay-option-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #333;
+  display: block;
+}
+
+.pay-option-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 4rpx;
+  display: block;
+}
+
+.pay-option-check {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 2rpx solid #ddd;
+  position: relative;
+}
+
+.pay-option-check.checked {
+  border-color: #1A5D3A;
+  background: #1A5D3A;
+}
+
+.pay-option-check.checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14rpx;
+  height: 8rpx;
+  border-left: 3rpx solid #fff;
+  border-bottom: 3rpx solid #fff;
+  transform: translate(-50%, -60%) rotate(-45deg);
+}
+
+.pay-confirm-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 44rpx;
+  border: none;
+}
+
+.pay-confirm-btn::after {
+  border: none;
+}
