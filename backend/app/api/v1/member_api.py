@@ -1,10 +1,13 @@
 """会员端小程序API"""
+import io
 import json
 import logging
+import base64
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel, Field, validator
 import httpx
+import qrcode
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -1301,6 +1304,143 @@ def get_member_orders(
     paged_orders = all_orders[start:end]
 
     return ResponseModel(data=paged_orders)
+
+
+def _generate_verify_qrcode(reservation_no: str) -> str:
+    """生成预约核销二维码(base64)"""
+    qr = qrcode.make(f"VERIFY:{reservation_no}")
+    buf = io.BytesIO()
+    qr.save(buf, format='PNG')
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+@router.get("/orders/{order_id}", response_model=ResponseModel)
+def get_member_order_detail(
+    order_id: int,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取订单详情（预约订单或餐饮订单）"""
+
+    # 1. 先查预约订单
+    reservation = db.query(Reservation).filter(
+        Reservation.id == order_id,
+        Reservation.member_id == current_member.id,
+        Reservation.is_deleted == False
+    ).first()
+
+    if reservation:
+        r = reservation
+
+        # 场馆图片
+        venue_image = None
+        if r.venue and r.venue.images:
+            try:
+                imgs = json.loads(r.venue.images) if isinstance(r.venue.images, str) else r.venue.images
+                venue_image = imgs[0] if isinstance(imgs, list) and imgs else None
+            except (json.JSONDecodeError, TypeError):
+                venue_image = r.venue.images if r.venue.images and not r.venue.images.startswith('[') else None
+
+        # 时间格式化
+        start_str = r.start_time.strftime("%H:%M") if hasattr(r.start_time, 'strftime') else str(r.start_time)[:5]
+        end_str = r.end_time.strftime("%H:%M") if hasattr(r.end_time, 'strftime') else str(r.end_time)[:5]
+        date_str = r.reservation_date.strftime("%Y-%m-%d") if hasattr(r.reservation_date, 'strftime') else str(r.reservation_date)
+
+        status_map = {
+            "unpaid": "待支付",
+            "pending": "待确认",
+            "confirmed": "已确认",
+            "in_progress": "进行中",
+            "completed": "已完成",
+            "cancelled": "已取消"
+        }
+
+        # 核销二维码（仅 pending/confirmed 且未核销时生成）
+        qrcode_base64 = None
+        if r.status in ("pending", "confirmed") and not r.is_verified:
+            qrcode_base64 = _generate_verify_qrcode(r.reservation_no)
+
+        result = {
+            "id": r.id,
+            "order_no": r.reservation_no,
+            "type": "reservation",
+            "type_name": "场馆预约" if not r.coach_id else "教练预约",
+            "status": r.status,
+            "status_text": status_map.get(r.status, r.status),
+            # 场馆信息
+            "venue_name": r.venue.name if r.venue else None,
+            "venue_location": r.venue.location if r.venue else None,
+            "venue_image": venue_image,
+            # 时间信息
+            "reservation_date": date_str,
+            "start_time": start_str,
+            "end_time": end_str,
+            "duration": r.duration,
+            # 费用
+            "venue_price": float(r.venue_price or 0),
+            "coach_price": float(r.coach_price or 0),
+            "total_price": float(r.total_price or 0),
+            "pay_type": r.pay_type or "coin",
+            "pay_type_text": {"coin": "金币支付", "wechat": "微信支付"}.get(r.pay_type or "coin", r.pay_type),
+            # 教练信息
+            "coach_name": r.coach.name if r.coach else None,
+            "coach_avatar": r.coach.avatar if r.coach else None,
+            # 核销
+            "is_verified": r.is_verified or False,
+            "verified_at": r.verified_at.strftime("%Y-%m-%d %H:%M") if r.verified_at else None,
+            "qrcode_base64": qrcode_base64,
+            # 其他
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
+            "remark": r.remark,
+        }
+
+        return ResponseModel(data=result)
+
+    # 2. 查餐饮订单
+    food_order = db.query(FoodOrder).filter(
+        FoodOrder.id == order_id,
+        FoodOrder.member_id == current_member.id
+    ).first()
+
+    if food_order:
+        o = food_order
+        items = db.query(FoodOrderItem).filter(FoodOrderItem.order_id == o.id).all()
+
+        food_status_map = {
+            "pending": "待支付",
+            "paid": "已支付",
+            "preparing": "制作中",
+            "completed": "已完成",
+            "cancelled": "已取消"
+        }
+
+        items_data = []
+        for item in items:
+            items_data.append({
+                "food_name": item.food_name,
+                "food_image": item.food_image if hasattr(item, 'food_image') else None,
+                "quantity": item.quantity,
+                "price": float(item.price),
+                "subtotal": float(item.price * item.quantity),
+            })
+
+        result = {
+            "id": o.id,
+            "order_no": o.order_no,
+            "type": "food",
+            "type_name": "餐饮订单",
+            "status": o.status,
+            "status_text": food_status_map.get(o.status, o.status),
+            "total_price": float(o.total_amount),
+            "items": items_data,
+            "items_count": len(items),
+            "created_at": o.created_at.strftime("%Y-%m-%d %H:%M") if o.created_at else None,
+            "qrcode_base64": None,
+        }
+
+        return ResponseModel(data=result)
+
+    raise HTTPException(status_code=404, detail="订单不存在")
 
 
 # ==================== 金币/积分记录 ====================

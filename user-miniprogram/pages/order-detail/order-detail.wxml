@@ -1,6 +1,127 @@
-<view class="container">
-  <view class="status">{{order.status_text}}</view>
-  <view class="info"><text class="title">{{order.title}}</text><text class="no">订单号: {{order.order_no}}</text></view>
-  <view class="price"><text>合计: </text><text class="amount">¥{{order.total_price}}</text></view>
-  <view class="time"><text>下单时间: {{order.created_at}}</text></view>
+<view class="page" wx:if="{{!loading && order}}">
+
+  <!-- 状态横幅 -->
+  <view class="status-banner">
+    <view class="status-icon">{{statusConfig[order.status].icon || '📋'}}</view>
+    <view class="status-text">{{statusConfig[order.status].text || order.status_text}}</view>
+    <view class="status-subtitle" wx:if="{{statusConfig[order.status].subtitle}}">{{statusConfig[order.status].subtitle}}</view>
+  </view>
+
+  <!-- 核销二维码（仅预约订单 pending/confirmed 时显示） -->
+  <view class="qrcode-card" wx:if="{{order.qrcode_base64}}">
+    <image class="qrcode-image" src="{{order.qrcode_base64}}" mode="aspectFit" bindtap="previewQrcode"></image>
+    <view class="qrcode-tip">到店出示此码核销</view>
+    <view class="qrcode-no">预约编号: {{order.order_no}}</view>
+  </view>
+
+  <!-- 已核销提示 -->
+  <view class="verified-card" wx:if="{{order.is_verified}}">
+    <view class="verified-icon">✅</view>
+    <view class="verified-text">已核销</view>
+    <view class="verified-time">核销时间: {{order.verified_at}}</view>
+  </view>
+
+  <!-- 预约信息（预约订单） -->
+  <view class="info-card" wx:if="{{order.type === 'reservation'}}">
+    <view class="card-title">预约信息</view>
+    <view class="info-row">
+      <text class="info-label">场馆</text>
+      <text class="info-value">{{order.venue_name || '-'}}</text>
+    </view>
+    <view class="info-row" wx:if="{{order.venue_location}}">
+      <text class="info-label">位置</text>
+      <text class="info-value">{{order.venue_location}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">日期</text>
+      <text class="info-value">{{order.reservation_date}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">时段</text>
+      <text class="info-value">{{order.start_time}} - {{order.end_time}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">时长</text>
+      <text class="info-value">{{order.duration}}分钟</text>
+    </view>
+    <view class="info-row" wx:if="{{order.coach_name}}">
+      <text class="info-label">教练</text>
+      <text class="info-value">{{order.coach_name}}</text>
+    </view>
+  </view>
+
+  <!-- 餐饮详情（餐饮订单） -->
+  <view class="info-card" wx:if="{{order.type === 'food'}}">
+    <view class="card-title">餐品详情</view>
+    <view class="food-item" wx:for="{{order.items}}" wx:key="food_name">
+      <view class="food-info">
+        <text class="food-name">{{item.food_name}}</text>
+        <text class="food-qty">x{{item.quantity}}</text>
+      </view>
+      <text class="food-price">¥{{item.subtotal}}</text>
+    </view>
+  </view>
+
+  <!-- 费用信息 -->
+  <view class="info-card">
+    <view class="card-title">费用信息</view>
+    <view class="info-row" wx:if="{{order.type === 'reservation'}}">
+      <text class="info-label">场馆费用</text>
+      <text class="info-value">¥{{order.venue_price}}</text>
+    </view>
+    <view class="info-row" wx:if="{{order.coach_price > 0}}">
+      <text class="info-label">教练费用</text>
+      <text class="info-value">¥{{order.coach_price}}</text>
+    </view>
+    <view class="info-row total-row">
+      <text class="info-label total-label">合计</text>
+      <text class="info-value total-value">¥{{order.total_price}}</text>
+    </view>
+    <view class="info-row" wx:if="{{order.pay_type_text}}">
+      <text class="info-label">支付方式</text>
+      <text class="info-value">{{order.pay_type_text}}</text>
+    </view>
+  </view>
+
+  <!-- 订单信息 -->
+  <view class="info-card">
+    <view class="card-title">订单信息</view>
+    <view class="info-row">
+      <text class="info-label">订单编号</text>
+      <text class="info-value order-no">{{order.order_no}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">订单类型</text>
+      <text class="info-value">{{order.type_name}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">下单时间</text>
+      <text class="info-value">{{order.created_at}}</text>
+    </view>
+    <view class="info-row" wx:if="{{order.remark}}">
+      <text class="info-label">备注</text>
+      <text class="info-value">{{order.remark}}</text>
+    </view>
+  </view>
+
+  <!-- 底部留白（给固定按钮腾空间） -->
+  <view class="bottom-spacer" wx:if="{{order.status === 'unpaid'}}"></view>
+
+  <!-- 底部操作栏 -->
+  <view class="action-bar" wx:if="{{order.status === 'unpaid'}}">
+    <view class="btn-cancel" bindtap="cancelOrder">取消订单</view>
+    <view class="btn-pay" bindtap="payOrder">去支付</view>
+  </view>
+
+</view>
+
+<!-- 加载中 -->
+<view class="loading-container" wx:if="{{loading}}">
+  <view class="loading-spinner"></view>
+  <text class="loading-text">加载中...</text>
+</view>
+
+<!-- 空状态 -->
+<view class="empty-container" wx:if="{{!loading && !order}}">
+  <text class="empty-text">订单不存在</text>
 </view>
