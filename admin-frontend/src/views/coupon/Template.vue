@@ -335,8 +335,8 @@ const searchMembers = async (query: string) => {
   if (!query) return
   memberLoading.value = true
   try {
-    const res = await request.get('/members/list', { params: { keyword: query, page_size: 20 } })
-    memberOptions.value = res.data.list
+    const res = await request.get('/members', { params: { nickname: query, page_size: 20 } })
+    memberOptions.value = res.data.items
   } finally {
     memberLoading.value = false
   }

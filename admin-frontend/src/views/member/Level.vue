@@ -146,16 +146,6 @@ const handleDelete = async (row: MemberLevel) => {
   }
 }
 
-const getTypeLabel = (type: string) => {
-  const item = typeOptions.find(t => t.value === type)
-  return item ? item.label : type
-}
-
-const getTypeColor = (type: string) => {
-  const item = typeOptions.find(t => t.value === type)
-  return item ? item.color : '#909399'
-}
-
 onMounted(() => {
   fetchData()
 })
