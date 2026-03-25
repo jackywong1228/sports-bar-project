@@ -1,5 +1,6 @@
 from typing import List, Optional
 from decimal import Decimal
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -226,6 +227,20 @@ def update_member(
     update_data = data.model_dump(exclude_unset=True, exclude={"tag_ids"})
     for key, value in update_data.items():
         setattr(member, key, value)
+
+    # 如果修改了 level_id，自动同步 subscription_status 和 member_expire_time
+    if "level_id" in update_data and update_data["level_id"]:
+        new_level = db.query(MemberLevel).filter(MemberLevel.id == update_data["level_id"]).first()
+        if new_level and new_level.level_code in ('SS', 'SSS'):
+            # SS/SSS 需要 active 状态才能预约
+            if member.subscription_status != 'active':
+                member.subscription_status = 'active'
+            if not member.member_expire_time or member.member_expire_time < datetime.now():
+                member.member_expire_time = datetime.now() + timedelta(days=365)
+        elif new_level and new_level.level_code == 'S':
+            # 降为 S 级，清除订阅状态
+            member.subscription_status = 'inactive'
+            member.member_expire_time = None
 
     # 更新标签
     if data.tag_ids is not None:

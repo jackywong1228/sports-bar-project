@@ -88,6 +88,7 @@ class MemberUpdate(BaseModel):
     birthday: Optional[datetime] = None
     level_id: Optional[int] = None
     member_expire_time: Optional[datetime] = None
+    subscription_status: Optional[str] = None
     status: Optional[bool] = None
     tag_ids: Optional[List[int]] = None
 
