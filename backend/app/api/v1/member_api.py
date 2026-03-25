@@ -1216,7 +1216,11 @@ def get_member_orders(
             Reservation.is_deleted == False
         )
         if status and status != "all":
-            res_query = res_query.filter(Reservation.status == status)
+            if status == "confirmed":
+                # "已确认"tab: 包含已付款待确认 + 已确认的预约
+                res_query = res_query.filter(Reservation.status.in_(["pending", "confirmed"]))
+            else:
+                res_query = res_query.filter(Reservation.status == status)
 
         reservations = res_query.all()
         for r in reservations:

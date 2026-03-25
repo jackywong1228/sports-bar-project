@@ -5,8 +5,8 @@ Page({
   data: {
     tabs: [
       { id: 'all', name: '全部' },
-      { id: 'pending', name: '待支付' },
-      { id: 'paid', name: '已支付' },
+      { id: 'unpaid', name: '待支付' },
+      { id: 'confirmed', name: '已确认' },
       { id: 'completed', name: '已完成' }
     ],
     currentTab: 'all',
