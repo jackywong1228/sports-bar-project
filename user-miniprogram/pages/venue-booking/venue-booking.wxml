@@ -148,7 +148,7 @@
 
   <!-- 支付方式选择弹窗 -->
   <view class="pay-modal-mask" wx:if="{{showPayModal}}" bindtap="closePayModal">
-    <view class="pay-modal" catchtap="">
+    <view class="pay-modal" catchtap="noop">
       <view class="pay-modal-header">
         <text class="pay-modal-title">选择支付方式</text>
         <view class="pay-modal-close" bindtap="closePayModal">

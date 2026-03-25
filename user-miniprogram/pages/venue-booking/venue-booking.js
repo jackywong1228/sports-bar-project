@@ -360,6 +360,9 @@ Page({
     this.setData({ selectedPayType: e.currentTarget.dataset.type })
   },
 
+  // 阻止事件冒泡（空操作）
+  noop() {},
+
   // 关闭支付弹窗
   closePayModal() {
     this.setData({ showPayModal: false })
