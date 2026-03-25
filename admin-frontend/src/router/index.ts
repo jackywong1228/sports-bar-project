@@ -325,6 +325,21 @@ const routes: RouteRecordRaw[] = [
           }
         ]
       },
+      // 反馈管理
+      {
+        path: 'feedback',
+        name: 'Feedback',
+        redirect: '/feedback/list',
+        meta: { title: '反馈管理', icon: 'ChatLineSquare' },
+        children: [
+          {
+            path: 'list',
+            name: 'FeedbackList',
+            component: () => import('@/views/feedback/List.vue'),
+            meta: { title: '反馈列表' }
+          }
+        ]
+      },
       // 消息通知
       {
         path: 'message',

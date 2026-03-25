@@ -397,6 +397,13 @@ const quitTeam = (teamId) => {
   return post(`/teams/${teamId}/quit`, {}, { showLoading: true })
 }
 
+/**
+ * 获取我的组队列表
+ */
+const getMyTeams = (params = {}) => {
+  return get('/member/my-teams', params)
+}
+
 // ==================== 钱包 ====================
 
 /**
@@ -665,6 +672,22 @@ const useInviteCode = (code) => {
   return post(`/member/invite/${code}/accept`)
 }
 
+// ==================== 意见反馈 ====================
+
+/**
+ * 提交意见反馈
+ */
+const submitFeedback = (data) => {
+  return post('/member/feedback', data, { showLoading: true })
+}
+
+/**
+ * 获取我的反馈列表
+ */
+const getMyFeedback = (params = {}) => {
+  return get('/member/feedback', params)
+}
+
 module.exports = {
   // 认证
   loginByPhone,
@@ -739,6 +762,7 @@ module.exports = {
   createTeam,
   joinTeam,
   quitTeam,
+  getMyTeams,
 
   // 钱包
   getWallet,
@@ -794,5 +818,9 @@ module.exports = {
   generateInviteCode,
   getInviteStats,
   getInviteHistory,
-  useInviteCode
+  useInviteCode,
+
+  // 意见反馈
+  submitFeedback,
+  getMyFeedback
 }

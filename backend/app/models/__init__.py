@@ -18,6 +18,7 @@ from app.models.member_violation import MemberViolation
 from app.models.member_coupon_issuance import MemberCouponIssuance
 from app.models.review import ServiceReview, ReviewPointConfig
 from app.models.member_invitation import MemberInvitation
+from app.models.feedback import Feedback
 
 __all__ = [
     "SysUser", "SysRole", "SysDepartment", "SysPermission",
@@ -38,4 +39,5 @@ __all__ = [
     "MemberViolation", "MemberCouponIssuance",
     "ServiceReview", "ReviewPointConfig",
     "MemberInvitation",
+    "Feedback",
 ]

@@ -22,10 +22,10 @@ Page({
       { icon: '/assets/icons/order.png', text: '我的订单', url: '/pages/orders/orders' },
       { icon: '/assets/icons/reservation.png', text: '我的预约', url: '/pages/orders/orders?type=reservation' },
       { icon: '/assets/icons/coupon.png', text: '我的优惠券', url: '/pages/coupons/coupons' },
+      { icon: '/assets/icons/team-entry.png', text: '我的组队', url: '/pages/my-teams/my-teams' },
       { icon: '/assets/icons/member-card.png', text: '会员中心', url: '/pages/member/member' }
     ],
     tools: [
-      { icon: '/assets/icons/service.png', text: '联系客服', action: 'contact' },
       { icon: '/assets/icons/feedback.png', text: '意见反馈', action: 'feedback' },
       { icon: '/assets/icons/settings.png', text: '设置', url: '/pages/settings/settings' },
       { icon: '/assets/icons/about.png', text: '关于我们', action: 'about' }
@@ -182,13 +182,8 @@ Page({
     }
 
     switch (action) {
-      case 'contact':
-        wx.makePhoneCall({
-          phoneNumber: '400-000-0000'
-        })
-        break
       case 'feedback':
-        wx.showToast({ title: '功能开发中', icon: 'none' })
+        wx.navigateTo({ url: '/pages/feedback/feedback' })
         break
       case 'about':
         wx.showModal({

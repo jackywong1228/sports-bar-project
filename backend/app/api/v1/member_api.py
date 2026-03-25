@@ -3668,3 +3668,151 @@ def get_face_status(
         "is_registered": bool(current_member.face_feature_id),
         "registered_at": str(current_member.face_registered_at) if current_member.face_registered_at else None
     })
+
+
+# ==================== 我的组队 ====================
+
+@router.get("/my-teams", response_model=ResponseModel)
+def get_my_teams(
+    role: str = Query("all"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取我的组队列表"""
+    from app.models.team import Team, TeamMember
+
+    if role not in ("all", "created", "joined"):
+        role = "all"
+
+    member_id = current_member.id
+    created_ids = set()
+    joined_ids = set()
+
+    if role in ("all", "created"):
+        created_teams = db.query(Team.id).filter(
+            Team.creator_id == member_id,
+            Team.is_deleted == False
+        ).all()
+        created_ids = {t.id for t in created_teams}
+
+    if role in ("all", "joined"):
+        joined_teams = db.query(TeamMember.team_id).filter(
+            TeamMember.member_id == member_id,
+            TeamMember.status == "joined"
+        ).all()
+        joined_ids = {t.team_id for t in joined_teams} - created_ids  # 排除自己创建的
+
+    all_ids = created_ids | joined_ids
+    if not all_ids:
+        return ResponseModel(data={"list": [], "total": 0, "page": page, "page_size": page_size})
+
+    query = db.query(Team).filter(
+        Team.id.in_(all_ids),
+        Team.is_deleted == False
+    ).order_by(Team.created_at.desc())
+
+    total = query.count()
+    teams = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    result = []
+    for t in teams:
+        result.append({
+            "id": t.id,
+            "title": t.title,
+            "sport_type": t.sport_type,
+            "sport_type_name": SPORT_TYPES.get(t.sport_type, t.sport_type),
+            "activity_date": t.activity_date,
+            "activity_time": t.activity_time,
+            "location": t.location,
+            "max_members": t.max_members,
+            "current_members": t.current_members,
+            "status": t.status,
+            "role": "creator" if t.id in created_ids else "member",
+            "created_at": str(t.created_at) if t.created_at else None
+        })
+
+    return ResponseModel(data={
+        "list": result,
+        "total": total,
+        "page": page,
+        "page_size": page_size
+    })
+
+
+# ==================== 意见反馈 ====================
+
+class FeedbackCreate(BaseModel):
+    category: str = "suggestion"
+    content: str
+    images: Optional[str] = None
+    contact: Optional[str] = None
+
+
+@router.post("/feedback", response_model=ResponseModel)
+def submit_feedback(
+    data: FeedbackCreate,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """提交意见反馈"""
+    from app.models.feedback import Feedback
+
+    if not data.content or len(data.content.strip()) < 10:
+        raise HTTPException(status_code=400, detail="反馈内容至少10个字")
+
+    if data.category not in ("suggestion", "bug", "complaint", "other"):
+        raise HTTPException(status_code=400, detail="无效的反馈类型")
+
+    feedback = Feedback(
+        member_id=current_member.id,
+        category=data.category,
+        content=data.content.strip(),
+        images=data.images,
+        contact=data.contact
+    )
+    db.add(feedback)
+    db.commit()
+    db.refresh(feedback)
+
+    return ResponseModel(data={"id": feedback.id}, message="提交成功")
+
+
+@router.get("/feedback", response_model=ResponseModel)
+def get_my_feedback(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """获取我的反馈列表"""
+    from app.models.feedback import Feedback
+
+    query = db.query(Feedback).filter(
+        Feedback.member_id == current_member.id,
+        Feedback.is_deleted == False
+    ).order_by(Feedback.created_at.desc())
+
+    total = query.count()
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    result = []
+    for f in items:
+        result.append({
+            "id": f.id,
+            "category": f.category,
+            "content": f.content,
+            "images": f.images,
+            "status": f.status,
+            "admin_reply": f.admin_reply,
+            "reply_time": f.reply_time,
+            "created_at": str(f.created_at) if f.created_at else None
+        })
+
+    return ResponseModel(data={
+        "list": result,
+        "total": total,
+        "page": page,
+        "page_size": page_size
+    })

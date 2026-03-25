@@ -1,0 +1,67 @@
+<view class="container">
+  <!-- Tab 切换 -->
+  <view class="tab-bar">
+    <view
+      class="tab-item {{currentTab === item.key ? 'active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="switchTab"
+    >
+      {{item.name}}
+    </view>
+  </view>
+
+  <!-- 组队列表 -->
+  <view class="team-list" wx:if="{{teams.length > 0}}">
+    <view class="team-card" wx:for="{{teams}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+      <view class="card-header">
+        <view class="sport-badge {{item.sport_type}}">{{item.sport_type_name}}</view>
+        <view class="status-tag {{item.status}}">
+          <text wx:if="{{item.status === 'recruiting'}}">招募中</text>
+          <text wx:elif="{{item.status === 'full'}}">已满员</text>
+          <text wx:elif="{{item.status === 'completed'}}">已完成</text>
+          <text wx:else>已取消</text>
+        </view>
+      </view>
+      <view class="card-title">{{item.title}}</view>
+      <view class="card-meta">
+        <view class="meta-row">
+          <text class="meta-icon">📅</text>
+          <text>{{item.activity_date}} {{item.activity_time}}</text>
+        </view>
+        <view class="meta-row" wx:if="{{item.location}}">
+          <text class="meta-icon">📍</text>
+          <text>{{item.location}}</text>
+        </view>
+      </view>
+      <view class="card-footer">
+        <view class="member-info">
+          <text class="member-count">{{item.current_members}}/{{item.max_members}}</text>
+          <text class="member-label">人</text>
+        </view>
+        <view class="role-tag {{item.role}}">
+          <text wx:if="{{item.role === 'creator'}}">👑 队长</text>
+          <text wx:else>队员</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && teams.length === 0}}">
+    <image class="empty-icon" src="/assets/icons/team-entry.png" mode="aspectFit" />
+    <text class="empty-text">暂无组队记录</text>
+    <button class="btn-go-square" bindtap="goToTeamSquare">去组队广场看看</button>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-tip" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && teams.length > 0}}">
+    <text>— 没有更多了 —</text>
+  </view>
+</view>

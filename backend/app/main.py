@@ -9,6 +9,7 @@ from app.api.v1 import auth, staff, members, venues, reservations, coaches, coac
 from app.api.v1 import activities, foods, coupons, mall, payment, finance, dashboard, messages, member_cards, wechat, upload, ui_assets, ui_editor
 from app.api.v1 import gate_api, checkin
 from app.api.v1 import coupon_packs, reviews
+from app.api.v1 import feedback as feedback_router
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -71,6 +72,7 @@ app.include_router(gate_api.router, prefix=f"{settings.API_V1_PREFIX}/gate", tag
 app.include_router(checkin.router, prefix=f"{settings.API_V1_PREFIX}/checkin", tags=["打卡管理"])
 app.include_router(coupon_packs.router, prefix=f"{settings.API_V1_PREFIX}/coupon-packs", tags=["优惠券合集"])
 app.include_router(reviews.router, prefix=f"{settings.API_V1_PREFIX}/reviews", tags=["评论管理"])
+app.include_router(feedback_router.router, prefix=f"{settings.API_V1_PREFIX}/feedback", tags=["反馈管理"])
 
 # 挂载静态文件目录（用于上传文件访问）
 upload_dir = settings.UPLOAD_DIR

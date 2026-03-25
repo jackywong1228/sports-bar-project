@@ -39,7 +39,9 @@
     "pages/coach-orders/coach-orders",
     "pages/coach-promote/coach-promote",
     "pages/checkin-calendar/checkin-calendar",
-    "pages/leaderboard/leaderboard"
+    "pages/leaderboard/leaderboard",
+    "pages/my-teams/my-teams",
+    "pages/feedback/feedback"
   ],
   "window": {
     "backgroundTextStyle": "dark",
