@@ -104,4 +104,43 @@
       {{orderType === 'scheduled' ? '预约下单' : '立即下单'}}
     </button>
   </view>
+
+  <!-- 支付方式选择弹窗 -->
+  <view class="pay-modal-mask" wx:if="{{showPayModal}}" bindtap="closePayModal">
+    <view class="pay-modal" catchtap="noop">
+      <view class="pay-modal-header">
+        <text class="pay-modal-title">选择支付方式</text>
+        <view class="pay-modal-close" bindtap="closePayModal">
+          <text>X</text>
+        </view>
+      </view>
+      <view class="pay-modal-price">
+        <text class="pay-price-label">需支付</text>
+        <text class="pay-price-value">{{payAmount}}</text>
+        <text class="pay-price-unit">金币/元</text>
+        <view class="pay-coupon-info" wx:if="{{couponDiscount > 0}}">
+          <text class="coupon-discount-text">已优惠 {{couponDiscount}} 金币</text>
+        </view>
+      </view>
+      <view class="pay-options">
+        <view class="pay-option {{selectedPayType === 'coin' ? 'active' : ''}}" bindtap="selectPayType" data-type="coin">
+          <view class="pay-option-icon coin-icon">$</view>
+          <view class="pay-option-info">
+            <text class="pay-option-name">金币支付</text>
+            <text class="pay-option-desc">余额: {{coinBalance}} 金币</text>
+          </view>
+          <view class="pay-option-check {{selectedPayType === 'coin' ? 'checked' : ''}}"></view>
+        </view>
+        <view class="pay-option {{selectedPayType === 'wechat' ? 'active' : ''}}" bindtap="selectPayType" data-type="wechat">
+          <view class="pay-option-icon wechat-icon">W</view>
+          <view class="pay-option-info">
+            <text class="pay-option-name">微信支付</text>
+            <text class="pay-option-desc">使用微信直接付款</text>
+          </view>
+          <view class="pay-option-check {{selectedPayType === 'wechat' ? 'checked' : ''}}"></view>
+        </view>
+      </view>
+      <button class="pay-confirm-btn" bindtap="confirmPay">确认支付</button>
+    </view>
+  </view>
 </view>

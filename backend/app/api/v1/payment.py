@@ -13,6 +13,7 @@ from app.models.finance import RechargeOrder
 from app.models.member import Member, CoinRecord, PointRecord, MemberCardOrder, MemberCard
 from app.models import Reservation
 from app.models.coupon import MemberCoupon
+from app.models.food import FoodOrder
 from app.schemas.response import ResponseModel
 
 router = APIRouter()
@@ -156,6 +157,9 @@ async def payment_notify(
         elif out_trade_no.startswith("RV"):
             # 场馆预约订单
             return _handle_reservation_notify(out_trade_no, transaction_id, trade_state, attach, db)
+        elif out_trade_no.startswith("FD"):
+            # 餐饮订单
+            return _handle_food_order_notify(out_trade_no, transaction_id, trade_state, attach, db)
         else:
             # 充值订单（默认）
             return _handle_recharge_notify(out_trade_no, transaction_id, trade_state, db)
@@ -343,6 +347,65 @@ def _handle_reservation_notify(out_trade_no: str, transaction_id: str, trade_sta
                 coupon = db.query(MemberCoupon).filter(
                     MemberCoupon.id == coupon_id,
                     MemberCoupon.member_id == reservation.member_id,
+                    MemberCoupon.status == 'locked'
+                ).first()
+                if coupon:
+                    coupon.status = 'unused'
+            db.commit()
+
+        return {"code": "SUCCESS", "message": "成功"}
+    except Exception as e:
+        db.rollback()
+        return {"code": "FAIL", "message": f"处理失败: {str(e)}"}
+
+
+def _handle_food_order_notify(out_trade_no: str, transaction_id: str, trade_state: str, attach: str, db: Session):
+    """处理餐饮订单支付回调"""
+    try:
+        order = db.query(FoodOrder).filter(
+            FoodOrder.out_trade_no == out_trade_no
+        ).with_for_update().first()
+
+        if not order:
+            db.rollback()
+            return {"code": "FAIL", "message": "餐饮订单不存在"}
+
+        # 幂等性检查
+        if order.status != "unpaid":
+            db.rollback()
+            return {"code": "SUCCESS", "message": "成功"}
+
+        # 解析attach数据
+        try:
+            attach_data = json.loads(attach) if attach else {}
+        except (json.JSONDecodeError, TypeError):
+            attach_data = {}
+        coupon_id = attach_data.get("coupon_id")
+
+        if trade_state == "SUCCESS":
+            order.status = "paid"
+            order.transaction_id = transaction_id
+            order.pay_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if coupon_id:
+                coupon = db.query(MemberCoupon).filter(
+                    MemberCoupon.id == coupon_id,
+                    MemberCoupon.member_id == order.member_id,
+                    MemberCoupon.status.in_(['locked', 'unused'])
+                ).with_for_update().first()
+                if coupon:
+                    coupon.status = 'used'
+                    coupon.use_time = datetime.now()
+                    coupon.order_type = 'food'
+                    coupon.order_id = order.id
+
+            db.commit()
+        else:
+            # 支付失败：取消订单，解锁优惠券
+            order.status = "cancelled"
+            if coupon_id:
+                coupon = db.query(MemberCoupon).filter(
+                    MemberCoupon.id == coupon_id,
+                    MemberCoupon.member_id == order.member_id,
                     MemberCoupon.status == 'locked'
                 ).first()
                 if coupon:

@@ -1659,6 +1659,7 @@ class FoodOrderCreate(BaseModel):
     scheduled_date: Optional[str] = None  # 预约日期 YYYY-MM-DD
     scheduled_time: Optional[str] = None  # 预约时间 HH:MM
     coupon_id: Optional[int] = None  # 优惠券ID
+    pay_type: str = "coin"  # coin/wechat
 
 @router.post("/food-orders", response_model=ResponseModel)
 def create_food_order(
@@ -1711,9 +1712,34 @@ def create_food_order(
 
     pay_amount = max(0, total_amount - coupon_discount)
 
+    pay_type = data.pay_type
+    if pay_type not in ("coin", "wechat"):
+        raise HTTPException(status_code=400, detail="无效的支付方式")
+
+    # 支付前置校验
+    if pay_amount > 0 and pay_type == "coin":
+        if current_member.coin_balance < pay_amount:
+            raise HTTPException(status_code=400, detail="金币余额不足")
+    elif pay_amount > 0 and pay_type == "wechat":
+        if not current_member.openid:
+            raise HTTPException(status_code=400, detail="请先完成微信授权")
+
     # 生成订单号
     import uuid
     order_no = datetime.now().strftime("%Y%m%d%H%M%S") + str(uuid.uuid4().hex[:8]).upper()
+
+    # 微信支付时生成微信订单号
+    out_trade_no = None
+    if pay_amount > 0 and pay_type == "wechat":
+        out_trade_no = wechat_pay.generate_out_trade_no("FD")
+
+    # 确定初始订单状态
+    if pay_amount > 0 and pay_type == "wechat":
+        order_status = "unpaid"
+        order_pay_time = None
+    else:
+        order_status = "paid"
+        order_pay_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # 创建订单
     order = FoodOrder(
@@ -1721,13 +1747,15 @@ def create_food_order(
         member_id=current_member.id,
         total_amount=total_amount,
         pay_amount=pay_amount,
-        status="paid",  # 金币支付，直接已支付状态
+        status=order_status,
+        pay_type=pay_type,
+        out_trade_no=out_trade_no,
         remark=data.remark,
         table_no=data.table_no,
         order_type=data.order_type,
         scheduled_date=data.scheduled_date,
         scheduled_time=data.scheduled_time,
-        pay_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        pay_time=order_pay_time
     )
     db.add(order)
     db.flush()
@@ -1750,32 +1778,73 @@ def create_food_order(
             FoodItem.sales: FoodItem.sales + item.quantity
         })
 
-    # 扣除金币（使用优惠后的实付金额）
-    if pay_amount > 0:
-        if current_member.coin_balance < pay_amount:
-            raise HTTPException(status_code=400, detail="金币余额不足")
-        current_member.coin_balance -= int(pay_amount)
-        # 记录金币消费
+    # 金币支付：立即扣费
+    if pay_amount > 0 and pay_type == "coin":
+        current_member.coin_balance = float(current_member.coin_balance or 0) - pay_amount
         coin_record = CoinRecord(
             member_id=current_member.id,
-            type="consume",
-            amount=-int(pay_amount),
+            type="expense",
+            amount=int(pay_amount),
             balance=current_member.coin_balance,
-            description=f"餐饮消费-订单{order_no}",
-            related_order_no=order_no
+            source="餐饮消费",
+            remark=f"订单号: {order_no}"
         )
         db.add(coin_record)
 
-    # 核销优惠券
+    # 优惠券处理
     if used_coupon:
-        used_coupon.status = 'used'
-        used_coupon.use_time = datetime.now()
-        used_coupon.order_type = 'food'
-        used_coupon.order_id = order.id
+        if pay_type == "wechat" and pay_amount > 0:
+            # 微信支付：锁定优惠券，回调成功后正式核销
+            used_coupon.status = 'locked'
+            used_coupon.order_type = 'food'
+        else:
+            # 金币支付或全额抵扣：直接核销
+            used_coupon.status = 'used'
+            used_coupon.use_time = datetime.now()
+            used_coupon.order_type = 'food'
+            used_coupon.order_id = order.id
 
     db.commit()
 
-    # 返回订单信息
+    # 金币/全额抵扣：补充 order_id
+    if used_coupon and not (pay_type == "wechat" and pay_amount > 0):
+        used_coupon.order_id = order.id
+        db.commit()
+
+    # 微信支付：创建预支付订单
+    if pay_amount > 0 and pay_type == "wechat":
+        total_amount_fen = round(pay_amount * 100)
+        description = "餐饮订单"
+        attach = json.dumps({
+            "food_order_id": order.id,
+            "type": "food",
+            "coupon_id": data.coupon_id
+        })
+        result = wechat_pay.create_jsapi_order(
+            out_trade_no=out_trade_no,
+            total_amount=total_amount_fen,
+            description=description,
+            openid=current_member.openid,
+            attach=attach
+        )
+        if "error" in result:
+            order.status = "cancelled"
+            if used_coupon:
+                used_coupon.status = 'unused'
+            db.commit()
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        return ResponseModel(message="请完成微信支付", data={
+            "order_id": order.id,
+            "order_no": order_no,
+            "total_amount": float(total_amount),
+            "coupon_discount": float(coupon_discount),
+            "pay_amount": float(pay_amount),
+            "pay_type": "wechat",
+            "pay_params": result
+        })
+
+    # 返回订单信息（金币支付/全额券抵扣）
     scheduled_info = ""
     if data.order_type == "scheduled":
         scheduled_info = f"{data.scheduled_date} {data.scheduled_time}"
@@ -1788,6 +1857,7 @@ def create_food_order(
             "total_amount": float(total_amount),
             "coupon_discount": float(coupon_discount),
             "pay_amount": float(pay_amount),
+            "pay_type": pay_type,
             "order_type": data.order_type,
             "scheduled_time": scheduled_info
         }
@@ -1869,6 +1939,52 @@ def get_food_order_detail(
             "quantity": i.quantity,
             "subtotal": float(i.subtotal)
         } for i in items]
+    })
+
+
+@router.get("/food-orders/{order_id}/pay-status", response_model=ResponseModel)
+def query_food_order_pay_status(
+    order_id: int,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """查询餐饮订单支付状态（用于微信支付后轮询确认）"""
+    order = db.query(FoodOrder).filter(
+        FoodOrder.id == order_id,
+        FoodOrder.member_id == current_member.id
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+
+    # 如果是微信支付且尚未支付，主动查询微信订单状态
+    if order.pay_type == "wechat" and order.status == "unpaid" and order.out_trade_no:
+        result = wechat_pay.query_order(order.out_trade_no)
+        if result.get("trade_state") == "SUCCESS":
+            order = db.query(FoodOrder).filter(
+                FoodOrder.id == order_id
+            ).with_for_update().first()
+            if order and order.status == "unpaid":
+                order.status = "paid"
+                order.transaction_id = result.get("transaction_id")
+                order.pay_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # 核销优惠券（补偿路径）
+                locked_coupon = db.query(MemberCoupon).filter(
+                    MemberCoupon.member_id == order.member_id,
+                    MemberCoupon.order_type == 'food',
+                    MemberCoupon.status == 'locked'
+                ).with_for_update().first()
+                if locked_coupon:
+                    locked_coupon.status = 'used'
+                    locked_coupon.use_time = datetime.now()
+                    locked_coupon.order_id = order.id
+                db.commit()
+
+    return ResponseModel(data={
+        "id": order.id,
+        "status": order.status,
+        "pay_type": order.pay_type,
+        "pay_amount": float(order.pay_amount or 0)
     })
 
 

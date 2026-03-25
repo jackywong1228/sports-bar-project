@@ -54,7 +54,7 @@ class FoodOrder(Base, TimestampMixin):
     pay_amount = Column(Numeric(10, 2), nullable=False, comment="实付金额")
 
     # 状态
-    status = Column(String(20), default="pending", comment="状态：pending/paid/preparing/ready/completed/cancelled")
+    status = Column(String(20), default="pending", comment="状态：unpaid/pending/paid/preparing/ready/completed/cancelled")
 
     # 备注
     remark = Column(String(500), comment="备注")
@@ -64,6 +64,11 @@ class FoodOrder(Base, TimestampMixin):
     order_type = Column(String(20), default="immediate", comment="订单类型：immediate立即取餐/scheduled预约取餐")
     scheduled_time = Column(String(50), comment="预约取餐时间，格式：HH:MM")
     scheduled_date = Column(String(20), comment="预约取餐日期，格式：YYYY-MM-DD")
+
+    # 支付
+    pay_type = Column(String(20), default="coin", comment="支付方式：coin/wechat")
+    out_trade_no = Column(String(64), comment="微信支付商户订单号")
+    transaction_id = Column(String(64), comment="微信支付交易号")
 
     # 时间
     pay_time = Column(String(50), comment="支付时间")

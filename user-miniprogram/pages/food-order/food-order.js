@@ -20,7 +20,11 @@ Page({
     availableCoupons: [],
     selectedCouponIndex: -1,
     couponDiscount: 0,
-    payAmount: 0
+    payAmount: 0,
+    // 支付弹窗
+    showPayModal: false,
+    selectedPayType: 'coin',
+    coinBalance: 0
   },
 
   onLoad() {
@@ -37,7 +41,8 @@ Page({
       total,
       payAmount: total,
       dateOptions,
-      timeOptions
+      timeOptions,
+      coinBalance: app.globalData.memberInfo?.coin_balance || 0
     })
 
     this.loadAvailableCoupons(total)
@@ -156,13 +161,44 @@ Page({
     this.setData({ remark: e.detail.value })
   },
 
-  async submitOrder() {
-    const { cart, remark, orderType, dateOptions, selectedDateIndex, timeOptions, selectedTimeIndex } = this.data
-
+  // 点击下单按钮
+  submitOrder() {
+    const { cart, payAmount } = this.data
     if (cart.length === 0) {
       wx.showToast({ title: '购物车为空', icon: 'none' })
       return
     }
+    // 全额券抵扣 → 直接下单，不弹支付弹窗
+    if (payAmount <= 0) {
+      this.doSubmit('coin')
+      return
+    }
+    // 弹出支付方式选择
+    this.setData({ showPayModal: true })
+  },
+
+  // 选择支付方式
+  selectPayType(e) {
+    this.setData({ selectedPayType: e.currentTarget.dataset.type })
+  },
+
+  // 关闭支付弹窗
+  closePayModal() {
+    this.setData({ showPayModal: false })
+  },
+
+  // 阻止冒泡
+  noop() {},
+
+  // 确认支付
+  confirmPay() {
+    this.setData({ showPayModal: false })
+    this.doSubmit(this.data.selectedPayType)
+  },
+
+  // 执行下单
+  async doSubmit(payType) {
+    const { cart, remark, orderType, dateOptions, selectedDateIndex, timeOptions, selectedTimeIndex } = this.data
 
     // 获取选中的优惠券ID
     const { availableCoupons, selectedCouponIndex } = this.data
@@ -173,7 +209,8 @@ Page({
       items: cart,
       remark: remark,
       order_type: orderType,
-      coupon_id: couponId
+      coupon_id: couponId,
+      pay_type: payType
     }
 
     // 如果是预约取餐，添加预约时间
@@ -191,9 +228,16 @@ Page({
         data: requestData
       })
 
-      wx.removeStorageSync('foodCart')
+      const data = res.data || res
 
-      // 显示成功消息
+      // 微信支付：拉起支付
+      if (data.pay_params) {
+        this.handleWechatPay(data)
+        return
+      }
+
+      // 金币支付/全额抵扣：直接成功
+      wx.removeStorageSync('foodCart')
       let successMsg = '下单成功'
       if (orderType === 'scheduled') {
         successMsg = `预约成功，${requestData.scheduled_date} ${requestData.scheduled_time} 取餐`
@@ -205,6 +249,11 @@ Page({
         duration: 2000
       })
 
+      // 刷新金币余额
+      if (payType === 'coin' && app.globalData.memberInfo) {
+        app.globalData.memberInfo.coin_balance = (app.globalData.memberInfo.coin_balance || 0) - (this.data.payAmount || 0)
+      }
+
       setTimeout(() => wx.navigateBack({ delta: 2 }), 2000)
     } catch (err) {
       console.error('下单失败:', err)
@@ -215,5 +264,62 @@ Page({
     } finally {
       this.setData({ submitting: false })
     }
+  },
+
+  // 处理微信支付
+  handleWechatPay(data) {
+    const payParams = data.pay_params
+    const orderId = data.order_id
+
+    wx.requestPayment({
+      timeStamp: payParams.timeStamp,
+      nonceStr: payParams.nonceStr,
+      package: payParams.package,
+      signType: payParams.signType || 'RSA',
+      paySign: payParams.paySign,
+      success: () => {
+        wx.removeStorageSync('foodCart')
+        this.pollPaymentStatus(orderId, 0)
+      },
+      fail: (err) => {
+        console.error('微信支付取消或失败:', err)
+        this.setData({ submitting: false })
+        if (err.errMsg && err.errMsg.includes('cancel')) {
+          wx.showToast({ title: '已取消支付', icon: 'none' })
+        } else {
+          wx.showToast({ title: '支付失败，请重试', icon: 'none' })
+        }
+      }
+    })
+  },
+
+  // 轮询支付状态
+  pollPaymentStatus(orderId, attempt) {
+    if (attempt >= 10) {
+      this.setData({ submitting: false })
+      wx.showToast({ title: '支付确认中，请稍后查看订单', icon: 'none' })
+      setTimeout(() => wx.navigateBack({ delta: 2 }), 2000)
+      return
+    }
+
+    setTimeout(async () => {
+      try {
+        const res = await app.request({
+          url: `/member/food-orders/${orderId}/pay-status`,
+          method: 'GET'
+        })
+        const status = (res.data || res).status
+        if (status === 'paid') {
+          this.setData({ submitting: false })
+          wx.showToast({ title: '支付成功', icon: 'success', duration: 2000 })
+          setTimeout(() => wx.navigateBack({ delta: 2 }), 2000)
+        } else {
+          this.pollPaymentStatus(orderId, attempt + 1)
+        }
+      } catch (err) {
+        console.error('查询支付状态失败:', err)
+        this.pollPaymentStatus(orderId, attempt + 1)
+      }
+    }, 1000)
   }
 })
