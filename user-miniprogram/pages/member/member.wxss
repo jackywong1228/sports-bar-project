@@ -47,15 +47,21 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 30rpx;
-  background: #f9f9f9;
-  border-radius: 16rpx;
-  border: 2rpx solid #eee;
+  padding: 36rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  border: 2rpx solid #e8e8e8;
+  overflow: hidden;
 }
 
 .card.recommended {
   border-color: #1A5D3A;
-  background: linear-gradient(135deg, rgba(26, 93, 58, 0.1), #fff);
+  background: linear-gradient(180deg, rgba(26, 93, 58, 0.06) 0%, #fff 40%);
+}
+
+.card.card-sss {
+  border-color: #C9A962;
+  background: linear-gradient(180deg, rgba(201, 169, 98, 0.08) 0%, #fff 40%);
 }
 
 .card-badge {
@@ -65,74 +71,105 @@
   background: linear-gradient(135deg, #1A5D3A, #2E7D52);
   color: #fff;
   font-size: 22rpx;
-  padding: 6rpx 16rpx;
-  border-radius: 0 0 8rpx 8rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 0 0 10rpx 10rpx;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin-bottom: 24rpx;
 }
 
 .card-name {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: bold;
-  color: #333;
+  color: #222;
 }
 
 .card-level {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #1A5D3A;
   background: rgba(26, 93, 58, 0.1);
   padding: 6rpx 16rpx;
   border-radius: 20rpx;
+  font-weight: 500;
 }
 
-.card-body {
+.card-sss .card-level {
+  color: #8B7355;
+  background: rgba(201, 169, 98, 0.15);
+}
+
+/* 价格 + 有效期 行 */
+.card-meta {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 24rpx;
+  margin-bottom: 28rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
 }
 
 .card-price {
   display: flex;
   align-items: baseline;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 
 .card-price .price {
-  font-size: 44rpx;
+  font-size: 48rpx;
   font-weight: bold;
   color: #1A5D3A;
 }
 
+.card-sss .card-price .price {
+  color: #8B7355;
+}
+
 .card-price .original-price {
   font-size: 26rpx;
-  color: #999;
+  color: #bbb;
   text-decoration: line-through;
 }
 
-.card-info {
+.card-duration {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 权益列表 */
+.card-features {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 8rpx;
+  gap: 16rpx;
+  margin-bottom: 32rpx;
 }
 
-.card-info .duration {
-  font-size: 26rpx;
-  color: #666;
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
-.card-info .bonus {
+.feature-check {
   font-size: 24rpx;
   color: #1A5D3A;
-  background: rgba(26, 93, 58, 0.1);
-  padding: 4rpx 12rpx;
-  border-radius: 4rpx;
+  font-weight: bold;
+  flex-shrink: 0;
+  width: 32rpx;
+  text-align: center;
+}
+
+.card-sss .feature-check {
+  color: #C9A962;
+}
+
+.feature-text {
+  font-size: 26rpx;
+  color: #555;
+  line-height: 1.4;
 }
 
 .card-btn {
@@ -149,6 +186,10 @@
 
 .card.recommended .card-btn {
   background: linear-gradient(135deg, #1A5D3A, #145030);
+}
+
+.card-sss .card-btn {
+  background: linear-gradient(135deg, #8B7355, #C9A962);
 }
 
 .benefits-grid {
@@ -178,6 +219,66 @@
   font-size: 24rpx;
   color: #666;
   margin-top: 8rpx;
+}
+
+/* 当前等级权益描述 */
+.benefits-desc {
+  font-size: 26rpx;
+  color: #888;
+  margin-bottom: 20rpx;
+  line-height: 1.5;
+}
+
+/* 当前等级权益标签 */
+.benefits-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.benefit-tag {
+  font-size: 24rpx;
+  color: #1A5D3A;
+  background: rgba(26, 93, 58, 0.08);
+  padding: 10rpx 20rpx;
+  border-radius: 8rpx;
+  line-height: 1.4;
+}
+
+/* SSS 专属权益区 */
+.sss-benefits .sss-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.sss-benefits .sss-item {
+  width: calc(33.33% - 12rpx);
+  text-align: center;
+  padding: 20rpx 8rpx;
+  background: linear-gradient(135deg, rgba(201, 169, 98, 0.08), rgba(201, 169, 98, 0.02));
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #8B7355;
+  box-sizing: border-box;
+}
+
+/* 邀请区域 */
+.invite-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 28rpx;
+  color: #555;
+}
+
+.invite-btn {
+  display: inline-block;
+  padding: 12rpx 32rpx;
+  background: linear-gradient(135deg, #1A5D3A, #2E7D52);
+  color: #fff;
+  font-size: 26rpx;
+  border-radius: 30rpx;
 }
 
 .empty {

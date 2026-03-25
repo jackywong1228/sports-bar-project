@@ -89,6 +89,16 @@ App({
     })
   },
 
+  // 将服务器相对路径转为完整URL（小程序中 /uploads/ 会被当作本地路径）
+  resolveImageUrl(url) {
+    if (!url) return ''
+    if (url.startsWith('http://') || url.startsWith('https://')) return url
+    if (url.startsWith('/uploads/')) {
+      return this.globalData.baseUrl.replace('/api/v1', '') + url
+    }
+    return url
+  },
+
   // 检查登录状态，未登录则跳转登录页
   checkLogin() {
     if (!this.globalData.token) {
@@ -111,9 +121,13 @@ App({
       },
       success(res) {
         if (res.data.code === 200) {
-          that.globalData.memberInfo = res.data.data
-          // 更新会员等级相关信息
           const data = res.data.data
+          // 解析头像URL（/uploads/... → 完整URL）
+          if (data.avatar) {
+            data.avatar = that.resolveImageUrl(data.avatar)
+          }
+          that.globalData.memberInfo = data
+          // 更新会员等级相关信息
           // 优先使用 level_code 或 member_level，兼容旧等级名
           const rawLevel = data.level_code || data.member_level || 'S'
           const levelCode = that.legacyLevelMap[rawLevel] || rawLevel

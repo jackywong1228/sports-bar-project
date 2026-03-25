@@ -54,14 +54,27 @@ Page({
     this.setData({ isLoading: true })
 
     try {
-      const loginRes = await wxApi.login()
+      // 1. 尝试获取微信头像和昵称（用户可能拒绝，不影响登录）
+      let userInfo = {}
+      try {
+        const profileRes = await wxApi.getUserProfile()
+        if (profileRes.userInfo) {
+          userInfo.nickname = profileRes.userInfo.nickName
+          userInfo.avatar = profileRes.userInfo.avatarUrl
+        }
+      } catch (e) {
+        console.log('获取用户信息跳过:', e.errMsg || e)
+      }
 
+      // 2. 获取登录 code
+      const loginRes = await wxApi.login()
       if (!loginRes.code) {
         wxApi.showToast('微信登录失败')
         return
       }
 
-      const res = await api.wxLogin(loginRes.code)
+      // 3. 调用后端登录（带头像和昵称）
+      const res = await api.wxLogin(loginRes.code, userInfo)
       this.handleLoginSuccess(res.data)
 
     } catch (err) {
@@ -135,6 +148,10 @@ Page({
   handleLoginSuccess(data, navigate = true) {
     wx.setStorageSync('token', data.access_token)
     app.globalData.token = data.access_token
+    // 解析头像URL（/uploads/... → 完整URL）
+    if (data.member_info && data.member_info.avatar) {
+      data.member_info.avatar = app.resolveImageUrl(data.member_info.avatar)
+    }
     app.globalData.memberInfo = data.member_info
     if (data.openid) {
       app.globalData.openid = data.openid

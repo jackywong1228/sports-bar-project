@@ -192,8 +192,8 @@ def init_member_cards(db: Session):
             "original_price": 1288,
             "price": 888,
             "duration_days": 365,
-            "bonus_coins": 100,
-            "bonus_points": 1000,
+            "bonus_coins": 0,
+            "bonus_points": 0,
             "description": "SS级会员年卡，当天场馆预约+月度券+1次邀请",
             "highlights": json.dumps(["当天场馆预约", "月度场地券+饮品券", "每月1次邀请朋友", "入会优惠券包"], ensure_ascii=False),
             "is_recommended": True,
@@ -205,8 +205,8 @@ def init_member_cards(db: Session):
             "original_price": 12888,
             "price": 8888,
             "duration_days": 365,
-            "bonus_coins": 500,
-            "bonus_points": 5000,
+            "bonus_coins": 0,
+            "bonus_points": 0,
             "description": "SSS级会员年卡，提前3天预约+每日3小时免费+10次邀请+顶级权益",
             "highlights": json.dumps(["提前3天预约", "每日3小时免费", "每月10次邀请", "储物柜/停车/接送/卫浴", "包场权限", "饮品畅享"], ensure_ascii=False),
             "is_recommended": False,
@@ -376,9 +376,7 @@ def init_venues(db: Session):
             "icon": "tennis",
             "sort": 1,
             "venues": [
-                {"name": "1号网球场", "price": 100, "capacity": 4, "location": "A区"},
-                {"name": "2号网球场", "price": 100, "capacity": 4, "location": "A区"},
-                {"name": "3号网球场", "price": 100, "capacity": 4, "location": "A区"},
+                {"name": "网球场", "price": 100, "capacity": 4, "location": "A区"},
             ]
         },
         {
@@ -386,7 +384,8 @@ def init_venues(db: Session):
             "icon": "pickleball",
             "sort": 2,
             "venues": [
-                {"name": "匹克球场", "price": 80, "capacity": 4, "location": "B区"},
+                {"name": "1号匹克球场", "price": 100, "capacity": 4, "location": "B区"},
+                {"name": "2号匹克球场", "price": 100, "capacity": 4, "location": "B区"},
             ]
         },
         {
@@ -394,25 +393,24 @@ def init_venues(db: Session):
             "icon": "squash",
             "sort": 3,
             "venues": [
-                {"name": "壁球馆", "price": 80, "capacity": 2, "location": "B区"},
-            ]
-        },
-        {
-            "name": "高尔夫公共打位",
-            "icon": "golf",
-            "sort": 4,
-            "venues": [
-                {"name": "1号公共打位", "price": 60, "capacity": 1, "location": "C区"},
-                {"name": "2号公共打位", "price": 60, "capacity": 1, "location": "C区"},
-                {"name": "3号公共打位", "price": 60, "capacity": 1, "location": "C区"},
+                {"name": "1号壁球馆", "price": 100, "capacity": 2, "location": "B区"},
+                {"name": "2号壁球馆", "price": 100, "capacity": 2, "location": "B区"},
             ]
         },
         {
             "name": "高尔夫包厢",
             "icon": "golf-vip",
+            "sort": 4,
+            "venues": [
+                {"name": "高尔夫VIP包厢", "price": 200, "capacity": 6, "location": "C区"},
+            ]
+        },
+        {
+            "name": "F1赛车模拟器",
+            "icon": "f1-racing",
             "sort": 5,
             "venues": [
-                {"name": "VIP包厢", "price": 200, "capacity": 6, "location": "C区"},
+                {"name": "F1模拟器", "price": 120, "capacity": 1, "location": "D区"},
             ]
         },
     ]

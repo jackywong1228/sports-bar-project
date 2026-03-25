@@ -1,10 +1,10 @@
 <view class="container">
   <!-- 用户信息 -->
   <view class="user-header" wx:if="{{isLoggedIn && memberInfo}}">
-    <button class="avatar-edit-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+    <view class="avatar-edit-btn" bindtap="onChangeAvatar">
       <image class="user-avatar" src="{{memberInfo.avatar || '/assets/images/avatar-default.png'}}" mode="aspectFill"></image>
       <view class="avatar-edit-badge">编辑</view>
-    </button>
+    </view>
     <view class="user-info">
       <view class="user-name-row">
         <text class="user-name" bindtap="onEditNickname">{{memberInfo.nickname || '用户'}}</text>

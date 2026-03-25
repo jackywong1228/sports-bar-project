@@ -8,6 +8,7 @@ const SPORT_ICON_MAP = {
   golf: '/assets/icons/sports/golf.svg',
   'golf-vip': '/assets/icons/sports/golf.svg',
   golf_vip: '/assets/icons/sports/golf.svg',
+  'f1-racing': '/assets/icons/sports/f1-racing.svg',
   basketball: '/assets/icons/sports/basketball.svg',
   badminton: '/assets/icons/sports/badminton.svg',
 }
@@ -99,7 +100,10 @@ Page({
       }
 
       const res = await app.request({ url })
-      const venues = res.data || []
+      const venues = (res.data || []).map(v => ({
+        ...v,
+        image: app.resolveImageUrl(v.image)
+      }))
 
       this.setData({
         venues: this.data.page === 1 ? venues : [...this.data.venues, ...venues],

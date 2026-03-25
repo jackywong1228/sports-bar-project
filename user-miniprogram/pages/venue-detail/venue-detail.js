@@ -18,8 +18,12 @@ Page({
       const res = await app.request({
         url: `/member/venues/${this.data.venueId}`
       })
+      const venue = res.data || {}
+      if (venue.image) venue.image = app.resolveImageUrl(venue.image)
+      if (venue.images) venue.images = venue.images.map(img => app.resolveImageUrl(img))
+      if (venue.photos) venue.photos = venue.photos.map(img => app.resolveImageUrl(img))
       this.setData({
-        venue: res.data || {},
+        venue,
         loading: false
       })
     } catch (err) {

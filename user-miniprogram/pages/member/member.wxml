@@ -43,24 +43,23 @@
   <view class="section">
     <view class="title">{{isMember ? '续费/升级会员' : '开通会员'}}</view>
     <view class="card-list">
-      <view class="card {{item.is_recommended ? 'recommended' : ''}}" wx:for="{{cards}}" wx:key="id" bindtap="buyCard" data-id="{{item.id}}">
+      <view class="card {{item.is_recommended ? 'recommended' : ''}} {{item.level_name === 'SSS级会员' ? 'card-sss' : ''}}" wx:for="{{cards}}" wx:key="id" bindtap="buyCard" data-id="{{item.id}}">
         <view class="card-badge" wx:if="{{item.is_recommended}}">推荐</view>
         <view class="card-header">
           <text class="card-name">{{item.name}}</text>
           <text class="card-level">{{item.level_name}}</text>
         </view>
-        <view class="card-body">
+        <view class="card-meta">
           <view class="card-price">
             <text class="price">¥{{item.price}}</text>
             <text class="original-price" wx:if="{{item.original_price > item.price}}">¥{{item.original_price}}</text>
           </view>
-          <view class="card-info">
-            <text class="duration">有效期{{item.duration_days}}天</text>
-            <text class="bonus" wx:if="{{item.bonus_coins > 0}}">赠{{item.bonus_coins}}金币</text>
-          </view>
-          <!-- 套餐亮点 -->
-          <view class="card-highlights" wx:if="{{item.highlights && item.highlights.length > 0}}">
-            <text class="highlight" wx:for="{{item.highlights}}" wx:for-item="hl" wx:key="*this">{{hl}}</text>
+          <text class="card-duration">有效期 {{item.duration_days}} 天</text>
+        </view>
+        <view class="card-features" wx:if="{{item.highlights && item.highlights.length > 0}}">
+          <view class="feature-item" wx:for="{{item.highlights}}" wx:for-item="hl" wx:key="*this">
+            <text class="feature-check">✓</text>
+            <text class="feature-text">{{hl}}</text>
           </view>
         </view>
         <view class="card-btn">立即开通</view>

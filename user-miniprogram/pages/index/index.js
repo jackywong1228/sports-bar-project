@@ -219,7 +219,10 @@ Page({
   async loadHotVenues() {
     try {
       const res = await app.request({ url: '/member/venues?limit=4' })
-      return res.data || []
+      return (res.data || []).map(v => ({
+        ...v,
+        image: app.resolveImageUrl(v.image)
+      }))
     } catch (err) {
       return []
     }

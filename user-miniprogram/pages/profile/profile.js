@@ -74,8 +74,12 @@ Page({
       },
       success(res) {
         if (res.data.code === 200) {
-          app.globalData.memberInfo = res.data.data
           const data = res.data.data
+          // 解析头像URL（/uploads/... → 完整URL）
+          if (data.avatar) {
+            data.avatar = app.resolveImageUrl(data.avatar)
+          }
+          app.globalData.memberInfo = data
           // 兼容旧等级名，映射到 S/SS/SSS
           const rawLevel = data.member_level || data.level_code || 'S'
           app.setMemberTheme(rawLevel)  // setMemberTheme 内部已做映射
@@ -253,28 +257,37 @@ Page({
 
   // ==================== 资料编辑 ====================
 
-  // 选择头像
-  async onChooseAvatar(e) {
-    const tempFilePath = e.detail.avatarUrl
-    if (!tempFilePath) return
-
-    wx.showLoading({ title: '上传中...' })
-
+  // 选择头像（使用 chooseMedia 替代 chooseAvatar，避免模拟器 TLS 错误）
+  async onChangeAvatar() {
     try {
+      const res = await new Promise((resolve, reject) => {
+        wx.chooseMedia({
+          count: 1,
+          mediaType: ['image'],
+          sourceType: ['album', 'camera'],
+          success: resolve,
+          fail: reject
+        })
+      })
+      const tempFilePath = res.tempFiles[0].tempFilePath
+
+      wx.showLoading({ title: '上传中...' })
       const { upload } = require('../../utils/request')
       const uploadRes = await upload('/upload/member-image', tempFilePath, 'file')
       if (uploadRes.data && uploadRes.data.url) {
         const avatarUrl = uploadRes.data.url
         await api.updateUserProfile({ avatar: avatarUrl })
 
-        // 更新本地数据（创建新对象避免直接修改 this.data）
-        const memberInfo = { ...this.data.memberInfo, avatar: avatarUrl }
+        // 显示用完整URL，后端存的是相对路径
+        const displayUrl = app.resolveImageUrl(avatarUrl)
+        const memberInfo = { ...this.data.memberInfo, avatar: displayUrl }
         app.globalData.memberInfo = memberInfo
         this.setData({ memberInfo })
 
         wx.showToast({ title: '头像更新成功', icon: 'success' })
       }
     } catch (err) {
+      if (err.errMsg && err.errMsg.includes('cancel')) return
       console.error('更新头像失败:', err)
       wx.showToast({ title: '更新失败', icon: 'none' })
     } finally {
