@@ -27,6 +27,18 @@ Page({
       const res = await app.request({ url: `/member/teams/${this.data.id}` })
       const team = res.data || {}
 
+      // 解析头像 URL（相对路径 → 完整 URL）
+      if (team.creator && team.creator.avatar) {
+        team.creator.avatar = app.resolveImageUrl(team.creator.avatar)
+      }
+      if (team.members) {
+        team.members.forEach(m => {
+          if (m.member && m.member.avatar) {
+            m.member.avatar = app.resolveImageUrl(m.member.avatar)
+          }
+        })
+      }
+
       // 获取当前用户ID
       const userInfo = app.globalData.userInfo
       const memberId = userInfo ? userInfo.id : null
