@@ -374,6 +374,7 @@ def get_member_profile(
         extra_info["monthly_invite_remaining"] = invite_stats["remaining"]
 
         daily_free_hours = getattr(level, 'daily_free_hours', 0) or 0
+        extra_info["daily_free_hours"] = daily_free_hours
         if daily_free_hours > 0:
             from app.services.booking_service import BookingService
             bs = BookingService(db)

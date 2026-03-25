@@ -56,7 +56,11 @@ Component({
     currentTheme: null,
     currentLevel: 'S',  // 实际使用的等级（S/SS/SSS）
     isMember: false,
-    memberExpireTime: null
+    memberExpireTime: null,
+    quotaInfo: {
+      daily: '-',
+      remaining: '-'
+    }
   },
 
   observers: {
@@ -69,6 +73,7 @@ Component({
     'memberInfo': function(info) {
       if (info) {
         this.updateMemberExpire(info)
+        this.updateQuotaInfo(info)
         // 如果 memberInfo 中包含 level_code 或 member_level，优先使用
         const levelFromInfo = info.member_level || info.level_code
         if (levelFromInfo) {
@@ -90,6 +95,7 @@ Component({
       this.updateTheme(initialLevel)
       if (memberInfo) {
         this.updateMemberExpire(memberInfo)
+        this.updateQuotaInfo(memberInfo)
       }
     }
   },
@@ -111,6 +117,36 @@ Component({
       this.setData({
         memberExpireTime: info.member_expire_time || null
       })
+    },
+
+    // 更新预约额度信息
+    updateQuotaInfo(info) {
+      const levelCode = info.member_level || info.level_code || 'S'
+      const mapped = this.data.legacyLevelMap[levelCode] || levelCode
+      if (mapped === 'SSS') {
+        const daily = info.daily_free_hours || 3
+        const remaining = info.daily_free_hours_remaining != null ? info.daily_free_hours_remaining : daily
+        this.setData({
+          quotaInfo: {
+            daily: daily + 'h',
+            remaining: parseFloat(remaining.toFixed(1)) + 'h'
+          }
+        })
+      } else if (mapped === 'SS') {
+        this.setData({
+          quotaInfo: {
+            daily: '当天',
+            remaining: '可约'
+          }
+        })
+      } else {
+        this.setData({
+          quotaInfo: {
+            daily: '-',
+            remaining: '-'
+          }
+        })
+      }
     },
 
     // 卡片点击
