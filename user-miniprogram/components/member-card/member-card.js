@@ -124,7 +124,7 @@ Component({
       const levelCode = info.member_level || info.level_code || 'S'
       const mapped = this.data.legacyLevelMap[levelCode] || levelCode
       if (mapped === 'SSS') {
-        const daily = info.daily_free_hours || 3
+        const daily = info.daily_free_hours || 2
         const remaining = info.daily_free_hours_remaining != null ? info.daily_free_hours_remaining : daily
         this.setData({
           quotaInfo: {

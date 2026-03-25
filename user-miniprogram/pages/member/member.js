@@ -26,17 +26,17 @@ const MEMBER_BENEFITS = {
   },
   SSS: {
     title: 'SSS级会员',
-    description: '提前3天预约 + 每日3小时免费 + 顶级权益',
+    description: '提前3天预约 + 每日2小时免费 + 顶级权益',
     features: [
       { icon: 'booking', text: '提前3天预约场馆' },
-      { icon: 'free', text: '每日3小时免费场地' },
+      { icon: 'free', text: '每日2小时免费场地' },
+      { icon: 'drink', text: '每日饮品券' },
       { icon: 'invite', text: '每月10次邀请朋友' },
       { icon: 'locker', text: '专属储物柜' },
       { icon: 'parking', text: '免费停车位' },
       { icon: 'car', text: '专车接送服务' },
       { icon: 'bath', text: '豪华卫浴' },
       { icon: 'vip', text: '包场权限' },
-      { icon: 'drink', text: '饮品畅享' },
       { icon: 'gift', text: '入会礼（实物+数字券包）' }
     ]
   }

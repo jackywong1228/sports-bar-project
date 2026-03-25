@@ -100,5 +100,20 @@
     <view class="skip-link" bindtap="skipProfile">
       <text>跳过，稍后设置</text>
     </view>
+
+    <!-- 引导弹窗 -->
+    <view class="guide-overlay" wx:if="{{showGuidePopup}}" bindtap="onCloseGuide">
+      <view class="guide-popup" catchtap="">
+        <view class="guide-title">选择头像方式</view>
+        <view class="guide-subtitle">快速设置你的头像</view>
+        <button class="guide-btn guide-btn-wechat" open-type="chooseAvatar" bind:chooseavatar="onGuideChooseAvatar">
+          <text>使用微信头像</text>
+        </button>
+        <view class="guide-btn guide-btn-album" bindtap="onGuideChooseAlbum">
+          <text>从相册选择</text>
+        </view>
+        <view class="guide-close" bindtap="onCloseGuide">稍后再说</view>
+      </view>
+    </view>
   </view>
 </view>

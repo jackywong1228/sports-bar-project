@@ -43,7 +43,7 @@ class MemberLevel(Base, TimestampMixin):
 
     # 三级会员制新增字段
     can_book_venue = Column(Boolean, default=False, comment='是否可预约场馆')
-    daily_free_hours = Column(Integer, default=0, comment='每日免费场馆小时数（SSS=3）')
+    daily_free_hours = Column(Integer, default=0, comment='每日免费场馆小时数（SSS=2）')
     monthly_invite_count = Column(Integer, default=0, comment='每月邀请朋友次数（SS=1, SSS=10）')
     display_benefits = Column(Text, nullable=True, comment='展示型权益JSON数组')
 

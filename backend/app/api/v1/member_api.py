@@ -381,6 +381,19 @@ def get_member_profile(
             used = bs._get_daily_used_minutes(current_member.id, date.today())
             extra_info["daily_free_hours_remaining"] = max(0, (daily_free_hours * 60 - used) / 60)
 
+    # 触发优惠券自动发放（SS月度券 / SSS每日饮品券）
+    try:
+        from app.services.monthly_coupon_service import MonthlyCouponService
+        coupon_svc = MonthlyCouponService(db)
+        monthly_result = coupon_svc.check_and_issue_monthly(current_member)
+        daily_result = coupon_svc.check_and_issue_daily(current_member)
+        if monthly_result:
+            extra_info["monthly_coupon_issued"] = True
+        if daily_result:
+            extra_info["daily_coupon_issued"] = True
+    except Exception:
+        pass  # 发券失败不影响 profile 返回
+
     return ResponseModel(data={
         "id": current_member.id,
         "nickname": current_member.nickname,
@@ -933,20 +946,17 @@ def create_reservation(
     level = current_member.level
     level_code = level.level_code if level else "S"
 
-    # 2. SSS级检查每日免费时长上限
+    # 2. SSS级计算免费/付费拆分（不再拒绝，超出部分允许付费）
     daily_free_hours = getattr(level, 'daily_free_hours', 0) or 0
-    is_sss_free = False
+    sss_free_check = None
     if level_code == 'SSS' and daily_free_hours > 0:
-        free_check = booking_service.check_sss_free_limit(
+        sss_free_check = booking_service.check_sss_free_limit(
             current_member.id, booking_date, duration, daily_free_hours
         )
-        if not free_check["allowed"]:
-            raise HTTPException(status_code=403, detail=free_check["reason"])
-        is_sss_free = True
 
-    # 3. 计算场馆费用（SSS级免费，其他按时段定价）
+    # 3. 始终计算场馆费用（SSS级由免费额度抵扣，不再完全跳过定价）
     venue_price = 0
-    if venue_id and not is_sss_free:
+    if venue_id:
         venue = db.query(Venue).filter(Venue.id == venue_id).first()
         if venue:
             from app.services.venue_pricing_service import VenuePricingService
@@ -963,6 +973,18 @@ def create_reservation(
                 hours = duration / 60
                 venue_price = float(venue.price or 0) * hours
 
+    # SSS 免费额度抵扣
+    sss_discount = 0
+    is_sss_free = False
+    if sss_free_check:
+        if sss_free_check["fully_free"]:
+            sss_discount = venue_price
+            is_sss_free = True
+        elif sss_free_check["free_minutes"] > 0 and duration > 0:
+            sss_discount = round(venue_price * (sss_free_check["free_minutes"] / duration), 2)
+
+    venue_price_after_free = round(venue_price - sss_discount, 2)
+
     # 4. 计算教练费用
     coach_price = 0
     if coach_id:
@@ -971,9 +993,9 @@ def create_reservation(
             hours = duration / 60
             coach_price = float(coach.price or 0) * hours
 
-    total_price = venue_price + coach_price
+    total_price = venue_price_after_free + coach_price
 
-    # 5. 优惠券抵扣
+    # 5. 优惠券抵扣（基于扣除SSS免费后的场馆价格）
     coupon_discount = 0
     used_coupon = None
     if coupon_id:
@@ -999,14 +1021,22 @@ def create_reservation(
         # 体验券不可用于支付抵扣
         if coupon.type == 'experience':
             raise HTTPException(status_code=400, detail="体验券不可用于支付抵扣")
-        # min_amount 校验
-        if coupon.min_amount and float(coupon.min_amount) > venue_price:
+        # min_amount 校验（基于扣除SSS免费后的价格）
+        if coupon.min_amount and float(coupon.min_amount) > venue_price_after_free:
             raise HTTPException(status_code=400, detail=f"未达到最低消费 {coupon.min_amount} 金币")
         # 计算抵扣
         if coupon.type == 'cash':
-            coupon_discount = min(float(coupon.discount_value or 0), venue_price)
+            coupon_discount = min(float(coupon.discount_value or 0), venue_price_after_free)
         elif coupon.type == 'gift':
-            coupon_discount = venue_price
+            coupon_discount = venue_price_after_free
+        elif coupon.type == 'hour_free':
+            # 时长券：按预约时长比例抵扣
+            free_hours = float(coupon.discount_value or 0)
+            booked_hours = duration / 60
+            if booked_hours <= free_hours:
+                coupon_discount = venue_price_after_free
+            else:
+                coupon_discount = round(venue_price_after_free * (free_hours / booked_hours), 2)
         used_coupon = coupon
 
     actual_price = max(0, total_price - coupon_discount)
@@ -1037,13 +1067,13 @@ def create_reservation(
         start_time=start_time,
         end_time=end_time,
         duration=duration,
-        venue_price=venue_price if not is_sss_free else 0,
+        venue_price=venue_price_after_free,
         coach_price=coach_price,
         total_price=actual_price,
         pay_type=pay_type,
         out_trade_no=out_trade_no,
         status="unpaid" if (actual_price > 0 and pay_type == "wechat") else "pending",
-        remark=json.dumps({"coupon_id": coupon_id}) if (pay_type == "wechat" and coupon_id) else None
+        remark=json.dumps({"coupon_id": coupon_id, "sss_discount": sss_discount}) if (pay_type == "wechat" and (coupon_id or sss_discount > 0)) else (json.dumps({"sss_discount": sss_discount}) if sss_discount > 0 else None)
     )
     db.add(reservation)
 
@@ -1105,7 +1135,9 @@ def create_reservation(
             "reservation_id": reservation.id,
             "reservation_no": reservation_no,
             "order_no": out_trade_no,
-            "venue_price": venue_price if not is_sss_free else 0,
+            "venue_price": venue_price,
+            "sss_discount": sss_discount,
+            "venue_price_after_free": venue_price_after_free,
             "coach_price": coach_price,
             "coupon_discount": coupon_discount,
             "actual_price": actual_price,
@@ -1116,7 +1148,9 @@ def create_reservation(
 
     return ResponseModel(message="预约成功", data={
         "reservation_no": reservation_no,
-        "venue_price": venue_price if not is_sss_free else 0,
+        "venue_price": venue_price,
+        "sss_discount": sss_discount,
+        "venue_price_after_free": venue_price_after_free,
         "coach_price": coach_price,
         "coupon_discount": coupon_discount,
         "actual_price": actual_price,

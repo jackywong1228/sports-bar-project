@@ -345,6 +345,8 @@ def issue_coupon(
                 coupon_value = f"{float(template.discount_value)}折"
             elif template.type == "cash":
                 coupon_value = f"满{float(template.min_amount)}减{float(template.discount_value)}元"
+            elif template.type == "hour_free":
+                coupon_value = f"免费{float(template.discount_value)}小时场馆"
             elif template.type == "experience":
                 # 体验券显示体验天数和会员等级
                 level_name = "会员"
@@ -423,4 +425,34 @@ def get_member_coupons(
             "page": page,
             "page_size": page_size
         }
+    )
+
+
+# ================== 批量发放月度券 ==================
+
+@router.post("/batch-issue-monthly", response_model=ResponseModel)
+def batch_issue_monthly_coupons(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """管理员手动触发：为所有符合条件的 SS 会员补发本月月度券"""
+    from app.services.monthly_coupon_service import MonthlyCouponService
+    svc = MonthlyCouponService(db)
+
+    ss_members = db.query(Member).join(MemberLevel).filter(
+        MemberLevel.level_code == 'SS',
+        Member.subscription_status == 'active',
+        Member.member_expire_time > datetime.now(),
+        Member.is_deleted == False
+    ).all()
+
+    issued_count = 0
+    for m in ss_members:
+        result = svc.check_and_issue_monthly(m)
+        if result:
+            issued_count += 1
+
+    return ResponseModel(
+        message=f"成功为 {issued_count} 位会员发放月度券",
+        data={"issued_count": issued_count, "total_checked": len(ss_members)}
     )

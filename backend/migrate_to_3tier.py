@@ -112,11 +112,11 @@ def migrate():
                 "discount": 1.00, "booking_range_days": 3, "booking_max_count": 0,
                 "booking_period": "day", "food_discount_rate": 1.00,
                 "can_book_golf": True, "can_book_venue": True,
-                "daily_free_hours": 3, "monthly_invite_count": 10,
+                "daily_free_hours": 2, "monthly_invite_count": 10,
                 "display_benefits": json.dumps(["专属储物柜", "免费停车位", "专车接送", "豪华卫浴", "包场权限", "饮品畅享"], ensure_ascii=False),
                 "theme_color": "#8B7355",
                 "theme_gradient": "linear-gradient(135deg, #8B7355 0%, #C9A962 50%, #E8D5A3 100%)",
-                "description": "SSS级会员，提前3天预约，每日3小时免费，每月10次邀请，顶级权益",
+                "description": "SSS级会员，提前3天预约，每日2小时免费，每月10次邀请，顶级权益",
             },
         ]
 
@@ -203,8 +203,8 @@ def migrate():
                 name="SSS年卡", level_id=sss_level_id,
                 original_price=12888, price=8888, duration_days=365,
                 bonus_coins=500, bonus_points=5000,
-                description="SSS级会员年卡，提前3天预约+每日3小时免费+10次邀请+顶级权益",
-                highlights=json.dumps(["提前3天预约", "每日3小时免费", "每月10次邀请", "储物柜/停车/接送/卫浴", "包场权限", "饮品畅享"], ensure_ascii=False),
+                description="SSS级会员年卡，提前3天预约+每日2小时免费+10次邀请+顶级权益",
+                highlights=json.dumps(["提前3天预约", "每日2小时免费", "每月10次邀请", "储物柜/停车/接送/卫浴", "包场权限", "每日饮品券"], ensure_ascii=False),
                 is_recommended=False, sort_order=2, is_active=True
             )
             db.add(sss_card)
@@ -215,11 +215,11 @@ def migrate():
         print("\n[Step 6] 创建月度券模板...")
         templates = [
             {
-                "name": "SS月度场地券(1小时)",
-                "type": "cash", "discount_value": 100, "min_amount": 0,
+                "name": "SS月度场地时长券(1小时)",
+                "type": "hour_free", "discount_value": 1, "min_amount": 0,
                 "applicable_type": "venue", "valid_days": 30,
                 "total_count": 0, "per_limit": 99, "is_active": True,
-                "description": "SS级会员每月赠送，可抵扣1小时场地费用",
+                "description": "SS级会员每月赠送，可免费使用1小时场地",
             },
             {
                 "name": "SS月度饮品券",
@@ -227,6 +227,13 @@ def migrate():
                 "applicable_type": "food", "valid_days": 30,
                 "total_count": 0, "per_limit": 99, "is_active": True,
                 "description": "SS级会员每月赠送，可兑换任意饮品一杯",
+            },
+            {
+                "name": "SSS每日饮品券",
+                "type": "gift", "discount_value": 0, "min_amount": 0,
+                "applicable_type": "food", "valid_days": 1,
+                "total_count": 0, "per_limit": 9999, "is_active": True,
+                "description": "SSS会员每日免费饮品一杯，当日23:59:59过期",
             },
         ]
         for tpl_data in templates:

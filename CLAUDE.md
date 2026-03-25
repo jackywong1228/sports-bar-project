@@ -179,16 +179,17 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 | level 值 | 0 | 1 | 2 |
 | 主题色 | `#999999` | `#C9A962` | `#8B7355` |
 | 预约场馆 | 不可 | 仅当天 | 提前3天 |
-| 每日免费 | - | - | 3小时（硬限制） |
-| 月度券 | - | 1h场地券 + 1饮品券 | - |
+| 每日免费 | - | - | 2小时（超出部分付费） |
+| 每日饮品券 | - | - | 每日1张（当日过期） |
+| 月度券 | - | 1h场地时长券 + 1饮品券（纪念日发放） | - |
 | 月邀请 | 0 | 1次 | 10次 |
 | 入会礼 | - | 实物+数字券包 | 实物+数字券包 |
 | 展示权益 | - | - | 储物柜/停车/接送/卫浴/包场/饮品畅享 |
 
 **权限规则**:
 - S级: 可浏览信息、餐饮点单，不可预约
-- SS级: 当天预约场馆（`can_book_venue=True`, `booking_range_days=0`）
-- SSS级: 提前3天预约，每日3小时免费（超出拒绝），最多10次邀请/月
+- SS级: 当天预约场馆（`can_book_venue=True`, `booking_range_days=0`），月度券按订阅纪念日发放
+- SSS级: 提前3天预约，每日2小时免费（超出部分按场馆价格付费），每日饮品券，最多10次邀请/月
 - 会员判定（SS/SSS）: `subscription_status == 'active'` 且 `member_expire_time > now()`
 
 > 旧的 GUEST/MEMBER 二级制和 TRIAL/S/SS/SSS 四级制均已废弃。`food_discount_service.py` 已标记 DEPRECATED。
@@ -218,7 +219,7 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 `BookingService.check_booking_permission()`（`backend/app/services/booking_service.py`）校验：
 - S级: `can_book_venue=False` → 拒绝
 - SS级: `can_book_venue=True`, 检查 booking_date == today
-- SSS级: `can_book_venue=True`, 检查 booking_date <= today+3天, 检查每日3h免费上限
+- SSS级: `can_book_venue=True`, 检查 booking_date <= today+3天, 计算每日2h免费额度（超出部分付费）
 - 返回 `can_book`、`reason`、`available_coupons`、`free_usage_info`（SSS）等信息
 
 ### 核心数据模型
@@ -334,7 +335,7 @@ systemctl restart nginx          # 重启 Nginx
 - 会员判定逻辑（SS/SSS）: `subscription_status == 'active'` 且 `member_expire_time > datetime.now()`
 - S级尝试预约时返回 403，提示"开通SS/SSS会员"
 - SS级预约非当天日期返回 403，提示"SS级仅可预约当天"
-- SSS级超3小时返回 403，显示已用/剩余分钟数
+- SSS级超2小时免费额度部分按场馆价格计费，需付费（金币/微信支付）
 - 餐饮点单不需要会员资格，S级也可使用
 
 ## 更多文档

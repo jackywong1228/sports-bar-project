@@ -25,7 +25,7 @@ class BookingService:
         规则:
         - S级: 无预约权限
         - SS级: can_book_venue=True, 仅当天
-        - SSS级: can_book_venue=True, 提前3天, 每日3h免费上限
+        - SSS级: can_book_venue=True, 提前3天, 每日2h免费(超出部分付费)
         """
         level = member.level
 
@@ -134,26 +134,37 @@ class BookingService:
 
     def check_sss_free_limit(self, member_id: int, booking_date: date, duration_minutes: int, daily_free_hours: int) -> Dict:
         """
-        检查SSS级会员当日免费时长是否超限
+        SSS级：计算免费部分和付费部分（不再拒绝，超出部分允许付费）
 
         Returns:
-            {"allowed": bool, "reason": str, "remaining_minutes": int}
+            {
+                "allowed": True,
+                "fully_free": bool,       # 是否完全在免费额度内
+                "free_minutes": int,      # 本次免费的分钟数
+                "paid_minutes": int,      # 本次需付费的分钟数
+                "remaining_after": int    # 本次预约后剩余免费分钟数
+            }
         """
         used_minutes = self._get_daily_used_minutes(member_id, booking_date)
         total_free_minutes = daily_free_hours * 60
-        remaining = total_free_minutes - used_minutes
+        remaining_free = max(0, total_free_minutes - used_minutes)
 
-        if duration_minutes > remaining:
+        if duration_minutes <= remaining_free:
             return {
-                "allowed": False,
-                "reason": f"今日免费时长已用{used_minutes}分钟，剩余{max(0, remaining)}分钟，本次需{duration_minutes}分钟",
-                "remaining_minutes": max(0, remaining)
+                "allowed": True,
+                "fully_free": True,
+                "free_minutes": duration_minutes,
+                "paid_minutes": 0,
+                "remaining_after": remaining_free - duration_minutes
             }
-
-        return {
-            "allowed": True,
-            "remaining_minutes": remaining - duration_minutes
-        }
+        else:
+            return {
+                "allowed": True,
+                "fully_free": False,
+                "free_minutes": remaining_free,
+                "paid_minutes": duration_minutes - remaining_free,
+                "remaining_after": 0
+            }
 
     def _get_daily_used_minutes(self, member_id: int, target_date: date) -> int:
         """计算会员某天已预约的总分钟数（排除已取消的）"""

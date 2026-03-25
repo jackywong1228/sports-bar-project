@@ -11,7 +11,8 @@ Page({
     needCompleteProfile: false,
     tempAvatar: '',
     tempNickname: '',
-    isSaving: false
+    isSaving: false,
+    showGuidePopup: false
   },
 
   onLoad(options) {
@@ -167,7 +168,7 @@ Page({
     // 检查是否需要完善资料（昵称为默认值）
     const nickname = data.member_info.nickname || ''
     if (nickname === '微信用户' || nickname.startsWith('用户')) {
-      this.setData({ needCompleteProfile: true })
+      this.setData({ needCompleteProfile: true, showGuidePopup: true })
       return
     }
 
@@ -188,6 +189,38 @@ Page({
   },
 
   // ==================== 完善资料相关 ====================
+
+  // 引导弹窗 - 使用微信头像
+  onGuideChooseAvatar(e) {
+    const tempFilePath = e.detail.avatarUrl
+    this.setData({ tempAvatar: tempFilePath, showGuidePopup: false })
+  },
+
+  // 引导弹窗 - 从相册选择
+  async onGuideChooseAlbum() {
+    try {
+      const res = await new Promise((resolve, reject) => {
+        wx.chooseMedia({
+          count: 1,
+          mediaType: ['image'],
+          sourceType: ['album', 'camera'],
+          success: resolve,
+          fail: reject
+        })
+      })
+      this.setData({
+        tempAvatar: res.tempFiles[0].tempFilePath,
+        showGuidePopup: false
+      })
+    } catch (err) {
+      if (err.errMsg && err.errMsg.includes('cancel')) return
+    }
+  },
+
+  // 关闭引导弹窗
+  onCloseGuide() {
+    this.setData({ showGuidePopup: false })
+  },
 
   // 选择头像回调
   onChooseAvatar(e) {
