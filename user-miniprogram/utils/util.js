@@ -111,7 +111,10 @@ const getReservationStatus = (status) => {
 // 订单状态
 const getOrderStatus = (status) => {
   const statusMap = {
-    'pending': { text: '待支付', class: 'status-pending' },
+    'unpaid': { text: '待支付', class: 'status-pending' },
+    'pending': { text: '待确认', class: 'status-paid' },
+    'confirmed': { text: '已确认', class: 'status-paid' },
+    'in_progress': { text: '进行中', class: 'status-processing' },
     'paid': { text: '已支付', class: 'status-paid' },
     'processing': { text: '处理中', class: 'status-processing' },
     'completed': { text: '已完成', class: 'status-completed' },
