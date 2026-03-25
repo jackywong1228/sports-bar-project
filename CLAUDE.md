@@ -75,7 +75,7 @@ vue-tsc -b                       # 仅运行类型检查
 | `app/api/v1/ui_editor.py` | UI 可视化编辑器（页面配置/区块/菜单） |
 | `app/services/booking_service.py` | 预约权限检查（S拒绝/SS仅当天/SSS提前3天+免费时长） |
 | `app/services/invitation_service.py` | 邀请码生成/使用/月度配额/历史 |
-| `app/services/monthly_coupon_service.py` | SS级月度券自动发放（场地券+饮品券） |
+| `app/services/monthly_coupon_service.py` | SS月度券+SSS每日饮品券自动发放（查询需含 `is_deleted==False`） |
 | `app/services/venue_pricing_service.py` | 场馆按小时动态定价计算 |
 | `app/services/review_service.py` | 评论提交与积分发放 |
 | `app/services/coupon_pack_service.py` | 入会优惠券合集发放 |
@@ -121,6 +121,7 @@ vue-tsc -b                       # 仅运行类型检查
 | `src/stores/user.ts` | Pinia 用户状态 |
 | `src/utils/request.ts` | Axios 封装，Token 注入，401 处理 |
 | `src/api/*.ts` | API 模块（17 个） |
+| `src/views/food/Order.vue` | 餐饮订单管理（含新订单实时提醒：轮询+音效+弹窗） |
 
 ### 前端代码惯例
 
@@ -152,6 +153,8 @@ vue-tsc -b                       # 仅运行类型检查
 - **Base URL**: `app.globalData.baseUrl`，生产指向 `https://yunlifang.cloud/api/v1`
 - **会员权益**: `pages/member/member.js` 展示三级权益（S/SS/SSS），含邀请功能入口
 - **邀请页面**: `pages/invite/invite.js` 邀请码生成、分享、历史记录
+- **优惠券页面**: `pages/coupons/coupons.js` Tab 分栏（可用/已用/已过期）、类型适配、点击跳转
+- **完善资料**: `pages/login/login.js` 登录后自动弹出头像选择引导弹窗
 
 ## 数据库配置
 
