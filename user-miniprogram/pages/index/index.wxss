@@ -47,6 +47,13 @@
   padding-bottom: 200rpx;
 }
 
+/* 球会 Logo */
+.club-logo {
+  width: 280rpx;
+  height: 280rpx;
+  margin-bottom: 40rpx;
+}
+
 /* 品牌标题 - 高端运动俱乐部风格 */
 .brand-section {
   text-align: center;

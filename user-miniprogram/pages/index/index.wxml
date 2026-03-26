@@ -24,6 +24,9 @@ module.exports = {
 
   <!-- 主内容区 -->
   <view class="hero-content">
+    <!-- 球会Logo -->
+    <image class="club-logo" src="/assets/images/club-logo.png" mode="aspectFit"></image>
+
     <!-- 品牌标题 -->
     <view class="brand-section">
       <view class="brand-title-row">
