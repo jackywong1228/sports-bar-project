@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
 interface Member {
@@ -131,6 +131,23 @@ const submitRecharge = async () => {
   }
 }
 
+const handleDelete = async (row: Member) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除会员「${row.nickname || row.phone || 'ID:' + row.id}」吗？删除后该会员将无法登录。`,
+      '删除确认',
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    await request.delete(`/members/${row.id}`)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch (e: any) {
+    if (e !== 'cancel' && e?.toString() !== 'cancel') {
+      // 非用户取消的错误
+    }
+  }
+}
+
 const genderText = (gender: number) => {
   return { 0: '未知', 1: '男', 2: '女' }[gender] || '未知'
 }
@@ -193,11 +210,12 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="注册时间" width="180" />
-        <el-table-column label="操作" fixed="right" width="220">
+        <el-table-column label="操作" fixed="right" width="280">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
             <el-button type="success" link @click="handleRecharge(row, 'coin')">金币充值</el-button>
             <el-button type="warning" link @click="handleRecharge(row, 'point')">积分充值</el-button>
+            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

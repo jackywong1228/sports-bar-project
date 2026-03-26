@@ -257,6 +257,26 @@ def update_member(
     return ResponseModel(data=result)
 
 
+@router.delete("/{member_id}", response_model=ResponseModel)
+def delete_member(
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """删除会员（软删除）"""
+    member = db.query(Member).filter(
+        Member.id == member_id,
+        Member.is_deleted == False
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="会员不存在")
+
+    member.is_deleted = True
+    member.deleted_at = datetime.now()
+    db.commit()
+    return ResponseModel(message="删除成功")
+
+
 # ============ 金币/积分充值 ============
 @router.post("/recharge/coin", response_model=ResponseModel)
 def recharge_coin(
