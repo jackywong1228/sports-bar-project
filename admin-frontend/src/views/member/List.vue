@@ -46,9 +46,11 @@ const form = reactive({
   tag_ids: [] as number[]
 })
 
-// 充值弹窗
+// 编辑金币/积分弹窗
 const rechargeVisible = ref(false)
 const rechargeType = ref<'coin' | 'point'>('coin')
+const adjustAction = ref<'add' | 'deduct'>('add')
+const currentBalance = ref(0)
 const rechargeForm = reactive({
   member_id: 0,
   amount: 0,
@@ -108,22 +110,33 @@ const handleSubmit = async () => {
   }
 }
 
-const handleRecharge = (row: Member, type: 'coin' | 'point') => {
+const handleAdjust = (row: Member, type: 'coin' | 'point') => {
   rechargeType.value = type
+  adjustAction.value = 'add'
+  currentBalance.value = type === 'coin' ? row.coin_balance : row.point_balance
   rechargeForm.member_id = row.id
   rechargeForm.amount = 0
   rechargeForm.remark = ''
   rechargeVisible.value = true
 }
 
-const submitRecharge = async () => {
+const submitAdjust = async () => {
   if (rechargeForm.amount <= 0) {
-    ElMessage.warning('请输入有效金额')
+    ElMessage.warning('请输入有效数值')
     return
   }
+  if (adjustAction.value === 'deduct' && rechargeForm.amount > currentBalance.value) {
+    ElMessage.warning(`余额不足，当前余额: ${currentBalance.value}`)
+    return
+  }
+  const actualAmount = adjustAction.value === 'deduct' ? -rechargeForm.amount : rechargeForm.amount
   try {
-    await request.post(`/members/recharge/${rechargeType.value}`, rechargeForm)
-    ElMessage.success('充值成功')
+    await request.post(`/members/recharge/${rechargeType.value}`, {
+      member_id: rechargeForm.member_id,
+      amount: actualAmount,
+      remark: rechargeForm.remark
+    })
+    ElMessage.success(adjustAction.value === 'add' ? '增加成功' : '扣减成功')
     rechargeVisible.value = false
     fetchData()
   } catch (e) {
@@ -213,8 +226,8 @@ onMounted(() => {
         <el-table-column label="操作" fixed="right" width="280">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" link @click="handleRecharge(row, 'coin')">金币充值</el-button>
-            <el-button type="warning" link @click="handleRecharge(row, 'point')">积分充值</el-button>
+            <el-button type="success" link @click="handleAdjust(row, 'coin')">编辑金币</el-button>
+            <el-button type="warning" link @click="handleAdjust(row, 'point')">编辑积分</el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -265,19 +278,29 @@ onMounted(() => {
       </template>
     </el-dialog>
 
-    <!-- 充值弹窗 -->
-    <el-dialog v-model="rechargeVisible" :title="rechargeType === 'coin' ? '金币充值' : '积分充值'" width="400px">
+    <!-- 编辑金币/积分弹窗 -->
+    <el-dialog v-model="rechargeVisible" :title="rechargeType === 'coin' ? '编辑金币' : '编辑积分'" width="440px">
       <el-form :model="rechargeForm" label-width="80px">
-        <el-form-item :label="rechargeType === 'coin' ? '充值金额' : '充值积分'">
-          <el-input-number v-model="rechargeForm.amount" :min="1" style="width: 100%;" />
+        <el-form-item label="当前余额">
+          <span style="font-weight: bold; font-size: 16px;">{{ currentBalance }}</span>
+          <span style="margin-left: 4px; color: #999;">{{ rechargeType === 'coin' ? '金币' : '积分' }}</span>
+        </el-form-item>
+        <el-form-item label="操作类型">
+          <el-radio-group v-model="adjustAction">
+            <el-radio value="add">增加</el-radio>
+            <el-radio value="deduct">减少</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item :label="adjustAction === 'add' ? '增加数量' : '减少数量'">
+          <el-input-number v-model="rechargeForm.amount" :min="1" :max="adjustAction === 'deduct' ? currentBalance : undefined" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="rechargeForm.remark" type="textarea" />
+          <el-input v-model="rechargeForm.remark" type="textarea" placeholder="可选，说明调整原因" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="rechargeVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitRecharge">确定</el-button>
+        <el-button type="primary" @click="submitAdjust">确定</el-button>
       </template>
     </el-dialog>
   </div>

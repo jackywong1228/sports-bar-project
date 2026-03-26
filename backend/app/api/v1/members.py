@@ -284,7 +284,7 @@ def recharge_coin(
     db: Session = Depends(get_db),
     current_user: SysUser = Depends(get_current_user)
 ):
-    """金币充值"""
+    """金币调整（正数=增加，负数=扣减）"""
     member = db.query(Member).filter(
         Member.id == data.member_id,
         Member.is_deleted == False
@@ -292,23 +292,28 @@ def recharge_coin(
     if not member:
         raise HTTPException(status_code=404, detail="会员不存在")
 
-    # 更新余额
-    member.coin_balance = member.coin_balance + data.amount
+    if data.amount == 0:
+        raise HTTPException(status_code=400, detail="调整金额不能为0")
 
-    # 创建记录
+    new_balance = member.coin_balance + data.amount
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail=f"余额不足，当前余额: {member.coin_balance}")
+
+    member.coin_balance = new_balance
+
     record = CoinRecord(
         member_id=member.id,
-        type="income",
-        amount=data.amount,
+        type="income" if data.amount > 0 else "expense",
+        amount=abs(data.amount),
         balance=member.coin_balance,
-        source="后台充值",
+        source="后台调整",
         remark=data.remark,
         operator_id=current_user.id
     )
     db.add(record)
     db.commit()
 
-    return ResponseModel(message="充值成功")
+    return ResponseModel(message="调整成功")
 
 
 @router.post("/recharge/point", response_model=ResponseModel)
@@ -317,7 +322,7 @@ def recharge_point(
     db: Session = Depends(get_db),
     current_user: SysUser = Depends(get_current_user)
 ):
-    """积分充值"""
+    """积分调整（正数=增加，负数=扣减）"""
     member = db.query(Member).filter(
         Member.id == data.member_id,
         Member.is_deleted == False
@@ -325,23 +330,28 @@ def recharge_point(
     if not member:
         raise HTTPException(status_code=404, detail="会员不存在")
 
-    # 更新余额
-    member.point_balance = member.point_balance + data.amount
+    if data.amount == 0:
+        raise HTTPException(status_code=400, detail="调整数量不能为0")
 
-    # 创建记录
+    new_balance = member.point_balance + data.amount
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail=f"余额不足，当前余额: {member.point_balance}")
+
+    member.point_balance = new_balance
+
     record = PointRecord(
         member_id=member.id,
-        type="income",
-        amount=data.amount,
+        type="income" if data.amount > 0 else "expense",
+        amount=abs(data.amount),
         balance=member.point_balance,
-        source="后台充值",
+        source="后台调整",
         remark=data.remark,
         operator_id=current_user.id
     )
     db.add(record)
     db.commit()
 
-    return ResponseModel(message="充值成功")
+    return ResponseModel(message="调整成功")
 
 
 @router.get("/{member_id}/coin-records", response_model=ResponseModel[PageResult[CoinRecordResponse]])
