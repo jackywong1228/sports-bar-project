@@ -108,7 +108,7 @@ onMounted(() => {
             <template #label>
               <div class="res-info">
                 <div><van-icon name="user-o" /> {{ item.member_nickname || item.member_name || '-' }}</div>
-                <div><van-icon name="clock-o" /> {{ item.booking_date }} {{ item.start_time }}~{{ item.end_time }}</div>
+                <div><van-icon name="clock-o" /> {{ item.reservation_date }} {{ item.start_time }}~{{ item.end_time }}</div>
                 <div class="res-no">{{ item.reservation_no }}</div>
               </div>
             </template>

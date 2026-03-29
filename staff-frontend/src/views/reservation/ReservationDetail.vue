@@ -79,10 +79,10 @@ onMounted(() => {
 
       <van-cell-group inset title="预约信息" class="info-group">
         <van-cell title="场馆" :value="detail.venue_name || '-'" />
-        <van-cell title="日期" :value="detail.booking_date" />
-        <van-cell title="时段" :value="`${detail.start_time} ~ ${detail.end_time}`" />
-        <van-cell title="时长" :value="detail.duration ? `${detail.duration}小时` : '-'" />
-        <van-cell title="费用" :value="detail.total_amount ? `${detail.total_amount} 金币` : '-'" />
+        <van-cell title="日期" :value="detail.reservation_date || '-'" />
+        <van-cell title="时段" :value="`${detail.start_time || ''} ~ ${detail.end_time || ''}`" />
+        <van-cell title="时长" :value="detail.duration ? `${detail.duration}分钟` : '-'" />
+        <van-cell title="费用" :value="detail.total_price ? `${detail.total_price} 金币` : '-'" />
       </van-cell-group>
 
       <van-cell-group inset title="会员信息" class="info-group">

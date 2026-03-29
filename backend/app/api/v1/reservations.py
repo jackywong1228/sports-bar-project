@@ -16,11 +16,11 @@ from app.api.deps import get_current_user
 router = APIRouter()
 
 STATUS_TEXT = {
-    0: "待确认",
-    1: "已确认",
-    2: "进行中",
-    3: "已完成",
-    4: "已取消"
+    "pending": "待确认",
+    "confirmed": "已确认",
+    "in_progress": "进行中",
+    "completed": "已完成",
+    "cancelled": "已取消"
 }
 
 
@@ -140,14 +140,15 @@ def create_reservation(
         member_id=data.member_id,
         venue_id=data.venue_id,
         coach_id=data.coach_id,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        reservation_date=data.start_time.date(),
+        start_time=data.start_time.time(),
+        end_time=data.end_time.time(),
         duration=duration,
-        venue_fee=venue_fee,
-        coach_fee=coach_fee,
-        total_fee=total_fee,
+        venue_price=venue_fee,
+        coach_price=coach_fee,
+        total_price=total_fee,
         type=data.type,
-        status=1,  # 后台创建直接确认
+        status="confirmed",
         remark=data.remark
     )
     db.add(reservation)
@@ -218,10 +219,10 @@ def cancel_reservation(
     if not res:
         raise HTTPException(status_code=404, detail="预约不存在")
 
-    if res.status in [3, 4]:  # 已完成或已取消
+    if res.status in ("completed", "cancelled"):
         raise HTTPException(status_code=400, detail="预约状态不允许取消")
 
-    res.status = 4
+    res.status = "cancelled"
     res.cancel_reason = cancel_reason
     res.cancel_time = datetime.utcnow()
     db.commit()
