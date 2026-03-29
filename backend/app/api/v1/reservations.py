@@ -2,6 +2,7 @@ from typing import Optional
 from datetime import datetime
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -226,3 +227,52 @@ def cancel_reservation(
     db.commit()
 
     return ResponseModel(message="取消成功")
+
+
+class VerifyByNoRequest(BaseModel):
+    reservation_no: str
+
+
+@router.post("/verify-by-no", response_model=ResponseModel)
+def verify_reservation_by_no(
+    data: VerifyByNoRequest,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """员工扫码核销预约"""
+    res = db.query(Reservation).filter(
+        Reservation.reservation_no == data.reservation_no,
+        Reservation.is_deleted == False
+    ).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="预约不存在")
+
+    if res.is_verified:
+        raise HTTPException(status_code=400, detail="该预约已核销")
+
+    if res.status in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail=f"预约状态为{res.status}，无法核销")
+
+    # 核销
+    res.is_verified = True
+    res.verified_at = datetime.utcnow()
+    res.verified_by = f"staff_{current_user.id}"
+    if res.status in ("pending", "confirmed"):
+        res.status = "in_progress"
+    db.commit()
+    db.refresh(res)
+
+    # 返回核销结果
+    member = res.member
+    venue = res.venue
+    return ResponseModel(data={
+        "reservation_no": res.reservation_no,
+        "member_nickname": member.nickname if member else None,
+        "member_name": member.real_name if member else None,
+        "venue_name": venue.name if venue else None,
+        "booking_date": str(res.reservation_date) if res.reservation_date else None,
+        "start_time": str(res.start_time) if res.start_time else None,
+        "end_time": str(res.end_time) if res.end_time else None,
+        "status": res.status,
+        "verified_at": str(res.verified_at) if res.verified_at else None
+    })
