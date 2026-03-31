@@ -264,6 +264,13 @@ Page({
     if (!venue) return
 
     const slot = venue.slots.find(s => s.hour === hour)
+    if (slot.status === 'past') {
+      wx.showToast({
+        title: '该时段已过期',
+        icon: 'none'
+      })
+      return
+    }
     if (slot.status === 'reserved') {
       wx.showToast({
         title: '该时段已被预约',

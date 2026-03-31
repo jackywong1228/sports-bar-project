@@ -292,6 +292,11 @@
   transform: scale(0.96);
 }
 
+.slot-cell.past {
+  background: #f0f0f0;
+  color: #bbb;
+}
+
 .slot-cell.reserved {
   background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
   color: #c62828;
@@ -376,6 +381,11 @@
 .legend-dot.available {
   background: #e8f5e9;
   border: 1rpx solid #1A5D3A;
+}
+
+.legend-dot.past {
+  background: #f0f0f0;
+  border: 1rpx solid #bbb;
 }
 
 .legend-dot.reserved {

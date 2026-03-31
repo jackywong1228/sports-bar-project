@@ -749,13 +749,22 @@ def get_venue_calendar(
             "label": f"{hour:02d}:00"
         })
 
+    # 判断当天已过去的时间段
+    from datetime import datetime, date as date_type
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    current_hour = now.hour
+    is_today = (date == today_str)
+
     # 构建场馆数据
     venue_data = []
     for v in venues:
         slots = []
         venue_reservations = reservation_map.get(v.id, {})
         for hour in range(6, 24):
-            if hour in venue_reservations:
+            if is_today and hour <= current_hour:
+                status = "past"
+            elif hour in venue_reservations:
                 status = "reserved"
             else:
                 status = "available"
