@@ -17,29 +17,27 @@ module.exports = {
     <image
       class="hero-bg-image"
       src="{{heroImage}}"
-      mode="aspectFill"
+      mode="widthFix"
     ></image>
     <view class="hero-overlay"></view>
   </view>
 
   <!-- 主内容区 -->
   <view class="hero-content">
-    <!-- 球会Logo -->
-    <image class="club-logo" src="/assets/images/club-logo.png" mode="aspectFit"></image>
-
-    <!-- 品牌标题 -->
+    <!-- 品牌标语（Logo已在背景图中） -->
     <view class="brand-section">
-      <view class="brand-title-row">
-        <text class="brand-title-main">3S</text>
-        <text class="brand-title-name">BALLHUB</text>
-      </view>
-      <view class="brand-divider"></view>
       <text class="brand-slogan">运动 · 健康 · 社交</text>
     </view>
 
     <!-- 主CTA按钮 -->
     <view class="hero-cta">
       <button class="btn-hero" bindtap="goToVenue">立即预约</button>
+    </view>
+
+    <!-- 下滑提示 -->
+    <view class="scroll-hint" wx:if="{{showScrollHint}}">
+      <text class="scroll-hint-text">上滑查看更多</text>
+      <view class="scroll-hint-arrow"></view>
     </view>
 
     <!-- 底部快捷入口 -->
@@ -65,12 +63,7 @@ module.exports = {
     </view>
   </view>
 
-  <!-- 下滑提示 -->
-  <view class="scroll-hint" wx:if="{{showScrollHint}}">
-    <text class="scroll-hint-text">上滑查看更多</text>
-    <view class="scroll-hint-arrow"></view>
   </view>
-</view>
 
 <!-- 内容区域（下滑展示） -->
 <view class="content-container">

@@ -120,6 +120,13 @@ App({
         'Authorization': `Bearer ${this.globalData.token}`
       },
       success(res) {
+        if (res.statusCode === 401) {
+          // token 已过期，清除登录状态
+          console.log('[APP] token 已过期，清除登录状态')
+          that.globalData.token = ''
+          wx.removeStorageSync('token')
+          return
+        }
         if (res.data.code === 200) {
           const data = res.data.data
           // 解析头像URL（/uploads/... → 完整URL）

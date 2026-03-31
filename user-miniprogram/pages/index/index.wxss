@@ -18,7 +18,7 @@
 
 .hero-bg-image {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
 }
 
 .hero-overlay {
@@ -29,9 +29,9 @@
   height: 100%;
   background: linear-gradient(
     180deg,
-    rgba(26, 93, 58, 0.2) 0%,
-    rgba(26, 93, 58, 0.5) 40%,
-    rgba(20, 74, 46, 0.85) 100%
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0) 50%,
+    rgba(0, 0, 0, 0.45) 100%
   );
 }
 
@@ -41,63 +41,24 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   padding: 0 60rpx;
-  padding-bottom: 200rpx;
+  padding-bottom: 260rpx;
 }
 
-/* 球会 Logo */
-.club-logo {
-  width: 280rpx;
-  height: 280rpx;
-  margin-bottom: 40rpx;
-}
-
-/* 品牌标题 - 高端运动俱乐部风格 */
+/* 品牌标语（Logo已在背景图中） */
 .brand-section {
   text-align: center;
-  margin-bottom: 80rpx;
-}
-
-.brand-title-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 16rpx;
-}
-
-.brand-title-main {
-  font-size: 72rpx;
-  font-weight: 800;
-  color: #C9A962;
-  letter-spacing: 4rpx;
-  text-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-}
-
-.brand-title-name {
-  font-size: 56rpx;
-  font-weight: 600;
-  color: #FFFFFF;
-  letter-spacing: 4rpx;
-  text-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-}
-
-.brand-divider {
-  width: 80rpx;
-  height: 2rpx;
-  background: linear-gradient(90deg, transparent, rgba(201, 169, 98, 0.8), transparent);
-  margin: 32rpx auto;
+  margin-bottom: 60rpx;
 }
 
 .brand-slogan {
   display: block;
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 30rpx;
+  color: rgba(255, 255, 255, 0.95);
   letter-spacing: 12rpx;
-  margin-top: 16rpx;
+  text-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.4);
 }
 
 /* 主CTA按钮 */
@@ -112,15 +73,15 @@
   width: 400rpx;
   height: 100rpx;
   line-height: 100rpx;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
-  color: #1A5D3A;
+  background: linear-gradient(135deg, #C9A962 0%, #A68B3E 100%);
+  color: #FFFFFF;
   font-size: 34rpx;
   font-weight: 600;
   letter-spacing: 8rpx;
   text-indent: 8rpx;
   border-radius: 50rpx;
   border: none;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.3);
   margin: 0;
   padding: 0;
   text-align: center;
@@ -150,12 +111,12 @@
 .shortcut-icon-wrap {
   width: 100rpx;
   height: 100rpx;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.18);
   border-radius: 24rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1rpx solid rgba(255, 255, 255, 0.2);
+  border: 1rpx solid rgba(201, 169, 98, 0.3);
   margin-bottom: 16rpx;
 }
 
@@ -202,11 +163,8 @@
 
 /* 下滑提示 */
 .scroll-hint {
-  position: absolute;
-  bottom: 180rpx;
-  left: 50%;
-  transform: translateX(-50%);
   text-align: center;
+  margin-bottom: 40rpx;
   animation: bounce 2s infinite;
 }
 
@@ -227,13 +185,13 @@
 
 @keyframes bounce {
   0%, 20%, 50%, 80%, 100% {
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
   40% {
-    transform: translateX(-50%) translateY(-16rpx);
+    transform: translateY(-16rpx);
   }
   60% {
-    transform: translateX(-50%) translateY(-8rpx);
+    transform: translateY(-8rpx);
   }
 }
 

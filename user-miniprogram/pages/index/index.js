@@ -4,7 +4,7 @@ const uiConfig = require('../../utils/ui-config')
 Page({
   data: {
     // Hero区域数据
-    heroImage: '/assets/images/banner1.jpg', // 默认背景图（使用banner1作为备用）
+    heroImage: '/assets/images/hero-bg.jpg', // 默认背景图（皮革质感+Logo）
     showScrollHint: true,
 
     // 公告数据
@@ -125,8 +125,7 @@ Page({
       // 加载公告
       promises.push(this.loadAnnouncements())
 
-      // 加载Hero背景图
-      promises.push(this.loadHeroImage())
+      // Hero背景图使用本地固定图片，不从API加载
 
       // 根据可见区块加载对应数据
       if (this.isBlockVisible('banner')) {
@@ -149,12 +148,6 @@ Page({
 
       // 公告
       updateData.announcements = results[resultIndex++] || []
-
-      // Hero背景图
-      const heroImage = results[resultIndex++]
-      if (heroImage) {
-        updateData.heroImage = heroImage
-      }
 
       if (this.isBlockVisible('banner')) {
         updateData.banners = results[resultIndex++] || []
