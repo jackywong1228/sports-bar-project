@@ -94,7 +94,7 @@
 /* 底部快捷入口 */
 .hero-shortcuts {
   display: flex;
-  gap: 80rpx;
+  gap: 40rpx;
 }
 
 .shortcut-item {
@@ -120,32 +120,9 @@
   margin-bottom: 16rpx;
 }
 
-.shortcut-icon-inner {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.shortcut-icon-inner .iconfont {
-  font-size: 44rpx;
-  color: #FFFFFF;
-}
-
-/* 图标字体样式 - 使用文字替代 */
-.icon-venue::before {
-  content: "馆";
-  font-size: 36rpx;
-  font-weight: 500;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
-}
-
-.icon-coach::before {
-  content: "练";
-  font-size: 36rpx;
-  font-weight: 500;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+.shortcut-icon-img {
+  width: 52rpx;
+  height: 52rpx;
 }
 
 .shortcut-text {

@@ -61,6 +61,24 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '会员详情' }
   },
   {
+    path: '/activity/list',
+    name: 'ActivityList',
+    component: () => import('@/views/activity/ActivityList.vue'),
+    meta: { title: '活动管理' }
+  },
+  {
+    path: '/activity/create',
+    name: 'ActivityCreate',
+    component: () => import('@/views/activity/ActivityForm.vue'),
+    meta: { title: '新建活动' }
+  },
+  {
+    path: '/activity/edit/:id',
+    name: 'ActivityEdit',
+    component: () => import('@/views/activity/ActivityForm.vue'),
+    meta: { title: '编辑活动' }
+  },
+  {
     path: '/checkin/records',
     name: 'CheckinRecords',
     component: () => import('@/views/checkin/CheckinRecords.vue'),

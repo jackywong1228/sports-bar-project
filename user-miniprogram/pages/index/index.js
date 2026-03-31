@@ -286,6 +286,13 @@ Page({
     })
   },
 
+  // 跳转到活动报名
+  goToActivity() {
+    wx.switchTab({
+      url: '/pages/activity/activity'
+    })
+  },
+
   // 查看更多活动
   viewMoreActivities() {
     wx.switchTab({

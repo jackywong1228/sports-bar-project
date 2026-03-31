@@ -18,6 +18,7 @@ const menuItems = [
   { icon: 'orders-o', text: '餐饮订单', path: '/food/orders', color: '#ee6723' },
   { icon: 'calendar-o', text: '预约管理', path: '/reservation/list', color: '#1989fa' },
   { icon: 'scan', text: '扫码核销', path: '/scan', color: '#07c160' },
+  { icon: 'fire-o', text: '活动管理', path: '/activity/list', color: '#ff6034' },
   { icon: 'friends-o', text: '会员查询', path: '/member/search', color: '#C9A962' },
   { icon: 'clock-o', text: '打卡记录', path: '/checkin/records', color: '#7232dd' },
   { icon: 'user-o', text: '个人中心', path: '/profile', color: '#969799' }

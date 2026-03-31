@@ -44,21 +44,24 @@ module.exports = {
     <view class="hero-shortcuts">
       <view class="shortcut-item" bindtap="goToVenue">
         <view class="shortcut-icon-wrap">
-          <view class="shortcut-icon-inner">
-            <text class="iconfont icon-venue"></text>
-          </view>
+          <image class="shortcut-icon-img" src="/assets/icons/svg/venue-entry-white.svg" mode="aspectFit"></image>
         </view>
         <text class="shortcut-text">场馆预约</text>
         <text class="shortcut-text-en">VENUE</text>
       </view>
       <view class="shortcut-item" bindtap="viewMoreCoaches">
         <view class="shortcut-icon-wrap">
-          <view class="shortcut-icon-inner">
-            <text class="iconfont icon-coach"></text>
-          </view>
+          <image class="shortcut-icon-img" src="/assets/icons/svg/coach-entry-white.svg" mode="aspectFit"></image>
         </view>
         <text class="shortcut-text">私教课程</text>
         <text class="shortcut-text-en">COACH</text>
+      </view>
+      <view class="shortcut-item" bindtap="goToActivity">
+        <view class="shortcut-icon-wrap">
+          <image class="shortcut-icon-img" src="/assets/icons/svg/activity-entry-white.svg" mode="aspectFit"></image>
+        </view>
+        <text class="shortcut-text">活动报名</text>
+        <text class="shortcut-text-en">ACTIVITY</text>
       </view>
     </view>
   </view>
