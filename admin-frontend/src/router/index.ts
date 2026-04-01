@@ -184,33 +184,6 @@ const routes: RouteRecordRaw[] = [
           }
         ]
       },
-      // 点餐管理
-      {
-        path: 'food',
-        name: 'Food',
-        redirect: '/food/list',
-        meta: { title: '点餐管理', icon: 'Food' },
-        children: [
-          {
-            path: 'category',
-            name: 'FoodCategory',
-            component: () => import('@/views/food/Category.vue'),
-            meta: { title: '餐饮分类' }
-          },
-          {
-            path: 'list',
-            name: 'FoodList',
-            component: () => import('@/views/food/List.vue'),
-            meta: { title: '餐饮商品' }
-          },
-          {
-            path: 'order',
-            name: 'FoodOrder',
-            component: () => import('@/views/food/Order.vue'),
-            meta: { title: '餐饮订单' }
-          }
-        ]
-      },
       // 票券管理
       {
         path: 'coupon',

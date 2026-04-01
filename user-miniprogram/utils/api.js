@@ -207,78 +207,6 @@ const quitActivity = (activityId) => {
   return post(`/activities/${activityId}/quit`, {}, { showLoading: true })
 }
 
-// ==================== 点餐 ====================
-
-/**
- * 获取餐饮分类
- */
-const getFoodCategories = () => {
-  return get('/food/categories')
-}
-
-/**
- * 获取餐饮商品列表
- */
-const getFoodList = (params = {}) => {
-  return get('/food/items', params)
-}
-
-/**
- * 获取购物车
- */
-const getCart = () => {
-  return get('/food/cart')
-}
-
-/**
- * 添加到购物车
- */
-const addToCart = (itemId, quantity = 1, specs = {}) => {
-  return post('/food/cart', { item_id: itemId, quantity, specs })
-}
-
-/**
- * 更新购物车数量
- */
-const updateCartItem = (cartItemId, quantity) => {
-  return put(`/food/cart/${cartItemId}`, { quantity })
-}
-
-/**
- * 删除购物车项
- */
-const removeCartItem = (cartItemId) => {
-  return del(`/food/cart/${cartItemId}`)
-}
-
-/**
- * 清空购物车
- */
-const clearCart = () => {
-  return del('/food/cart')
-}
-
-/**
- * 创建餐饮订单
- */
-const createFoodOrder = (data) => {
-  return post('/food/orders', data, { showLoading: true })
-}
-
-/**
- * 获取餐饮订单列表
- */
-const getFoodOrders = (params = {}) => {
-  return get('/food/orders', params)
-}
-
-/**
- * 获取餐饮订单详情
- */
-const getFoodOrderDetail = (id) => {
-  return get(`/food/orders/${id}`)
-}
-
 // ==================== 会员卡 ====================
 
 /**
@@ -562,14 +490,6 @@ const checkBookingPermission = (params = {}) => {
 }
 
 /**
- * 获取餐饮折扣信息
- * @returns {Promise} { discount, level_name }
- */
-const getFoodDiscount = () => {
-  return get('/member/food-discount')
-}
-
-/**
  * 获取违规记录
  * @param {Object} params { page?, page_size? }
  * @returns {Promise} { total, items: [{ id, type, description, created_at }] }
@@ -729,18 +649,6 @@ module.exports = {
   joinActivity,
   quitActivity,
 
-  // 点餐
-  getFoodCategories,
-  getFoodList,
-  getCart,
-  addToCart,
-  updateCartItem,
-  removeCartItem,
-  clearCart,
-  createFoodOrder,
-  getFoodOrders,
-  getFoodOrderDetail,
-
   // 会员卡
   getMemberLevels,
   getMemberCards,
@@ -796,7 +704,6 @@ module.exports = {
 
   // 会员权限检查
   checkBookingPermission,
-  getFoodDiscount,
   getViolations,
   verifyReservation,
 

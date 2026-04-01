@@ -10,7 +10,7 @@ Page({
       { id: 'completed', name: '已完成' }
     ],
     currentTab: 'all',
-    orderType: 'all', // all, reservation, food, activity
+    orderType: 'all', // all, reservation, activity
     orders: [],
     loading: true,
     page: 1,

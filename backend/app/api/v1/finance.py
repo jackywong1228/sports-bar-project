@@ -14,7 +14,6 @@ from app.models.finance import RechargeOrder, ConsumeRecord, CoachSettlement, Fi
 from app.models.member import Member, CoinRecord
 from app.models.coach import Coach
 from app.models.reservation import Reservation
-from app.models.food import FoodOrder
 from app.models.activity import ActivityRegistration
 from app.models.mall import ProductOrder
 from app.schemas.response import ResponseModel, PageResponseModel

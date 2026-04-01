@@ -5,7 +5,7 @@ from app.models.venue_price import VenuePriceRule
 from app.models.reservation import Reservation
 from app.models.coach import Coach, CoachSchedule, CoachApplication
 from app.models.activity import Activity, ActivityRegistration
-from app.models.food import FoodCategory, FoodItem, FoodOrder, FoodOrderItem
+from app.models.food import FoodCategory, FoodItem, FoodOrder, FoodOrderItem  # 保留: 数据库表映射(点餐已迁移至美团)
 from app.models.coupon import CouponTemplate, MemberCoupon, CouponPack, CouponPackItem
 from app.models.mall import ProductCategory, Product, ProductOrder
 from app.models.finance import RechargeOrder, ConsumeRecord, CoachSettlement, FinanceStat, RechargePackage
@@ -27,7 +27,7 @@ __all__ = [
     "Reservation",
     "Coach", "CoachSchedule", "CoachApplication",
     "Activity", "ActivityRegistration",
-    "FoodCategory", "FoodItem", "FoodOrder", "FoodOrderItem",
+    "FoodCategory", "FoodItem", "FoodOrder", "FoodOrderItem",  # 保留: 数据库表映射(点餐已迁移至美团)
     "CouponTemplate", "MemberCoupon", "CouponPack", "CouponPackItem",
     "ProductCategory", "Product", "ProductOrder",
     "RechargeOrder", "ConsumeRecord", "CoachSettlement", "FinanceStat", "RechargePackage",

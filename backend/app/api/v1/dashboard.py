@@ -13,7 +13,6 @@ from app.models.venue import Venue
 from app.models.coach import Coach
 from app.models.reservation import Reservation
 from app.models.activity import Activity, ActivityRegistration
-from app.models.food import FoodOrder
 from app.models.finance import RechargeOrder, ConsumeRecord
 from app.schemas.response import ResponseModel
 
@@ -45,10 +44,6 @@ def get_dashboard_stats(
         func.date(RechargeOrder.pay_time) == today
     ).scalar() or 0
 
-    today_orders = db.query(func.count(FoodOrder.id)).filter(
-        func.date(FoodOrder.created_at) == today
-    ).scalar() or 0
-
     # 昨日数据（用于计算环比）
     yesterday_members = db.query(func.count(Member.id)).filter(
         Member.is_deleted == False,
@@ -62,10 +57,6 @@ def get_dashboard_stats(
     yesterday_recharge = db.query(func.sum(RechargeOrder.amount)).filter(
         RechargeOrder.status == "paid",
         func.date(RechargeOrder.pay_time) == yesterday
-    ).scalar() or 0
-
-    yesterday_orders = db.query(func.count(FoodOrder.id)).filter(
-        func.date(FoodOrder.created_at) == yesterday
     ).scalar() or 0
 
     # 总量数据
@@ -105,9 +96,7 @@ def get_dashboard_stats(
             "reservations": today_reservations,
             "reservations_change": calc_change(today_reservations, yesterday_reservations),
             "recharge": float(today_recharge),
-            "recharge_change": calc_change(float(today_recharge), float(yesterday_recharge)),
-            "orders": today_orders,
-            "orders_change": calc_change(today_orders, yesterday_orders)
+            "recharge_change": calc_change(float(today_recharge), float(yesterday_recharge))
         },
         "total": {
             "members": total_members,
@@ -152,17 +141,11 @@ def get_dashboard_trend(
             func.date(RechargeOrder.pay_time) == current_date
         ).scalar() or 0
 
-        # 订单数
-        orders = db.query(func.count(FoodOrder.id)).filter(
-            func.date(FoodOrder.created_at) == current_date
-        ).scalar() or 0
-
         result.append({
             "date": current_date.strftime("%m-%d"),
             "members": members,
             "reservations": reservations,
-            "recharge": float(recharge),
-            "orders": orders
+            "recharge": float(recharge)
         })
 
         current_date += timedelta(days=1)
@@ -296,11 +279,6 @@ def get_overview_cards(
         Reservation.status == "pending"
     ).scalar() or 0
 
-    # 待处理餐饮订单
-    pending_food_orders = db.query(func.count(FoodOrder.id)).filter(
-        FoodOrder.status.in_(["paid", "preparing"])
-    ).scalar() or 0
-
     # 待审核教练申请
     from app.models.coach import CoachApplication
     pending_coach_apps = db.query(func.count(CoachApplication.id)).filter(
@@ -315,7 +293,6 @@ def get_overview_cards(
 
     return ResponseModel(data={
         "pending_reservations": pending_reservations,
-        "pending_food_orders": pending_food_orders,
         "pending_coach_apps": pending_coach_apps,
         "today_activities": today_activities
     })

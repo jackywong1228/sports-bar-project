@@ -87,7 +87,6 @@ Page({
     return [
       { icon: '/assets/icons/venue-entry.png', text: '场馆预约', url: '/pages/venue/venue', linkType: 'tab' },
       { icon: '/assets/icons/coach-entry.png', text: '教练预约', url: '/pages/coach-list/coach-list', linkType: 'page' },
-      { icon: '/assets/icons/food-entry.png', text: '在线点餐', url: '/pages/food/food', linkType: 'page' },
       { icon: '/assets/icons/activity-entry.png', text: '活动报名', url: '/pages/activity/activity', linkType: 'tab' },
       { icon: '/assets/icons/team-entry.png', text: '组队广场', url: '/pages/team/team', linkType: 'page' },
       { icon: '/assets/icons/mall-entry.png', text: '积分商城', url: '/pages/mall/mall', linkType: 'page' },

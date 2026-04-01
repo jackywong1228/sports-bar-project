@@ -5,10 +5,9 @@ const api = require('../../utils/api')
 const MEMBER_BENEFITS = {
   S: {
     title: 'S级会员',
-    description: '注册即可浏览场馆信息和餐饮点单',
+    description: '注册即可浏览场馆信息',
     features: [
       { icon: 'view', text: '浏览场馆信息' },
-      { icon: 'food', text: '餐饮点单' },
       { icon: 'activity', text: '参与公开活动' }
     ]
   },

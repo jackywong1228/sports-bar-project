@@ -7,14 +7,13 @@ import * as echarts from 'echarts'
 const userStore = useUserStore()
 
 const stats = ref<any>({
-  today: { members: 0, reservations: 0, recharge: 0, orders: 0 },
+  today: { members: 0, reservations: 0, recharge: 0 },
   total: { members: 0, coaches: 0, venues: 0 },
   month: { recharge: 0, reservations: 0 }
 })
 
 const overviewCards = ref<any>({
   pending_reservations: 0,
-  pending_food_orders: 0,
   pending_coach_apps: 0,
   today_activities: 0
 })
@@ -179,20 +178,6 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card danger">
-          <div class="stat-content">
-            <div class="stat-icon"><el-icon><ShoppingCart /></el-icon></div>
-            <div class="stat-info">
-              <div class="stat-value">{{ stats.today.orders }}</div>
-              <div class="stat-label">今日订单数</div>
-              <div class="stat-change" :class="stats.today.orders_change >= 0 ? 'up' : 'down'">
-                {{ stats.today.orders_change >= 0 ? '+' : '' }}{{ stats.today.orders_change }}%
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
     </el-row>
 
     <!-- 待处理事项 -->
@@ -202,14 +187,6 @@ onUnmounted(() => {
           <div class="todo-content">
             <span class="todo-value">{{ overviewCards.pending_reservations }}</span>
             <span class="todo-label">待处理预约</span>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="todo-card">
-          <div class="todo-content">
-            <span class="todo-value">{{ overviewCards.pending_food_orders }}</span>
-            <span class="todo-label">待处理餐饮订单</span>
           </div>
         </el-card>
       </el-col>

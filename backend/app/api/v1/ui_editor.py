@@ -63,9 +63,10 @@ async def get_page_detail(
         UIBlockConfig.is_deleted == False
     ).order_by(UIBlockConfig.sort_order).all()
 
-    # 获取菜单项
+    # 获取菜单项（排除已废弃的点餐入口）
     menu_items = db.query(UIMenuItem).filter(
-        UIMenuItem.is_deleted == False
+        UIMenuItem.is_deleted == False,
+        UIMenuItem.menu_code != 'food'
     ).order_by(UIMenuItem.menu_type, UIMenuItem.sort_order).all()
 
     return ResponseModel(data={
@@ -684,12 +685,11 @@ async def init_default_data(
     quick_entries = [
         ("venue", "场馆预约", "/assets/icons/venue-entry.png", "tab", "/pages/venue/venue", 0),
         ("coach", "教练预约", "/assets/icons/coach-entry.png", "page", "/pages/coach-list/coach-list", 1),
-        ("food", "在线点餐", "/assets/icons/food-entry.png", "page", "/pages/food/food", 2),
-        ("activity", "活动报名", "/assets/icons/activity-entry.png", "tab", "/pages/activity/activity", 3),
-        ("team", "组队广场", "/assets/icons/team-entry.png", "page", "/pages/team/team", 4),
-        ("mall", "积分商城", "/assets/icons/mall-entry.png", "page", "/pages/mall/mall", 5),
-        ("member", "会员中心", "/assets/icons/member-entry.png", "page", "/pages/member/member", 6),
-        ("coupon", "我的券包", "/assets/icons/coupon-entry.png", "page", "/pages/coupons/coupons", 7)
+        ("activity", "活动报名", "/assets/icons/activity-entry.png", "tab", "/pages/activity/activity", 2),
+        ("team", "组队广场", "/assets/icons/team-entry.png", "page", "/pages/team/team", 3),
+        ("mall", "积分商城", "/assets/icons/mall-entry.png", "page", "/pages/mall/mall", 4),
+        ("member", "会员中心", "/assets/icons/member-entry.png", "page", "/pages/member/member", 5),
+        ("coupon", "我的券包", "/assets/icons/coupon-entry.png", "page", "/pages/coupons/coupons", 6)
     ]
     for code, title, icon, link_type, link_value, sort_order in quick_entries:
         item = UIMenuItem(

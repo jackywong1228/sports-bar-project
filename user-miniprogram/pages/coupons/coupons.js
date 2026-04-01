@@ -97,23 +97,7 @@ Page({
     const coupon = e.currentTarget.dataset.coupon
     if (coupon.displayStatus !== 'unused') return
 
-    // 根据适用类型跳转
-    if (coupon.applicable_type === 'food' || coupon.type === 'gift') {
-      wx.switchTab({ url: '/pages/food/food' })
-    } else if (coupon.applicable_type === 'venue') {
-      wx.navigateTo({ url: '/pages/venue/venue' })
-    } else {
-      // 通用券，让用户选择
-      wx.showActionSheet({
-        itemList: ['去点餐', '去预约场馆'],
-        success: (res) => {
-          if (res.tapIndex === 0) {
-            wx.switchTab({ url: '/pages/food/food' })
-          } else {
-            wx.navigateTo({ url: '/pages/venue/venue' })
-          }
-        }
-      })
-    }
+    // 跳转到预约场馆
+    wx.switchTab({ url: '/pages/venue/venue' })
   }
 })

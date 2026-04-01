@@ -79,7 +79,6 @@ vue-tsc -b                       # 仅运行类型检查
 | `app/services/venue_pricing_service.py` | 场馆按小时动态定价计算 |
 | `app/services/review_service.py` | 评论提交与积分发放 |
 | `app/services/coupon_pack_service.py` | 入会优惠券合集发放 |
-| `app/services/food_discount_service.py` | [DEPRECATED] 餐食折扣，已废弃 |
 | `app/models/base.py` | TimestampMixin + SoftDeleteMixin |
 | `app/core/config.py` | pydantic-settings 配置 |
 | `app/core/security.py` | JWT 生成/验证 |
@@ -89,7 +88,7 @@ vue-tsc -b                       # 仅运行类型检查
 ### 后端 API 模块分组
 
 **管理后台 API**（`/api/v1/`，需 `get_current_user()`）：
-`auth`, `staff`, `members`, `venues`, `reservations`, `coaches`, `activities`, `foods`, `coupons`, `mall`, `payment`, `finance`, `dashboard`, `messages`, `member_cards`, `upload`, `ui_assets`, `ui_editor`, `checkin`, `coupon_packs`, `reviews`
+`auth`, `staff`, `members`, `venues`, `reservations`, `coaches`, `activities`, `coupons`, `mall`, `payment`, `finance`, `dashboard`, `messages`, `member_cards`, `upload`, `ui_assets`, `ui_editor`, `checkin`, `coupon_packs`, `reviews`
 
 **会员端 API**（`/api/v1/member/`，需 `get_current_member()`）：
 `member_api`（核心）, `member_api_subscription_extension`（订阅扩展）
@@ -120,8 +119,7 @@ vue-tsc -b                       # 仅运行类型检查
 | `src/router/index.ts` | 路由配置，懒加载 |
 | `src/stores/user.ts` | Pinia 用户状态 |
 | `src/utils/request.ts` | Axios 封装，Token 注入，401 处理 |
-| `src/api/*.ts` | API 模块（17 个） |
-| `src/views/food/Order.vue` | 餐饮订单管理（含新订单实时提醒：轮询+音效+弹窗） |
+| `src/api/*.ts` | API 模块 |
 
 ### 前端代码惯例
 
@@ -190,12 +188,12 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 | 展示权益 | - | - | 储物柜/停车/接送/卫浴/包场/饮品畅享 |
 
 **权限规则**:
-- S级: 可浏览信息、餐饮点单，不可预约
+- S级: 可浏览信息，不可预约
 - SS级: 当天预约场馆（`can_book_venue=True`, `booking_range_days=0`），月度券按订阅纪念日发放
 - SSS级: 提前3天预约，每日2小时免费（超出部分按场馆价格付费），每日饮品券，最多10次邀请/月
 - 会员判定（SS/SSS）: `subscription_status == 'active'` 且 `member_expire_time > now()`
 
-> 旧的 GUEST/MEMBER 二级制和 TRIAL/S/SS/SSS 四级制均已废弃。`food_discount_service.py` 已标记 DEPRECATED。
+> 旧的 GUEST/MEMBER 二级制和 TRIAL/S/SS/SSS 四级制均已废弃。点餐功能已迁移至美团软硬件设备。
 
 ### 场馆定价
 
@@ -236,7 +234,7 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 - `reservation.py`: Reservation（预约）
 - `coach.py`: Coach（教练）
 - `activity.py`: Activity（活动）, ActivityRegistration, Banner（轮播图）
-- `food.py`: FoodOrder（餐饮订单）
+- `food.py`: FoodOrder（餐饮订单）[保留表映射，功能已迁移至美团]
 - `coupon.py`: CouponTemplate, MemberCoupon（票券系统）, CouponPack, CouponPackItem（优惠券合集）
 - `mall.py`: Product, ProductCategory, ProductOrder（商城）
 - `team.py`: Team, TeamMember（组队功能）
@@ -339,7 +337,6 @@ systemctl restart nginx          # 重启 Nginx
 - S级尝试预约时返回 403，提示"开通SS/SSS会员"
 - SS级预约非当天日期返回 403，提示"SS级仅可预约当天"
 - SSS级超2小时免费额度部分按场馆价格计费，需付费（金币/微信支付）
-- 餐饮点单不需要会员资格，S级也可使用
 
 ## 更多文档
 

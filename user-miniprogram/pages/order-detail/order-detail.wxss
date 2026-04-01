@@ -146,44 +146,6 @@
   color: #1A5D3A;
 }
 
-/* 餐饮详情 */
-.food-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16rpx 0;
-  border-bottom: 1rpx solid #f8f8f8;
-}
-
-.food-item:last-child {
-  border-bottom: none;
-}
-
-.food-info {
-  display: flex;
-  align-items: center;
-  flex: 1;
-}
-
-.food-name {
-  font-size: 28rpx;
-  color: #333;
-  flex: 1;
-}
-
-.food-qty {
-  font-size: 26rpx;
-  color: #999;
-  margin-left: 16rpx;
-}
-
-.food-price {
-  font-size: 28rpx;
-  color: #333;
-  font-weight: 500;
-  margin-left: 20rpx;
-}
-
 /* 底部操作栏 */
 .bottom-spacer {
   height: 140rpx;

@@ -50,18 +50,6 @@
     </view>
   </view>
 
-  <!-- 餐饮详情（餐饮订单） -->
-  <view class="info-card" wx:if="{{order.type === 'food'}}">
-    <view class="card-title">餐品详情</view>
-    <view class="food-item" wx:for="{{order.items}}" wx:key="food_name">
-      <view class="food-info">
-        <text class="food-name">{{item.food_name}}</text>
-        <text class="food-qty">x{{item.quantity}}</text>
-      </view>
-      <text class="food-price">¥{{item.subtotal}}</text>
-    </view>
-  </view>
-
   <!-- 费用信息 -->
   <view class="info-card">
     <view class="card-title">费用信息</view>

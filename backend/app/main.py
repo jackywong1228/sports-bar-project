@@ -6,7 +6,7 @@ import os
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1 import auth, staff, members, venues, reservations, coaches, coach_api, member_api
-from app.api.v1 import activities, foods, coupons, mall, payment, finance, dashboard, messages, member_cards, wechat, upload, ui_assets, ui_editor
+from app.api.v1 import activities, coupons, mall, payment, finance, dashboard, messages, member_cards, wechat, upload, ui_assets, ui_editor
 from app.api.v1 import gate_api, checkin
 from app.api.v1 import coupon_packs, reviews
 from app.api.v1 import feedback as feedback_router
@@ -56,7 +56,6 @@ app.include_router(coaches.router, prefix=f"{settings.API_V1_PREFIX}/coaches", t
 app.include_router(coach_api.router, prefix=f"{settings.API_V1_PREFIX}/coach", tags=["教练端API"])
 app.include_router(member_api.router, prefix=f"{settings.API_V1_PREFIX}/member", tags=["会员端API"])
 app.include_router(activities.router, prefix=f"{settings.API_V1_PREFIX}/activities", tags=["活动管理"])
-app.include_router(foods.router, prefix=f"{settings.API_V1_PREFIX}/foods", tags=["点餐管理"])
 app.include_router(coupons.router, prefix=f"{settings.API_V1_PREFIX}/coupons", tags=["票券管理"])
 app.include_router(mall.router, prefix=f"{settings.API_V1_PREFIX}/mall", tags=["商城管理"])
 app.include_router(payment.router, prefix=f"{settings.API_V1_PREFIX}/payment", tags=["支付"])

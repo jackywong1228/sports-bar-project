@@ -39,8 +39,7 @@ const DEFAULT_CONFIG = {
     { menu_code: 'venue', menu_type: 'quick_entry', title: '场馆预约', icon: '/assets/icons/venue-entry.png', link_type: 'tab', link_value: '/pages/venue/venue', sort_order: 0, is_visible: true },
     { menu_code: 'coach', menu_type: 'quick_entry', title: '教练预约', icon: '/assets/icons/coach-entry.png', link_type: 'page', link_value: '/pages/coach-list/coach-list', sort_order: 1, is_visible: true },
     { menu_code: 'activity', menu_type: 'quick_entry', title: '精彩活动', icon: '/assets/icons/activity-entry.png', link_type: 'tab', link_value: '/pages/activity/activity', sort_order: 2, is_visible: true },
-    { menu_code: 'food', menu_type: 'quick_entry', title: '点餐', icon: '/assets/icons/food-entry.png', link_type: 'page', link_value: '/pages/food/food', sort_order: 3, is_visible: true },
-    { menu_code: 'mall', menu_type: 'quick_entry', title: '积分商城', icon: '/assets/icons/mall-entry.png', link_type: 'page', link_value: '/pages/mall/mall', sort_order: 4, is_visible: true },
+    { menu_code: 'mall', menu_type: 'quick_entry', title: '积分商城', icon: '/assets/icons/mall-entry.png', link_type: 'page', link_value: '/pages/mall/mall', sort_order: 3, is_visible: true },
     { menu_code: 'team', menu_type: 'quick_entry', title: '组队', icon: '/assets/icons/team-entry.png', link_type: 'page', link_value: '/pages/team/team', sort_order: 5, is_visible: true },
     { menu_code: 'member', menu_type: 'quick_entry', title: '会员中心', icon: '/assets/icons/member-entry.png', link_type: 'page', link_value: '/pages/member/member', sort_order: 6, is_visible: true },
     { menu_code: 'coupon', menu_type: 'quick_entry', title: '我的券包', icon: '/assets/icons/coupon-entry.png', link_type: 'page', link_value: '/pages/coupons/coupons', sort_order: 7, is_visible: true }
@@ -134,7 +133,7 @@ const getVisibleBlocks = async (pageCode) => {
 const getQuickEntries = async () => {
   const config = await getUIConfig()
   return (config.menuItems || [])
-    .filter(m => m.menu_type === 'quick_entry' && m.is_visible)
+    .filter(m => m.menu_type === 'quick_entry' && m.is_visible && m.menu_code !== 'food')
     .sort((a, b) => a.sort_order - b.sort_order)
 }
 

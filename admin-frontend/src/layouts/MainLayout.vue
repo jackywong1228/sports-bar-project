@@ -62,16 +62,6 @@ const menuList = [
     ]
   },
   {
-    path: '/food',
-    title: '点餐管理',
-    icon: 'Food',
-    children: [
-      { path: '/food/category', title: '餐饮分类' },
-      { path: '/food/list', title: '餐饮商品' },
-      { path: '/food/order', title: '餐饮订单' }
-    ]
-  },
-  {
     path: '/coupon',
     title: '票券管理',
     icon: 'Ticket',
