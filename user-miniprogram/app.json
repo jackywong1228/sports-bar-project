@@ -80,14 +80,5 @@
     ]
   },
   "style": "v2",
-  "sitemapLocation": "sitemap.json",
-  "requiredPrivateInfos": [
-    "chooseLocation",
-    "getLocation"
-  ],
-  "permission": {
-    "scope.userLocation": {
-      "desc": "用于获取您的位置，提供附近场馆推荐服务"
-    }
-  }
+  "sitemapLocation": "sitemap.json"
 }
