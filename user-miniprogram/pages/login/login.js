@@ -12,13 +12,38 @@ Page({
     tempAvatar: '',
     tempNickname: '',
     isSaving: false,
-    showGuidePopup: false
+    showGuidePopup: false,
+    agreed: false
   },
 
   onLoad(options) {
     if (app.globalData.token) {
       wx.navigateBack()
     }
+  },
+
+  // 切换同意协议
+  toggleAgreed() {
+    this.setData({ agreed: !this.data.agreed })
+  },
+
+  // 查看用户协议
+  openUserAgreement() {
+    wx.navigateTo({ url: '/pages/agreement/agreement?type=user-agreement' })
+  },
+
+  // 查看隐私政策
+  openPrivacyPolicy() {
+    wx.navigateTo({ url: '/pages/agreement/agreement?type=privacy-policy' })
+  },
+
+  // 检查是否同意协议
+  checkAgreed() {
+    if (!this.data.agreed) {
+      wxApi.showToast('请先阅读并同意用户协议和隐私政策')
+      return false
+    }
+    return true
   },
 
   // 输入手机号
@@ -28,6 +53,8 @@ Page({
 
   // 手机号登录（开发测试用）
   async loginByPhone() {
+    if (!this.checkAgreed()) return
+
     if (!this.data.phone) {
       wxApi.showToast('请输入手机号')
       return
@@ -52,6 +79,8 @@ Page({
 
   // 微信一键登录
   async wxLogin() {
+    if (!this.checkAgreed()) return
+
     this.setData({ isLoading: true })
 
     try {
@@ -88,6 +117,8 @@ Page({
 
   // 获取手机号（新用户绑定手机号使用）
   async getPhoneNumber(e) {
+    if (!this.checkAgreed()) return
+
     if (!e.detail.code) {
       wxApi.showToast('获取手机号失败')
       return

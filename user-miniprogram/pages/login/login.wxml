@@ -57,11 +57,16 @@
       </button>
     </view>
 
-    <view class="footer">
-      <text class="tip">登录即表示同意</text>
-      <text class="link">《用户协议》</text>
-      <text class="tip">和</text>
-      <text class="link">《隐私政策》</text>
+    <view class="agreement-row" bindtap="toggleAgreed">
+      <view class="checkbox {{agreed ? 'checked' : ''}}">
+        <text wx:if="{{agreed}}" class="check-icon">✓</text>
+      </view>
+      <view class="agreement-text">
+        <text class="tip">我已阅读并同意</text>
+        <text class="link" catchtap="openUserAgreement">《用户协议》</text>
+        <text class="tip">和</text>
+        <text class="link" catchtap="openPrivacyPolicy">《隐私政策》</text>
+      </view>
     </view>
   </view>
 

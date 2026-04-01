@@ -38,7 +38,8 @@
     "pages/checkin-calendar/checkin-calendar",
     "pages/leaderboard/leaderboard",
     "pages/my-teams/my-teams",
-    "pages/feedback/feedback"
+    "pages/feedback/feedback",
+    "pages/agreement/agreement"
   ],
   "window": {
     "backgroundTextStyle": "dark",
