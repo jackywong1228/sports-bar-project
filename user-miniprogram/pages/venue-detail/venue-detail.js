@@ -80,8 +80,9 @@ Page({
   // 立即预约
   goToBooking() {
     if (!app.checkLogin()) return
+    const typeId = this.data.venue.type_id
     wx.navigateTo({
-      url: `/pages/venue-booking/venue-booking?id=${this.data.venueId}`
+      url: `/pages/venue-booking/venue-booking?type_id=${typeId}`
     })
   },
 

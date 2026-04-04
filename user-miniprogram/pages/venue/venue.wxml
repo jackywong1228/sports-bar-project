@@ -43,7 +43,7 @@
         </view>
       </view>
       <view class="venue-action">
-        <button class="btn-book" catchtap="goToBooking" data-id="{{item.id}}">立即预约</button>
+        <button class="btn-book" catchtap="goToBooking" data-id="{{item.id}}" data-type-id="{{item.type_id}}">立即预约</button>
       </view>
     </view>
   </view>

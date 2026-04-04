@@ -57,10 +57,20 @@ Page({
     this.setData({ calendarHeight })
 
     this.initDates()
-    // 先加载场馆类型，完成后再检查权限
-    this.loadVenueTypes(options.type_id).then(() => {
-      this.checkMemberPermission()
-    })
+
+    if (options.type_id) {
+      // 直接传入 type_id（正常路径）
+      this.loadVenueTypes(options.type_id).then(() => {
+        this.checkMemberPermission()
+      })
+    } else if (options.id) {
+      // 传入 venue_id（兼容旧路径）→ 先查场馆获取 type_id
+      this.loadVenueTypeFromVenueId(options.id)
+    } else {
+      this.loadVenueTypes().then(() => {
+        this.checkMemberPermission()
+      })
+    }
   },
 
   onShow() {
@@ -171,6 +181,20 @@ Page({
       dates,
       selectedDate: dates[0].date
     })
+  },
+
+  // 通过 venue_id 查询其 type_id（兼容旧路径）
+  async loadVenueTypeFromVenueId(venueId) {
+    try {
+      const res = await app.request({ url: `/member/venues/${venueId}` })
+      const typeId = res.data && res.data.type_id ? res.data.type_id : null
+      await this.loadVenueTypes(typeId)
+      this.checkMemberPermission()
+    } catch (err) {
+      console.error('查询场馆类型失败:', err)
+      await this.loadVenueTypes()
+      this.checkMemberPermission()
+    }
   },
 
   // 加载场馆类型

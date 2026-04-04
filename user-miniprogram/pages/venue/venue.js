@@ -133,9 +133,10 @@ Page({
   // 立即预约
   goToBooking(e) {
     const id = e.currentTarget.dataset.id
+    const typeId = e.currentTarget.dataset.typeId || this.data.currentType
     if (!app.checkLogin()) return
     wx.navigateTo({
-      url: `/pages/venue-booking/venue-booking?id=${id}`
+      url: `/pages/venue-booking/venue-booking?type_id=${typeId}`
     })
   }
 })

@@ -588,6 +588,7 @@ def get_venues(
         result.append({
             "id": v.id,
             "name": v.name,
+            "type_id": v.type_id,
             "image": first_image,
             "type_name": v.venue_type.name if v.venue_type else None,
             "location": v.location,
@@ -628,6 +629,7 @@ def get_venue_detail(venue_id: int, db: Session = Depends(get_db)):
     return ResponseModel(data={
         "id": venue.id,
         "name": venue.name,
+        "type_id": venue.type_id,
         "image": images_list[0] if images_list else None,
         "images": images_list,
         "type_name": venue.venue_type.name if venue.venue_type else None,
