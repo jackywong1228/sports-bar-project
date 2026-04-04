@@ -67,6 +67,7 @@ Page({
       const res = await app.request({ url })
       const orders = (res.data || []).map(item => ({
         ...item,
+        image: app.resolveImageUrl(item.image),
         statusInfo: util.getOrderStatus(item.status)
       }))
 

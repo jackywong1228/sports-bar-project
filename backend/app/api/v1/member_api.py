@@ -35,6 +35,15 @@ router = APIRouter()
 # 配置日志
 logger = logging.getLogger(__name__)
 
+
+def resolve_image_url(path: str) -> str:
+    """将 /uploads/xxx 相对路径转为完整URL（如已配置 STATIC_BASE_URL）"""
+    if not path:
+        return None
+    if path.startswith(('http://', 'https://')):
+        return path
+    return settings.STATIC_BASE_URL + path if settings.STATIC_BASE_URL else path
+
 # 三级会员制等级名映射（兼容旧数据库数据）
 LEVEL_CODE_NAME_MAP = {"S": "S级会员", "SS": "SS级会员", "SSS": "SSS级会员"}
 
@@ -589,7 +598,7 @@ def get_venues(
             "id": v.id,
             "name": v.name,
             "type_id": v.type_id,
-            "image": first_image,
+            "image": resolve_image_url(first_image),
             "type_name": v.venue_type.name if v.venue_type else None,
             "location": v.location,
             "price": float(v.price or 0),
@@ -626,12 +635,14 @@ def get_venue_detail(venue_id: int, db: Session = Depends(get_db)):
         except:
             pass
 
+    images_full = [resolve_image_url(img) for img in images_list]
+
     return ResponseModel(data={
         "id": venue.id,
         "name": venue.name,
         "type_id": venue.type_id,
-        "image": images_list[0] if images_list else None,
-        "images": images_list,
+        "image": images_full[0] if images_full else None,
+        "images": images_full,
         "type_name": venue.venue_type.name if venue.venue_type else None,
         "location": venue.location,
         "price": float(venue.price or 0),
@@ -1312,7 +1323,7 @@ def get_member_orders(
                 "type": "reservation",
                 "type_name": "场馆预约" if not r.coach_id else "教练预约",
                 "title": r.venue.name if r.venue else (r.coach.name if r.coach else "预约"),
-                "image": venue_image,
+                "image": resolve_image_url(venue_image),
                 "amount": float(r.total_price or 0),
                 "total_price": float(r.total_price or 0),
                 "status": r.status,
@@ -1405,7 +1416,7 @@ def get_member_order_detail(
             # 场馆信息
             "venue_name": r.venue.name if r.venue else None,
             "venue_location": r.venue.location if r.venue else None,
-            "venue_image": venue_image,
+            "venue_image": resolve_image_url(venue_image),
             # 时间信息
             "reservation_date": date_str,
             "start_time": start_str,
