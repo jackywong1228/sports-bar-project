@@ -31,6 +31,9 @@
 
       <div v-show="scanning" class="qr-reader-wrapper">
         <div id="qr-reader"></div>
+        <div v-if="scanDebug" style="margin-top: 8px; color: #67C23A; font-size: 13px; text-align: center;">
+          {{ scanDebug }}
+        </div>
       </div>
     </el-card>
 
@@ -71,7 +74,7 @@ import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue'
 import { verifyCoupon } from '@/api/coupon'
-import { Html5Qrcode } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 
 const couponInput = ref('')
 const loading = ref(false)
@@ -79,6 +82,7 @@ const result = ref<any>(null)
 const errorMsg = ref('')
 const inputRef = ref()
 const scanning = ref(false)
+const scanDebug = ref('')
 
 let html5Qrcode: Html5Qrcode | null = null
 
@@ -151,34 +155,35 @@ async function startScan() {
     scanning.value = true
     await nextTick()
 
-    // 2. 容器可见后再创建实例
-    html5Qrcode = new Html5Qrcode('qr-reader')
+    // 2. 容器可见后再创建实例（只检测 QR 码）
+    html5Qrcode = new Html5Qrcode('qr-reader', {
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      verbose: false,
+    })
+
+    let frameCount = 0
+    scanDebug.value = '摄像头已启动，请对准二维码...'
 
     await html5Qrcode.start(
       { facingMode: 'environment' },
-      {
-        fps: 15,
-        // 响应式扫码区域：取视频短边的 70%
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
-          const size = Math.floor(minEdge * 0.7)
-          return { width: size, height: size }
-        },
-        // 启用浏览器原生 BarcodeDetector（如支持）
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-      } as any,
+      { fps: 10 },
       (decodedText) => {
         // 扫码成功
+        scanDebug.value = '识别成功: ' + decodedText
         couponInput.value = decodedText
         stopScan()
         handleVerify()
       },
       () => {
-        // 扫码中，忽略未识别帧
+        frameCount++
+        if (frameCount % 30 === 0) {
+          scanDebug.value = `扫描中... 已分析 ${frameCount} 帧，未识别到二维码`
+        }
       }
     )
   } catch (err) {
     scanning.value = false
+    scanDebug.value = ''
     console.error('摄像头启动失败:', err)
     ElMessage.error('无法启动摄像头，请检查权限或使用 HTTPS 访问')
   }
