@@ -62,7 +62,7 @@ Page({
       })
 
       // Draw QR code after data is set
-      this.drawQR(String(id))
+      this.drawQR('COUPON_VERIFY:' + String(id))
     } catch (err) {
       console.error('加载优惠券详情失败:', err)
       this.setData({ loading: false, error: '加载失败，请重试' })

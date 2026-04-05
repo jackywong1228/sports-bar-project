@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional, List
@@ -456,3 +456,52 @@ def batch_issue_monthly_coupons(
         message=f"成功为 {issued_count} 位会员发放月度券",
         data={"issued_count": issued_count, "total_checked": len(ss_members)}
     )
+
+
+# ================== 扫码核销 ==================
+
+@router.post("/verify-coupon", response_model=ResponseModel)
+def verify_coupon(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """员工扫码核销优惠券（仅管理后台可用）"""
+    coupon_id = data.get("coupon_id")
+    if not coupon_id:
+        raise HTTPException(status_code=400, detail="缺少 coupon_id")
+
+    coupon = db.query(MemberCoupon).filter(MemberCoupon.id == coupon_id).first()
+    if not coupon:
+        raise HTTPException(status_code=404, detail="优惠券不存在")
+
+    if coupon.status == "used":
+        raise HTTPException(status_code=400, detail="该优惠券已核销")
+    if coupon.status == "expired":
+        raise HTTPException(status_code=400, detail="该优惠券已过期")
+    if coupon.status != "unused":
+        raise HTTPException(status_code=400, detail=f"券状态异常: {coupon.status}")
+
+    now = datetime.now()
+    if coupon.end_time and now > coupon.end_time:
+        coupon.status = "expired"
+        db.commit()
+        raise HTTPException(status_code=400, detail="该优惠券已过期")
+
+    coupon.status = "used"
+    coupon.use_time = now
+    coupon.order_type = "verify"
+    coupon.order_id = current_user.id
+    db.commit()
+
+    member = db.query(Member).filter(Member.id == coupon.member_id).first()
+
+    return ResponseModel(data={
+        "coupon_id": coupon.id,
+        "coupon_name": coupon.name,
+        "coupon_type": coupon.type,
+        "member_nickname": member.nickname if member else None,
+        "member_phone": member.phone if member else None,
+        "verified_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "verified_by": current_user.username
+    })

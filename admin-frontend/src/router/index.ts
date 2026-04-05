@@ -208,6 +208,12 @@ const routes: RouteRecordRaw[] = [
             name: 'CouponPack',
             component: () => import('@/views/coupon/Pack.vue'),
             meta: { title: '优惠券合集', icon: 'GiftBox' }
+          },
+          {
+            path: 'verify',
+            name: 'CouponVerify',
+            component: () => import('@/views/coupon/Verify.vue'),
+            meta: { title: '扫码核销' }
           }
         ]
       },

@@ -49,3 +49,8 @@ export function getMemberCoupons(params?: any) {
 export function getCouponStats(params?: any) {
   return request.get('/coupons/stats', { params })
 }
+
+// 扫码核销优惠券
+export function verifyCoupon(data: { coupon_id: number }) {
+  return request.post('/coupons/verify-coupon', data)
+}
