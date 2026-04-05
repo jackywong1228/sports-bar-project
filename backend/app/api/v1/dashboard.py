@@ -232,8 +232,8 @@ def get_recent_activities(
             "id": r.id,
             "member_name": member.nickname if member else "未知",
             "venue_name": venue.name if venue else "未知",
-            "date": r.date.strftime("%Y-%m-%d") if r.date else None,
-            "time_slot": r.time_slot,
+            "date": r.reservation_date.strftime("%Y-%m-%d") if r.reservation_date else None,
+            "time_slot": f"{r.start_time.strftime('%H:%M')}-{r.end_time.strftime('%H:%M')}" if r.start_time and r.end_time else None,
             "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None
         })
 
