@@ -73,7 +73,7 @@ const quickActions = [
 
 onMounted(async () => {
   try {
-    const res = await request.get('/api/v1/dashboard/stats')
+    const res = await request.get('/dashboard/stats')
     const data = res.data?.data || res.data
     if (data?.today) {
       todayReservations.value = data.today.reservations || 0
@@ -85,7 +85,7 @@ onMounted(async () => {
   } catch { /* ignore */ }
 
   try {
-    const res = await request.get('/api/v1/dashboard/overview-cards')
+    const res = await request.get('/dashboard/overview-cards')
     const cards = res.data?.data || res.data
     if (Array.isArray(cards)) {
       const checkinCard = cards.find((c: any) => c.key === 'today_checkins' || c.title?.includes('打卡'))
