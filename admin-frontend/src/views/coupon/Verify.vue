@@ -17,10 +17,20 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="loading" @click="handleVerify">核销</el-button>
+          <el-button
+            :type="scanning ? 'danger' : 'success'"
+            @click="scanning ? stopScan() : startScan()"
+          >
+            {{ scanning ? '停止扫码' : '扫一扫' }}
+          </el-button>
         </el-form-item>
       </el-form>
       <div style="color: #909399; font-size: 13px; margin-top: 8px;">
         提示：使用扫码枪扫描会员优惠券二维码，或手动输入券号后点击核销
+      </div>
+
+      <div v-show="scanning" class="qr-reader-wrapper">
+        <div id="qr-reader"></div>
       </div>
     </el-card>
 
@@ -57,16 +67,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue'
 import { verifyCoupon } from '@/api/coupon'
+import { Html5Qrcode } from 'html5-qrcode'
 
 const couponInput = ref('')
 const loading = ref(false)
 const result = ref<any>(null)
 const errorMsg = ref('')
 const inputRef = ref()
+const scanning = ref(false)
+
+let html5Qrcode: Html5Qrcode | null = null
 
 const typeMap: Record<string, string> = {
   cash: '代金券',
@@ -131,8 +145,63 @@ async function handleVerify() {
   }
 }
 
+async function startScan() {
+  try {
+    // 1. 先显示容器，确保 DOM 尺寸正确
+    scanning.value = true
+    await nextTick()
+
+    // 2. 容器可见后再创建实例
+    html5Qrcode = new Html5Qrcode('qr-reader')
+
+    await html5Qrcode.start(
+      { facingMode: 'environment' },
+      {
+        fps: 15,
+        // 响应式扫码区域：取视频短边的 70%
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
+          const size = Math.floor(minEdge * 0.7)
+          return { width: size, height: size }
+        },
+        // 启用浏览器原生 BarcodeDetector（如支持）
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+      } as any,
+      (decodedText) => {
+        // 扫码成功
+        couponInput.value = decodedText
+        stopScan()
+        handleVerify()
+      },
+      () => {
+        // 扫码中，忽略未识别帧
+      }
+    )
+  } catch (err) {
+    scanning.value = false
+    console.error('摄像头启动失败:', err)
+    ElMessage.error('无法启动摄像头，请检查权限或使用 HTTPS 访问')
+  }
+}
+
+async function stopScan() {
+  if (html5Qrcode) {
+    try {
+      await html5Qrcode.stop()
+    } catch {
+      // 忽略停止时的错误
+    }
+    html5Qrcode = null
+  }
+  scanning.value = false
+}
+
 onMounted(() => {
   inputRef.value?.focus()
+})
+
+onBeforeUnmount(() => {
+  stopScan()
 })
 </script>
 
@@ -145,5 +214,14 @@ onMounted(() => {
 }
 .result-card :deep(.el-descriptions) {
   margin-top: 0;
+}
+.qr-reader-wrapper {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+#qr-reader {
+  width: 100%;
+  max-width: 400px;
 }
 </style>
