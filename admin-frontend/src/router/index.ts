@@ -380,6 +380,19 @@ const routes: RouteRecordRaw[] = [
       }
     ]
   },
+  // 员工移动端工作台（独立布局，无侧边栏）
+  {
+    path: '/staff',
+    name: 'StaffWorkbench',
+    component: () => import('@/views/staff/Workbench.vue'),
+    meta: { title: '工作台' }
+  },
+  {
+    path: '/staff/scan',
+    name: 'StaffScan',
+    component: () => import('@/views/coupon/Verify.vue'),
+    meta: { title: '扫码核销' }
+  },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/dashboard'
