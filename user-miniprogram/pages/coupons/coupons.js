@@ -97,7 +97,12 @@ Page({
     const coupon = e.currentTarget.dataset.coupon
     if (coupon.displayStatus !== 'unused') return
 
-    // 跳转到预约场馆
-    wx.switchTab({ url: '/pages/venue/venue' })
+    if (coupon.type === 'gift') {
+      // 赠品券跳转核销页，展示二维码
+      wx.navigateTo({ url: '/pages/coupon-use/coupon-use?id=' + coupon.id })
+    } else {
+      // 场馆相关券跳转预约
+      wx.switchTab({ url: '/pages/venue/venue' })
+    }
   }
 })

@@ -1,0 +1,145 @@
+.container {
+  min-height: 100vh;
+  background: #f5f7f5;
+  padding: 40rpx 30rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card {
+  width: 100%;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 8rpx 32rpx rgba(26, 93, 58, 0.1);
+}
+
+/* Header */
+.coupon-header {
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  padding: 40rpx 40rpx 24rpx;
+  display: flex;
+  align-items: center;
+}
+
+.type-tag {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 22rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.coupon-name {
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: bold;
+}
+
+/* Value */
+.coupon-value {
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  padding: 0 40rpx 20rpx;
+  text-align: center;
+}
+
+.value-text {
+  font-size: 72rpx;
+  font-weight: bold;
+  color: #C9A962;
+}
+
+/* Meta */
+.coupon-meta {
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  padding: 0 40rpx 36rpx;
+  text-align: center;
+}
+
+.expire-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Divider with cutout circles */
+.divider {
+  position: relative;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+}
+
+.divider-circle {
+  width: 40rpx;
+  height: 40rpx;
+  background: #f5f7f5;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.left-circle {
+  left: -20rpx;
+}
+
+.right-circle {
+  right: -20rpx;
+}
+
+.divider-line {
+  flex: 1;
+  margin: 0 30rpx;
+  border-top: 2rpx dashed #e0e0e0;
+}
+
+/* QR Section */
+.qr-section {
+  padding: 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-canvas {
+  width: 400rpx;
+  height: 400rpx;
+}
+
+.qr-hint {
+  margin-top: 32rpx;
+  font-size: 28rpx;
+  color: #1A5D3A;
+  font-weight: 500;
+}
+
+.coupon-id {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #999;
+}
+
+/* Loading */
+.loading {
+  padding: 120rpx 0;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* Error */
+.error {
+  padding: 120rpx 40rpx;
+  text-align: center;
+}
+
+.error-text {
+  font-size: 28rpx;
+  color: #e74c3c;
+}

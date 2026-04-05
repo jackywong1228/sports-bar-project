@@ -1,0 +1,41 @@
+<view class="container">
+  <view class="card" wx:if="{{coupon}}">
+    <!-- 优惠券信息 -->
+    <view class="coupon-header">
+      <view class="type-tag">{{coupon.leftLabel}}</view>
+      <text class="coupon-name">{{coupon.name}}</text>
+    </view>
+
+    <view class="coupon-value">
+      <text class="value-text">{{coupon.leftValue}}</text>
+    </view>
+
+    <view class="coupon-meta">
+      <text class="expire-text">{{coupon.expireText}}</text>
+    </view>
+
+    <!-- 分割线 -->
+    <view class="divider">
+      <view class="divider-circle left-circle"></view>
+      <view class="divider-line"></view>
+      <view class="divider-circle right-circle"></view>
+    </view>
+
+    <!-- 二维码区域 -->
+    <view class="qr-section">
+      <canvas type="2d" id="qrCanvas" class="qr-canvas"></canvas>
+      <text class="qr-hint">请出示给工作人员扫码核销</text>
+      <text class="coupon-id">券号: {{coupon.id}}</text>
+    </view>
+  </view>
+
+  <!-- 加载态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 错误态 -->
+  <view class="error" wx:if="{{error}}">
+    <text class="error-text">{{error}}</text>
+  </view>
+</view>

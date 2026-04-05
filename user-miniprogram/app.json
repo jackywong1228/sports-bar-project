@@ -23,6 +23,7 @@
     "pages/invite/invite",
     "pages/invite/accept",
     "pages/coupons/coupons",
+    "pages/coupon-use/coupon-use",
     "pages/settings/settings",
     "pages/coach-home/coach-home",
     "pages/coach-login/coach-login",
