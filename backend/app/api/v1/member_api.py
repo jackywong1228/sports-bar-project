@@ -1276,7 +1276,7 @@ def get_member_reservations(
 @router.get("/orders", response_model=ResponseModel)
 def get_member_orders(
     status: Optional[str] = None,
-    type: Optional[str] = None,  # reservation, all
+    type: Optional[str] = None,  # reservation, all, venue, coach
     page: int = 1,
     limit: int = 10,
     current_member: Member = Depends(get_current_member),
@@ -1289,7 +1289,7 @@ def get_member_orders(
     all_orders = []
 
     # 获取预约订单
-    if type in (None, "all", "reservation"):
+    if type in (None, "all", "reservation", "venue", "coach"):
         res_query = db.query(Reservation).filter(
             Reservation.member_id == current_member.id,
             Reservation.is_deleted == False
@@ -1300,6 +1300,12 @@ def get_member_orders(
                 res_query = res_query.filter(Reservation.status.in_(["pending", "confirmed"]))
             else:
                 res_query = res_query.filter(Reservation.status == status)
+
+        # 按 coach_id 区分场馆预约和教练预约
+        if type == "venue":
+            res_query = res_query.filter(Reservation.coach_id == None)
+        elif type == "coach":
+            res_query = res_query.filter(Reservation.coach_id != None)
 
         reservations = res_query.all()
         for r in reservations:

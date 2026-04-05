@@ -19,8 +19,8 @@ Page({
       month_points: 0
     },
     menus: [
-      { icon: '/assets/icons/order.png', text: '我的订单', url: '/pages/orders/orders' },
-      { icon: '/assets/icons/reservation.png', text: '我的预约', url: '/pages/orders/orders?type=reservation' },
+      { icon: '/assets/icons/order.png', text: '我的订单', url: '/pages/orders/orders?type=venue' },
+      { icon: '/assets/icons/reservation.png', text: '我的预约', url: '/pages/orders/orders?type=coach' },
       { icon: '/assets/icons/coupon.png', text: '我的优惠券', url: '/pages/coupons/coupons' },
       { icon: '/assets/icons/team-entry.png', text: '我的组队', url: '/pages/my-teams/my-teams' },
       { icon: '/assets/icons/member-card.png', text: '会员中心', url: '/pages/member/member' }
