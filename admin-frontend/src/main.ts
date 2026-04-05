@@ -9,6 +9,8 @@ import router from './router'
 import { createPinia } from 'pinia'
 
 import './style.css'
+import './styles/variables.css'
+import './styles/responsive.css'
 
 const app = createApp(App)
 

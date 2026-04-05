@@ -1,0 +1,42 @@
+/* ========================================
+   CSS 变量系统 - iPad PWA 统一适配
+   断点: tablet < 1200px
+   ======================================== */
+
+:root {
+  /* 触控标准 */
+  --touch-target-min: 44px;
+
+  /* 间距 */
+  --content-padding: 20px;
+  --card-gap: 16px;
+
+  /* 字号 */
+  --font-size-base: 14px;
+  --font-size-sm: 12px;
+  --font-size-lg: 16px;
+
+  /* 表格 */
+  --table-row-height: 48px;
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* 侧边栏 */
+  --sidebar-bg: #304156;
+  --sidebar-dark-bg: #263445;
+  --sidebar-text: #bfcbd9;
+  --sidebar-active: #409eff;
+}
+
+/* iPad 覆盖 */
+@media (max-width: 1199px) {
+  :root {
+    --content-padding: 12px;
+    --font-size-base: 15px;
+    --table-row-height: 52px;
+    --card-gap: 12px;
+  }
+}

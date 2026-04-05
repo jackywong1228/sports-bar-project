@@ -129,7 +129,7 @@ onMounted(() => {
       </template>
 
       <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="reservation_no" label="预约编号" width="200" />
+        <el-table-column prop="reservation_no" label="预约编号" width="200" class-name="col-secondary" />
         <el-table-column prop="member_name" label="会员" width="100" />
         <el-table-column prop="member_phone" label="联系电话" width="120" />
         <el-table-column prop="venue_name" label="场地" width="120" />
@@ -148,12 +148,12 @@ onMounted(() => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="type" label="类型" width="100">
+        <el-table-column prop="type" label="类型" width="100" class-name="col-secondary">
           <template #default="{ row }">
             {{ row.type === 'normal' ? '普通' : '活动' }}
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="180" />
+        <el-table-column prop="created_at" label="创建时间" width="180" class-name="col-secondary" />
         <el-table-column label="操作" fixed="right" width="150">
           <template #default="{ row }">
             <el-button

@@ -136,7 +136,7 @@ onUnmounted(() => {
 
     <!-- 今日数据 -->
     <el-row :gutter="16" class="stat-row">
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card shadow="hover" class="stat-card primary">
           <div class="stat-content">
             <div class="stat-icon"><el-icon><User /></el-icon></div>
@@ -150,7 +150,7 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card shadow="hover" class="stat-card success">
           <div class="stat-content">
             <div class="stat-icon"><el-icon><Calendar /></el-icon></div>
@@ -164,7 +164,7 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card shadow="hover" class="stat-card warning">
           <div class="stat-content">
             <div class="stat-icon"><el-icon><Wallet /></el-icon></div>
@@ -182,7 +182,7 @@ onUnmounted(() => {
 
     <!-- 待处理事项 -->
     <el-row :gutter="16" class="todo-row">
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card shadow="hover" class="todo-card">
           <div class="todo-content">
             <span class="todo-value">{{ overviewCards.pending_reservations }}</span>
@@ -190,7 +190,7 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card shadow="hover" class="todo-card">
           <div class="todo-content">
             <span class="todo-value">{{ overviewCards.pending_coach_apps }}</span>
@@ -198,7 +198,7 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card shadow="hover" class="todo-card">
           <div class="todo-content">
             <span class="todo-value">{{ overviewCards.today_activities }}</span>
@@ -216,7 +216,7 @@ onUnmounted(() => {
 
     <!-- 排行榜和最近动态 -->
     <el-row :gutter="16">
-      <el-col :span="8">
+      <el-col :span="8" :xs="24" :sm="12">
         <el-card>
           <template #header>热门场地 Top5</template>
           <div v-if="rankings.venues.length === 0" class="empty-tip">暂无数据</div>
@@ -229,7 +229,7 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="8" :xs="24" :sm="12">
         <el-card>
           <template #header>热门教练 Top5</template>
           <div v-if="rankings.coaches.length === 0" class="empty-tip">暂无数据</div>
@@ -242,7 +242,7 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="8" :xs="24" :sm="24">
         <el-card>
           <template #header>活跃会员 Top5</template>
           <div v-if="rankings.members.length === 0" class="empty-tip">暂无数据</div>
@@ -259,7 +259,7 @@ onUnmounted(() => {
 
     <!-- 最近动态 -->
     <el-row :gutter="16" style="margin-top: 16px;">
-      <el-col :span="8">
+      <el-col :span="8" :xs="24" :sm="12">
         <el-card>
           <template #header>最近预约</template>
           <div v-if="recentData.reservations.length === 0" class="empty-tip">暂无数据</div>
@@ -274,7 +274,7 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="8" :xs="24" :sm="12">
         <el-card>
           <template #header>最近充值</template>
           <div v-if="recentData.recharges.length === 0" class="empty-tip">暂无数据</div>
@@ -289,7 +289,7 @@ onUnmounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="8" :xs="24" :sm="24">
         <el-card>
           <template #header>进行中活动</template>
           <div v-if="recentData.activities.length === 0" class="empty-tip">暂无数据</div>
@@ -309,7 +309,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.dashboard { padding: 20px; }
+.dashboard { padding: 0; }
 
 .welcome-bar {
   display: flex;

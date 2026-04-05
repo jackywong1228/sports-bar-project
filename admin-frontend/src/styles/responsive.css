@@ -1,0 +1,197 @@
+/* ========================================
+   Element Plus 全局触屏覆盖
+   全部包在 @media (max-width: 1199px) 中
+   确保 PC 端完全不受影响
+   ======================================== */
+
+/* ---- iPad 适配 (< 1200px) ---- */
+@media (max-width: 1199px) {
+
+  /* -- 按钮 -- */
+  .el-button {
+    min-height: var(--touch-target-min);
+    padding: 10px 20px;
+    font-size: var(--font-size-base);
+  }
+
+  .el-button--small {
+    min-height: 36px;
+    padding: 8px 14px;
+  }
+
+  /* -- 输入框 (16px 防 iOS 放大) -- */
+  .el-input__inner,
+  .el-textarea__inner,
+  .el-select .el-input__inner {
+    font-size: 16px !important;
+    min-height: 40px;
+  }
+
+  .el-input__wrapper {
+    min-height: 40px;
+  }
+
+  /* -- 表格 -- */
+  .el-table th.el-table__cell,
+  .el-table td.el-table__cell {
+    padding: 10px 8px;
+    font-size: var(--font-size-base);
+  }
+
+  .el-table .cell {
+    line-height: 1.4;
+  }
+
+  /* 表格内操作按钮加大触控区 */
+  .el-table .el-button--small,
+  .el-table .el-button--text {
+    min-height: 36px;
+    padding: 6px 12px;
+  }
+
+  /* 次要列隐藏 */
+  .el-table .col-secondary {
+    display: none;
+  }
+
+  /* -- 分页 -- */
+  .el-pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .el-pagination .el-pagination__sizes {
+    display: none;
+  }
+
+  .el-pagination button,
+  .el-pagination .el-pager li {
+    min-width: 36px;
+    min-height: 36px;
+    font-size: var(--font-size-base);
+  }
+
+  /* -- 弹窗 -- */
+  .el-dialog {
+    width: 92vw !important;
+    max-width: 92vw !important;
+    max-height: 85vh;
+    margin-top: 5vh !important;
+  }
+
+  .el-dialog__body {
+    max-height: 65vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .el-dialog__footer {
+    padding: 12px 20px;
+  }
+
+  .el-dialog__footer .el-button {
+    min-height: var(--touch-target-min);
+  }
+
+  /* -- 下拉菜单 -- */
+  .el-dropdown-menu__item {
+    min-height: var(--touch-target-min);
+    line-height: var(--touch-target-min);
+    font-size: 15px;
+    padding: 0 20px;
+  }
+
+  /* -- 下拉选择 -- */
+  .el-select-dropdown__item {
+    min-height: 40px;
+    line-height: 40px;
+    font-size: 15px;
+    padding: 0 16px;
+  }
+
+  /* -- 卡片 -- */
+  .el-card__body {
+    padding: var(--content-padding);
+  }
+
+  /* -- 表单 -- */
+  .el-form-item__label {
+    font-size: var(--font-size-base);
+  }
+
+  .el-form-item {
+    margin-bottom: 16px;
+  }
+
+  /* -- 标签页 -- */
+  .el-tabs__item {
+    min-height: var(--touch-target-min);
+    font-size: var(--font-size-base);
+    padding: 0 16px;
+  }
+
+  /* -- 消息框 -- */
+  .el-message-box {
+    width: 85vw !important;
+    max-width: 420px;
+  }
+
+  /* -- 日期选择器 -- */
+  .el-date-editor {
+    width: 100% !important;
+  }
+
+  /* -- 布局间距 -- */
+  .el-main {
+    padding: var(--content-padding) !important;
+  }
+}
+
+/* ---- 触屏设备通用 (消除 hover 残留) ---- */
+@media (hover: none) {
+  /* 禁用 hover 粘滞效果 */
+  .el-button:hover {
+    color: inherit;
+    border-color: inherit;
+    background-color: inherit;
+  }
+
+  .el-button--primary:hover {
+    color: #fff;
+    border-color: var(--el-color-primary);
+    background-color: var(--el-color-primary);
+  }
+
+  .el-button--danger:hover {
+    color: #fff;
+    border-color: var(--el-color-danger);
+    background-color: var(--el-color-danger);
+  }
+
+  /* 禁止不必要的文字选中 */
+  .el-menu,
+  .el-table,
+  .el-button,
+  .el-pagination {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 优化触控响应 */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+/* ---- iOS safe area 适配 ---- */
+@supports (padding: env(safe-area-inset-top)) {
+  .layout-header {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .layout-main {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

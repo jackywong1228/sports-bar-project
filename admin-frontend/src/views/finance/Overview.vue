@@ -2,26 +2,26 @@
   <div class="page-container">
     <!-- 数据卡片 -->
     <el-row :gutter="16" class="stat-cards">
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card class="stat-card">
           <div class="stat-title">今日充值</div>
           <div class="stat-value">{{ overview.today_recharge?.toFixed(2) || '0.00' }} <span class="unit">元</span></div>
           <div class="stat-desc">{{ overview.today_recharge_count || 0 }} 笔</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card class="stat-card">
           <div class="stat-title">本月充值</div>
           <div class="stat-value">{{ overview.month_recharge?.toFixed(2) || '0.00' }} <span class="unit">元</span></div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card class="stat-card">
           <div class="stat-title">今日消费</div>
           <div class="stat-value">{{ overview.today_consume?.toFixed(2) || '0.00' }} <span class="unit">金币</span></div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card class="stat-card">
           <div class="stat-title">本月消费</div>
           <div class="stat-value">{{ overview.month_consume?.toFixed(2) || '0.00' }} <span class="unit">金币</span></div>
@@ -30,19 +30,19 @@
     </el-row>
 
     <el-row :gutter="16" class="stat-cards">
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card class="stat-card warning">
           <div class="stat-title">待结算（教练）</div>
           <div class="stat-value">{{ overview.pending_settlement?.toFixed(2) || '0.00' }} <span class="unit">元</span></div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card class="stat-card success">
           <div class="stat-title">总会员数</div>
           <div class="stat-value">{{ overview.total_members || 0 }} <span class="unit">人</span></div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="6" :xs="12" :sm="8">
         <el-card class="stat-card info">
           <div class="stat-title">今日新增会员</div>
           <div class="stat-value">{{ overview.today_new_members || 0 }} <span class="unit">人</span></div>
@@ -67,13 +67,13 @@
 
     <!-- 消费分布 -->
     <el-row :gutter="16">
-      <el-col :span="12">
+      <el-col :span="12" :xs="24">
         <el-card>
           <template #header>消费类型分布</template>
           <div ref="pieChartRef" style="height: 300px;"></div>
         </el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :span="12" :xs="24">
         <el-card>
           <template #header>消费统计</template>
           <el-table :data="consumeStats" stripe>
@@ -190,7 +190,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.page-container { padding: 20px; }
+.page-container { padding: 0; }
 .stat-cards { margin-bottom: 16px; }
 .stat-card { text-align: center; }
 .stat-card .stat-title { color: #666; font-size: 14px; margin-bottom: 8px; }

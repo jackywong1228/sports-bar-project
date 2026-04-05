@@ -32,19 +32,19 @@
 
     <!-- 统计卡片 -->
     <el-row :gutter="16" class="stat-row">
-      <el-col :span="8">
+      <el-col :span="8" :xs="12" :sm="8">
         <el-card class="stat-mini">
           <div class="label">充值总金额</div>
           <div class="value">{{ stats.total_amount?.toFixed(2) || '0.00' }} 元</div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="8" :xs="12" :sm="8">
         <el-card class="stat-mini">
           <div class="label">发放金币总数</div>
           <div class="value">{{ stats.total_coins || 0 }}</div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="8" :xs="12" :sm="8">
         <el-card class="stat-mini">
           <div class="label">充值笔数</div>
           <div class="value">{{ stats.total_count || 0 }} 笔</div>

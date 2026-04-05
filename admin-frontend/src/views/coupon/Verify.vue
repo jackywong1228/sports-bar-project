@@ -11,7 +11,7 @@
             v-model="couponInput"
             placeholder="扫码或输入券号（如 COUPON_VERIFY:42 或 42）"
             clearable
-            style="width: 400px"
+            style="width: 400px; max-width: 90vw;"
             @keyup.enter="handleVerify"
           />
         </el-form-item>
@@ -131,15 +131,11 @@ async function handleVerify() {
 
   try {
     const res = await verifyCoupon({ coupon_id: couponId })
-    if (res.data?.code === 200 || res.data?.code === 0) {
-      result.value = res.data.data
-      ElMessage.success('核销成功')
-      couponInput.value = ''
-    } else {
-      errorMsg.value = res.data?.message || '核销失败'
-    }
+    result.value = res.data
+    ElMessage.success('核销成功')
+    couponInput.value = ''
   } catch (err: any) {
-    const detail = err.response?.data?.detail || err.response?.data?.message || '核销失败'
+    const detail = err.response?.data?.detail || err.message || '核销失败'
     errorMsg.value = detail
   } finally {
     loading.value = false

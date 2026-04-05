@@ -202,13 +202,13 @@ onMounted(() => {
         <el-table-column prop="nickname" label="昵称" width="120" />
         <el-table-column prop="phone" label="手机号" width="130" />
         <el-table-column prop="real_name" label="真实姓名" width="100" />
-        <el-table-column label="性别" width="60">
+        <el-table-column label="性别" width="60" class-name="col-secondary">
           <template #default="{ row }">{{ genderText(row.gender) }}</template>
         </el-table-column>
         <el-table-column prop="level_name" label="会员等级" width="100" />
         <el-table-column prop="coin_balance" label="金币余额" width="100" />
         <el-table-column prop="point_balance" label="积分余额" width="100" />
-        <el-table-column prop="tag_names" label="标签" width="150">
+        <el-table-column prop="tag_names" label="标签" width="150" class-name="col-secondary">
           <template #default="{ row }">
             <el-tag v-for="name in row.tag_names" :key="name" size="small" style="margin-right: 4px;">
               {{ name }}
@@ -222,7 +222,7 @@ onMounted(() => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="注册时间" width="180" />
+        <el-table-column prop="created_at" label="注册时间" width="180" class-name="col-secondary" />
         <el-table-column label="操作" fixed="right" width="280">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>

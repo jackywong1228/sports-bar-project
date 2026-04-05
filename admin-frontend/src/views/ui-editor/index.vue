@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useDevice } from '@/composables/useDevice'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
 void draggable // available for future use
@@ -26,6 +27,9 @@ import {
 void _getPageDetail
 void _updatePage
 import type { UIPageConfig, UIBlockConfig, UIMenuItem } from './types'
+
+const { isTablet } = useDevice()
+const editorTab = ref('config')
 
 // 数据状态
 const loading = ref(false)
@@ -326,8 +330,8 @@ onMounted(() => {
     </div>
 
     <!-- 主编辑区 -->
-    <div class="editor-main">
-      <!-- 左侧配置面板 -->
+    <!-- PC: 双栏布局 -->
+    <div v-if="!isTablet" class="editor-main">
       <div class="config-panel">
         <ConfigPanel
           :current-page="currentPage"
@@ -347,8 +351,6 @@ onMounted(() => {
           @toggle-menu-visible="toggleMenuItemVisible"
         />
       </div>
-
-      <!-- 右侧手机预览 -->
       <div class="preview-panel">
         <PhonePreview
           :blocks="currentBlocks"
@@ -356,6 +358,42 @@ onMounted(() => {
           :tab-bar-items="tabBarItems"
         />
       </div>
+    </div>
+
+    <!-- iPad: Tab 切换布局 -->
+    <div v-else class="editor-main-tablet">
+      <el-tabs v-model="editorTab" class="editor-tabs">
+        <el-tab-pane label="配置面板" name="config">
+          <div class="tablet-config-panel">
+            <ConfigPanel
+              :current-page="currentPage"
+              :blocks="currentBlocks"
+              :quick-entries="currentQuickEntries"
+              :tab-bar-items="tabBarItems"
+              @toggle-block="toggleBlockVisible"
+              @blocks-order-change="onBlocksOrderChange"
+              @add-quick-entry="handleAddQuickEntry"
+              @edit-quick-entry="handleEditQuickEntry"
+              @delete-quick-entry="handleDeleteQuickEntry"
+              @quick-entries-order-change="onQuickEntriesOrderChange"
+              @add-tabbar="handleAddTabBar"
+              @edit-tabbar="handleEditTabBar"
+              @delete-tabbar="handleDeleteTabBar"
+              @tabbar-order-change="onTabBarOrderChange"
+              @toggle-menu-visible="toggleMenuItemVisible"
+            />
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="手机预览" name="preview">
+          <div class="tablet-preview-panel">
+            <PhonePreview
+              :blocks="currentBlocks"
+              :quick-entries="currentQuickEntries"
+              :tab-bar-items="tabBarItems"
+            />
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
 
     <!-- 菜单项编辑弹窗 -->
@@ -448,5 +486,59 @@ onMounted(() => {
   justify-content: center;
   align-items: flex-start;
   padding-top: 20px;
+}
+
+/* iPad Tab 切换布局 */
+.editor-main-tablet {
+  flex: 1;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.editor-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tablet-config-panel {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.tablet-preview-panel {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+}
+
+@media (max-width: 1199px) {
+  .editor-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .toolbar-left {
+    width: 100%;
+  }
+
+  .toolbar-left .el-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .toolbar-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>

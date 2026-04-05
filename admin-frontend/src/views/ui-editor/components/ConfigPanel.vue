@@ -86,6 +86,8 @@ const getBlockTypeName = (type: string) => {
           v-model="localBlocks"
           item-key="id"
           handle=".drag-handle"
+          :delay="100"
+          :touchStartThreshold="5"
           @end="emit('blocks-order-change')"
           class="block-list"
         >
@@ -120,6 +122,8 @@ const getBlockTypeName = (type: string) => {
           v-model="localQuickEntries"
           item-key="id"
           handle=".drag-handle"
+          :delay="100"
+          :touchStartThreshold="5"
           @end="emit('quick-entries-order-change')"
           class="menu-list"
         >
@@ -167,6 +171,8 @@ const getBlockTypeName = (type: string) => {
           v-model="localTabBarItems"
           item-key="id"
           handle=".drag-handle"
+          :delay="100"
+          :touchStartThreshold="5"
           @end="emit('tabbar-order-change')"
           class="menu-list"
         >
@@ -283,6 +289,13 @@ const getBlockTypeName = (type: string) => {
   cursor: move;
   color: #909399;
   margin-right: 10px;
+  font-size: 18px;
+  padding: 4px;
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .block-info {

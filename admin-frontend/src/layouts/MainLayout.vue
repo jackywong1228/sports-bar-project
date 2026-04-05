@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useDevice } from '@/composables/useDevice'
 import { ElMessageBox } from 'element-plus'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
+const { isTablet } = useDevice()
 
 const isCollapse = ref(false)
+const drawerVisible = ref(false)
+
+// iPad 抽屉菜单：展开的子菜单索引
+const expandedMenu = ref<string | null>(null)
 
 const menuList = [
   {
@@ -127,6 +134,45 @@ const menuList = [
 
 const activeMenu = computed(() => route.path)
 
+// 面包屑
+const breadcrumbs = computed(() => {
+  const crumbs: { title: string; path?: string }[] = []
+  for (const item of menuList) {
+    if (item.children) {
+      const child = item.children.find(c => route.path.startsWith(c.path))
+      if (child) {
+        crumbs.push({ title: item.title })
+        crumbs.push({ title: child.title })
+        return crumbs
+      }
+    } else if (route.path === item.path) {
+      crumbs.push({ title: item.title })
+      return crumbs
+    }
+  }
+  return crumbs
+})
+
+// 抽屉菜单方法
+function toggleSubmenu(path: string) {
+  expandedMenu.value = expandedMenu.value === path ? null : path
+}
+
+function navigateTo(path: string) {
+  router.push(path)
+  drawerVisible.value = false
+}
+
+function isChildActive(item: { path: string; children?: { path: string }[] }): boolean {
+  if (!item.children) return route.path === item.path
+  return item.children.some(c => route.path.startsWith(c.path))
+}
+
+// 切换到 PC 模式时关闭抽屉
+watch(isTablet, (val) => {
+  if (!val) drawerVisible.value = false
+})
+
 const handleLogout = async () => {
   try {
     await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
@@ -142,9 +188,9 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <el-container class="layout-container">
-    <!-- 侧边栏 -->
-    <el-aside :width="isCollapse ? '64px' : '220px'" class="layout-aside">
+  <div class="layout" :class="{ 'is-tablet': isTablet }">
+    <!-- ====== PC: 固定侧边栏（原有代码完全保留） ====== -->
+    <el-aside v-if="!isTablet" :width="isCollapse ? '64px' : '220px'" class="layout-aside">
       <div class="logo">
         <span v-if="!isCollapse">场馆管理系统</span>
         <span v-else>场</span>
@@ -157,7 +203,6 @@ const handleLogout = async () => {
         class="layout-menu"
       >
         <template v-for="item in menuList" :key="item.path">
-          <!-- 有子菜单 -->
           <el-sub-menu v-if="item.children" :index="item.path">
             <template #title>
               <el-icon><component :is="item.icon" /></el-icon>
@@ -171,7 +216,6 @@ const handleLogout = async () => {
               {{ child.title }}
             </el-menu-item>
           </el-sub-menu>
-          <!-- 无子菜单 -->
           <el-menu-item v-else :index="item.path">
             <el-icon><component :is="item.icon" /></el-icon>
             <span>{{ item.title }}</span>
@@ -180,17 +224,88 @@ const handleLogout = async () => {
       </el-menu>
     </el-aside>
 
-    <el-container>
+    <!-- ====== iPad: 抽屉导航 ====== -->
+    <el-drawer
+      v-if="isTablet"
+      v-model="drawerVisible"
+      direction="ltr"
+      :size="280"
+      :show-close="false"
+      :with-header="false"
+      class="drawer-nav"
+    >
+      <div class="drawer-logo">
+        <span>场馆管理系统</span>
+      </div>
+      <nav class="drawer-menu">
+        <template v-for="item in menuList" :key="item.path">
+          <!-- 有子菜单 -->
+          <template v-if="item.children">
+            <div
+              class="drawer-menu-item drawer-menu-parent"
+              :class="{ active: isChildActive(item) }"
+              @click="toggleSubmenu(item.path)"
+            >
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.title }}</span>
+              <el-icon class="arrow" :class="{ expanded: expandedMenu === item.path }">
+                <ArrowDown />
+              </el-icon>
+            </div>
+            <div class="drawer-submenu" :class="{ open: expandedMenu === item.path }">
+              <div
+                v-for="child in item.children"
+                :key="child.path"
+                class="drawer-menu-item drawer-menu-child"
+                :class="{ active: route.path.startsWith(child.path) }"
+                @click="navigateTo(child.path)"
+              >
+                <span>{{ child.title }}</span>
+              </div>
+            </div>
+          </template>
+          <!-- 无子菜单 -->
+          <div
+            v-else
+            class="drawer-menu-item"
+            :class="{ active: route.path === item.path }"
+            @click="navigateTo(item.path)"
+          >
+            <el-icon><component :is="item.icon" /></el-icon>
+            <span>{{ item.title }}</span>
+          </div>
+        </template>
+      </nav>
+    </el-drawer>
+
+    <!-- ====== 主区域 ====== -->
+    <div class="layout-main-wrapper">
       <!-- 头部 -->
-      <el-header class="layout-header">
+      <header class="layout-header">
         <div class="header-left">
+          <!-- iPad: 汉堡按钮 -->
           <el-icon
+            v-if="isTablet"
+            class="hamburger-btn"
+            @click="drawerVisible = true"
+          >
+            <Operation />
+          </el-icon>
+          <!-- PC: 折叠按钮 -->
+          <el-icon
+            v-else
             class="collapse-btn"
             @click="isCollapse = !isCollapse"
           >
             <Fold v-if="!isCollapse" />
             <Expand v-else />
           </el-icon>
+          <!-- iPad: 面包屑 -->
+          <el-breadcrumb v-if="isTablet && breadcrumbs.length" separator="/" class="header-breadcrumb">
+            <el-breadcrumb-item v-for="(crumb, i) in breadcrumbs" :key="i">
+              {{ crumb.title }}
+            </el-breadcrumb-item>
+          </el-breadcrumb>
         </div>
         <div class="header-right">
           <el-dropdown>
@@ -208,26 +323,39 @@ const handleLogout = async () => {
             </template>
           </el-dropdown>
         </div>
-      </el-header>
+      </header>
 
       <!-- 主内容区 -->
-      <el-main class="layout-main">
+      <main class="layout-content">
         <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+      </main>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.layout-container {
+/* ====== 通用布局 ====== */
+.layout {
+  display: flex;
   height: 100vh;
+  height: 100dvh;
 }
 
+.layout-main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ====== PC 侧边栏（保持原有样式） ====== */
 .layout-aside {
   background-color: #304156;
   transition: width 0.3s;
   overflow-y: auto;
   overflow-x: hidden;
+  flex-shrink: 0;
 }
 
 .layout-aside::-webkit-scrollbar {
@@ -282,6 +410,7 @@ const handleLogout = async () => {
   background-color: #263445;
 }
 
+/* ====== 头部 ====== */
 .layout-header {
   display: flex;
   align-items: center;
@@ -289,11 +418,40 @@ const handleLogout = async () => {
   background-color: #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   padding: 0 20px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .collapse-btn {
   font-size: 20px;
   cursor: pointer;
+}
+
+.hamburger-btn {
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.hamburger-btn:active {
+  background-color: #f0f2f5;
+}
+
+.header-breadcrumb {
+  font-size: 14px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
 }
 
 .user-info {
@@ -307,8 +465,100 @@ const handleLogout = async () => {
   font-size: 14px;
 }
 
-.layout-main {
+/* ====== 主内容区 ====== */
+.layout-content {
+  flex: 1;
   background-color: #f0f2f5;
-  padding: 20px;
+  padding: var(--content-padding, 20px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ====== iPad 抽屉导航 ====== */
+.drawer-logo {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  background-color: #263445;
+}
+
+.drawer-menu {
+  padding: 8px 0;
+}
+
+.drawer-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 20px;
+  color: #bfcbd9;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.drawer-menu-item:active {
+  background-color: #263445;
+}
+
+.drawer-menu-item.active {
+  color: #409eff;
+  background-color: #263445;
+}
+
+.drawer-menu-parent {
+  justify-content: flex-start;
+}
+
+.drawer-menu-parent .arrow {
+  margin-left: auto;
+  font-size: 12px;
+  transition: transform 0.3s;
+}
+
+.drawer-menu-parent .arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.drawer-submenu {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background-color: #263445;
+}
+
+.drawer-submenu.open {
+  max-height: 300px;
+}
+
+.drawer-menu-child {
+  padding-left: 52px;
+  height: 44px;
+  font-size: 14px;
+}
+
+/* ====== iPad 头部调整 ====== */
+.is-tablet .layout-header {
+  height: 50px;
+  padding: 0 12px;
+}
+
+.is-tablet .user-name {
+  display: none;
+}
+</style>
+
+<!-- 抽屉全局样式（必须 unscoped） -->
+<style>
+.drawer-nav .el-drawer__body {
+  padding: 0;
+  background-color: #304156;
 }
 </style>

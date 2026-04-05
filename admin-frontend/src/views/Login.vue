@@ -80,6 +80,7 @@ const handleLogin = async () => {
 <style scoped>
 .login-container {
   height: 100vh;
+  height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -87,7 +88,8 @@ const handleLogin = async () => {
 }
 
 .login-box {
-  width: 400px;
+  max-width: 400px;
+  width: 90vw;
   padding: 40px;
   background: #fff;
   border-radius: 8px;

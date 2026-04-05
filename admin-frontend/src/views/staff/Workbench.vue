@@ -183,4 +183,11 @@ onMounted(async () => {
   font-size: 13px;
   color: #333;
 }
+
+/* 横屏 iPad 4列网格 */
+@media (min-width: 768px) and (orientation: landscape) {
+  .quick-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
 </style>
