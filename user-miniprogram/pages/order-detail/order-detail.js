@@ -55,29 +55,56 @@ Page({
     }
   },
 
-  // 取消订单
+  // 取消预约（原因选择 + 二次确认）
   cancelOrder() {
-    wx.showModal({
-      title: '确认取消',
-      content: '确定要取消此订单吗？',
-      success: async (res) => {
-        if (res.confirm) {
-          wx.showLoading({ title: '取消中...' })
-          try {
-            await app.request({
-              url: `/member/reservations/${this.data.id}/cancel`,
-              method: 'POST'
-            })
-            wx.hideLoading()
-            wx.showToast({ title: '已取消', icon: 'success' })
-            this.loadDetail()
-          } catch (err) {
-            wx.hideLoading()
-            wx.showToast({ title: '取消失败', icon: 'none' })
+    const reasons = ['临时有事', '时间冲突', '场地不合适', '误操作', '其他原因']
+    wx.showActionSheet({
+      itemList: reasons,
+      success: (sheetRes) => {
+        const reason = reasons[sheetRes.tapIndex]
+        const tipLine = this._buildRefundTipText()
+        wx.showModal({
+          title: '确认取消预约',
+          content: `原因：${reason}${tipLine ? '\n' + tipLine : ''}`,
+          confirmText: '确认取消',
+          cancelText: '再想想',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              this._doCancel(reason)
+            }
           }
-        }
+        })
       }
     })
+  },
+
+  // 根据当前订单信息生成退款提示文案
+  _buildRefundTipText() {
+    const o = this.data.order || {}
+    if (o.status === 'unpaid') return '当前订单未支付，取消不涉及退款'
+    if (!o.total_price || Number(o.total_price) <= 0) return '免费预约，取消后释放免费时长'
+    if (o.pay_type === 'coin') return `将退还 ${o.total_price} 金币到余额`
+    if (o.pay_type === 'wechat') return `将发起微信退款 ¥${o.total_price}，1-3 工作日到账`
+    return ''
+  },
+
+  async _doCancel(reason) {
+    wx.showLoading({ title: '取消中...', mask: true })
+    try {
+      const res = await app.request({
+        url: `/member/reservations/${this.data.id}/cancel`,
+        method: 'POST',
+        data: { reason }
+      })
+      wx.hideLoading()
+      const tip = (res && res.data && res.data.refund && res.data.refund.desc) || '已取消'
+      wx.showToast({ title: tip, icon: 'success', duration: 2500 })
+      this.loadDetail()
+    } catch (err) {
+      wx.hideLoading()
+      const msg = (err && err.data && err.data.detail) || (err && err.errMsg) || '取消失败'
+      wx.showToast({ title: msg, icon: 'none', duration: 2500 })
+    }
   },
 
   // 去支付

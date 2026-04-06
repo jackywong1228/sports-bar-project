@@ -116,28 +116,53 @@ Page({
     }
   },
 
-  // 取消订单
+  // 取消预约（原因选择 + 二次确认 + 新接口）
   cancelOrder(e) {
     const id = e.currentTarget.dataset.id
-
-    wx.showModal({
-      title: '取消订单',
-      content: '确定要取消该订单吗？',
-      success: async (res) => {
-        if (res.confirm) {
-          try {
-            await app.request({
-              url: `/member/orders/${id}/cancel`,
-              method: 'POST'
-            })
-
-            wx.showToast({ title: '已取消', icon: 'success' })
-            this.loadOrders()
-          } catch (err) {
-            console.error('取消失败:', err)
+    const order = this.data.orders.find(o => o.id === id) || {}
+    const reasons = ['临时有事', '时间冲突', '场地不合适', '误操作', '其他原因']
+    wx.showActionSheet({
+      itemList: reasons,
+      success: (sheetRes) => {
+        const reason = reasons[sheetRes.tapIndex]
+        const tipLine = this._refundTip(order)
+        wx.showModal({
+          title: '确认取消预约',
+          content: `原因：${reason}${tipLine ? '\n' + tipLine : ''}`,
+          confirmText: '确认取消',
+          cancelText: '再想想',
+          success: async (modalRes) => {
+            if (!modalRes.confirm) return
+            wx.showLoading({ title: '取消中...', mask: true })
+            try {
+              const res = await app.request({
+                url: `/member/reservations/${id}/cancel`,
+                method: 'POST',
+                data: { reason }
+              })
+              wx.hideLoading()
+              const tip = (res && res.data && res.data.refund && res.data.refund.desc) || '已取消'
+              wx.showToast({ title: tip, icon: 'success', duration: 2500 })
+              this.setData({ page: 1, hasMore: true })
+              this.loadOrders()
+            } catch (err) {
+              wx.hideLoading()
+              const msg = (err && err.data && err.data.detail) || '取消失败'
+              wx.showToast({ title: msg, icon: 'none', duration: 2500 })
+            }
           }
-        }
+        })
       }
     })
+  },
+
+  // 根据订单生成退款提示文案
+  _refundTip(order) {
+    if (!order) return ''
+    if (order.status === 'unpaid') return '订单未支付，取消不涉及退款'
+    if (!order.total_price || Number(order.total_price) <= 0) return '免费预约，取消后释放免费时长'
+    if (order.pay_type === 'coin') return `将退还 ${order.total_price} 金币到余额`
+    if (order.pay_type === 'wechat') return `将发起微信退款 ¥${order.total_price}`
+    return ''
   }
 })

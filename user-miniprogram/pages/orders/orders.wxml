@@ -41,7 +41,7 @@
       <view class="order-footer">
         <text class="order-time">{{item.created_at}}</text>
         <view class="order-actions">
-          <button class="btn-action" wx:if="{{item.status === 'unpaid'}}" catchtap="cancelOrder" data-id="{{item.id}}">取消</button>
+          <button class="btn-action" wx:if="{{item.can_cancel}}" catchtap="cancelOrder" data-id="{{item.id}}">取消</button>
           <button class="btn-action primary" wx:if="{{item.status === 'unpaid'}}" catchtap="payOrder" data-id="{{item.id}}">去支付</button>
         </view>
       </view>

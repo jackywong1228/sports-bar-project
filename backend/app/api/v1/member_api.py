@@ -1323,6 +1323,7 @@ def get_member_orders(
             end_str = r.end_time.strftime("%H:%M") if hasattr(r.end_time, 'strftime') else str(r.end_time)[:5]
             date_str = r.reservation_date.strftime("%Y-%m-%d") if hasattr(r.reservation_date, 'strftime') else str(r.reservation_date)
 
+            can_cancel, cancel_deadline = _compute_can_cancel(r)
             all_orders.append({
                 "id": r.id,
                 "order_no": r.reservation_no,
@@ -1344,7 +1345,10 @@ def get_member_orders(
                 }.get(r.status, r.status),
                 "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
                 "detail": f"{date_str} {start_str}-{end_str}",
-                "description": f"{date_str} {start_str}-{end_str} {r.duration}分钟"
+                "description": f"{date_str} {start_str}-{end_str} {r.duration}分钟",
+                "is_verified": bool(r.is_verified),
+                "can_cancel": can_cancel,
+                "cancel_deadline": cancel_deadline,
             })
 
     # 按创建时间倒序排序
@@ -1364,6 +1368,26 @@ def _generate_verify_qrcode(reservation_no: str) -> str:
     buf = io.BytesIO()
     qr.save(buf, format='PNG')
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def _compute_can_cancel(res: Reservation):
+    """计算一个预约当前是否允许会员自行取消。
+    规则:
+      - 状态必须属于 (unpaid, pending, confirmed)
+      - 不能已核销
+      - 距离开始时间必须 >= 1 小时
+    返回 (can_cancel: bool, cancel_deadline: Optional[str])
+    """
+    if res.status not in ("unpaid", "pending", "confirmed"):
+        return False, None
+    if res.is_verified:
+        return False, None
+    try:
+        start_dt = datetime.combine(res.reservation_date, res.start_time)
+    except Exception:
+        return False, None
+    deadline = start_dt - timedelta(hours=1)
+    return datetime.now() < deadline, deadline.strftime("%Y-%m-%d %H:%M:%S")
 
 
 @router.get("/orders/{order_id}", response_model=ResponseModel)
@@ -1412,6 +1436,7 @@ def get_member_order_detail(
         if r.status in ("pending", "confirmed") and not r.is_verified:
             qrcode_base64 = _generate_verify_qrcode(r.reservation_no)
 
+        can_cancel, cancel_deadline = _compute_can_cancel(r)
         result = {
             "id": r.id,
             "order_no": r.reservation_no,
@@ -1441,6 +1466,9 @@ def get_member_order_detail(
             "is_verified": r.is_verified or False,
             "verified_at": r.verified_at.strftime("%Y-%m-%d %H:%M") if r.verified_at else None,
             "qrcode_base64": qrcode_base64,
+            # 取消相关
+            "can_cancel": can_cancel,
+            "cancel_deadline": cancel_deadline,
             # 其他
             "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
             "remark": r.remark,
@@ -1449,6 +1477,166 @@ def get_member_order_detail(
         return ResponseModel(data=result)
 
     raise HTTPException(status_code=404, detail="订单不存在")
+
+
+# ==================== 会员自行取消预约 ====================
+
+class CancelReservationRequest(BaseModel):
+    reason: Optional[str] = None   # 预设原因文本，如 "时间冲突"
+    remark: Optional[str] = None   # 用户可选备注
+
+
+@router.post("/reservations/{reservation_id}/cancel", response_model=ResponseModel)
+def cancel_my_reservation(
+    reservation_id: int,
+    payload: CancelReservationRequest,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """会员自行取消预约
+
+    规则:
+      - 状态须为 unpaid / pending / confirmed
+      - 不能已核销
+      - 距离预约开始时间 >= 1 小时
+      - 金币支付: 全额退回金币余额 + 写 CoinRecord
+      - 微信支付: 调 wechat_pay.refund() 真退款
+      - SSS 免费预约 (total_price=0): 置 cancelled 即可 (booking_service 自动释放)
+      - 关联的优惠券若仍在有效期内恢复为 unused
+    """
+    # 1. 查询 + 所有权校验
+    res = db.query(Reservation).filter(
+        Reservation.id == reservation_id,
+        Reservation.is_deleted == False
+    ).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="预约不存在")
+    if res.member_id != current_member.id:
+        raise HTTPException(status_code=403, detail="无权操作他人的预约")
+
+    # 2. 状态校验
+    if res.status not in ("unpaid", "pending", "confirmed"):
+        raise HTTPException(status_code=400, detail=f"当前状态（{res.status}）不可取消")
+    if res.is_verified:
+        raise HTTPException(status_code=400, detail="预约已核销，不可取消")
+
+    # 3. 时间校验: 距开始时间 >= 1 小时
+    try:
+        start_dt = datetime.combine(res.reservation_date, res.start_time)
+    except Exception:
+        raise HTTPException(status_code=500, detail="预约时间数据异常")
+    if start_dt - datetime.now() < timedelta(hours=1):
+        raise HTTPException(status_code=400, detail="距离预约开始不足1小时，无法取消")
+
+    # 4. 退款分支
+    refund_info = {"type": "none", "amount": 0, "desc": ""}
+    total_price = float(res.total_price or 0)
+
+    if res.status == "unpaid":
+        # 微信支付下单但未完成付款
+        refund_info = {"type": "none", "amount": 0, "desc": "订单未支付"}
+    elif total_price <= 0:
+        # SSS 免费预约
+        refund_info = {"type": "free", "amount": 0, "desc": "免费预约，已释放免费时长"}
+    elif res.pay_type == "coin":
+        # 金币支付 -> 全额退回
+        current_member.coin_balance = float(current_member.coin_balance or 0) + total_price
+        db.add(CoinRecord(
+            member_id=current_member.id,
+            type="income",
+            amount=total_price,
+            balance=current_member.coin_balance,
+            source="预约退款",
+            remark=f"取消预约: {res.reservation_no}"
+        ))
+        refund_info = {
+            "type": "coin",
+            "amount": total_price,
+            "desc": f"已退还 {total_price:g} 金币"
+        }
+    elif res.pay_type == "wechat":
+        # 微信支付 -> 调 V3 退款
+        if not res.out_trade_no:
+            raise HTTPException(status_code=500, detail="微信订单号缺失，无法退款，请联系客服")
+        out_refund_no = f"REF{res.reservation_no}"[:64]
+        amount_fen = round(total_price * 100)
+        result = wechat_pay.refund(
+            out_trade_no=res.out_trade_no,
+            out_refund_no=out_refund_no,
+            total_amount=amount_fen,
+            refund_amount=amount_fen,
+            reason=(payload.reason or "会员自行取消")[:80]
+        )
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=f"微信退款失败: {result.get('error')}")
+        # 微信返回的 status 可能是 SUCCESS / PROCESSING / ABNORMAL / CLOSED
+        # 非预期状态视为失败
+        status_resp = result.get("status")
+        if status_resp is not None and status_resp not in ("SUCCESS", "PROCESSING"):
+            raise HTTPException(
+                status_code=500,
+                detail=f"微信退款失败: {result.get('message') or status_resp}"
+            )
+        refund_info = {
+            "type": "wechat",
+            "amount": total_price,
+            "desc": f"微信退款 ¥{total_price:.2f} 申请已提交，1-3 工作日到账"
+        }
+
+    # 5. 优惠券恢复（若当初用了券）
+    #    注意: MemberCoupon 没有 is_deleted 字段（只继承 TimestampMixin）
+    #    主查询: 按 order_id 命中（金币支付立即写入；微信支付回调后写入）
+    used_coupon = db.query(MemberCoupon).filter(
+        MemberCoupon.order_type == 'reservation',
+        MemberCoupon.order_id == res.id,
+        MemberCoupon.status.in_(['used', 'locked'])
+    ).first()
+    #    Fallback: unpaid 状态微信下单时 coupon.order_id 可能尚未写入，
+    #    从 res.remark 的 JSON attach 里读 coupon_id 兜底。
+    if not used_coupon and res.remark:
+        try:
+            attach_data = json.loads(res.remark)
+            fallback_coupon_id = attach_data.get("coupon_id") if isinstance(attach_data, dict) else None
+            if fallback_coupon_id:
+                used_coupon = db.query(MemberCoupon).filter(
+                    MemberCoupon.id == fallback_coupon_id,
+                    MemberCoupon.member_id == current_member.id,
+                    MemberCoupon.status == 'locked',
+                    MemberCoupon.order_type == 'reservation'
+                ).first()
+        except (json.JSONDecodeError, TypeError, ValueError):
+            used_coupon = None
+    if used_coupon:
+        if used_coupon.end_time and used_coupon.end_time > datetime.now():
+            used_coupon.status = 'unused'
+            used_coupon.use_time = None
+            used_coupon.order_id = None
+            used_coupon.order_type = None
+            refund_info["coupon_restored"] = True
+        else:
+            refund_info["coupon_restored"] = False
+            refund_info["coupon_expired"] = True
+
+    # 6. 改状态
+    res.status = "cancelled"
+    reason_text = (payload.reason or "")
+    if payload.remark:
+        reason_text = f"{reason_text} | {payload.remark}" if reason_text else payload.remark
+    res.cancel_reason = reason_text[:255] if reason_text else None
+    res.cancel_time = datetime.utcnow()
+
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.exception("cancel_my_reservation commit failed")
+        raise HTTPException(status_code=500, detail=f"取消失败: {str(e)}")
+
+    return ResponseModel(message="取消成功", data={
+        "reservation_id": res.id,
+        "status": res.status,
+        "refund": refund_info
+    })
 
 
 # ==================== 金币/积分记录 ====================
