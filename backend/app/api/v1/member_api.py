@@ -1294,12 +1294,8 @@ def get_member_orders(
             Reservation.member_id == current_member.id,
             Reservation.is_deleted == False
         )
-        if status and status != "all":
-            if status == "confirmed":
-                # "已确认"tab: 包含已付款待确认 + 已确认的预约
-                res_query = res_query.filter(Reservation.status.in_(["pending", "confirmed"]))
-            else:
-                res_query = res_query.filter(Reservation.status == status)
+        # 注: 不在 SQL 层按 status 过滤,因为需要先把"过期未核销"的订单
+        # 重新归类到 effective_status='completed',再按 effective_status 过滤
 
         # 按 coach_id 区分场馆预约和教练预约
         if type == "venue":
@@ -1309,6 +1305,16 @@ def get_member_orders(
 
         reservations = res_query.all()
         for r in reservations:
+            # 计算 effective_status, 用它做 tab 过滤
+            effective_status, effective_status_text = _compute_effective_status(r)
+            if status and status != "all":
+                if status == "confirmed":
+                    # "已确认"tab: 只包含未过期的 pending+confirmed
+                    if effective_status not in ("pending", "confirmed"):
+                        continue
+                else:
+                    if effective_status != status:
+                        continue
             # 解析场馆图片（JSON数组取第一张）
             venue_image = None
             if r.venue and r.venue.images:
@@ -1333,16 +1339,10 @@ def get_member_orders(
                 "image": resolve_image_url(venue_image),
                 "amount": float(r.total_price or 0),
                 "total_price": float(r.total_price or 0),
-                "status": r.status,
+                "status": effective_status,
+                "raw_status": r.status,
                 "pay_type": r.pay_type or "coin",
-                "status_text": {
-                    "unpaid": "待支付",
-                    "pending": "待确认",
-                    "confirmed": "已确认",
-                    "in_progress": "进行中",
-                    "completed": "已完成",
-                    "cancelled": "已取消"
-                }.get(r.status, r.status),
+                "status_text": effective_status_text,
                 "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
                 "detail": f"{date_str} {start_str}-{end_str}",
                 "description": f"{date_str} {start_str}-{end_str} {r.duration}分钟",
@@ -1390,6 +1390,37 @@ def _compute_can_cancel(res: Reservation):
     return datetime.now() < deadline, deadline.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _compute_effective_status(res: Reservation):
+    """计算订单的"展示状态"和"展示文案"。
+
+    业务规则:
+        - unpaid/pending/confirmed 状态但开始时间已过且未核销 → 视为"已完成"
+          (实际是过期未到场, 但为了 UX 简化, 统一归入"已完成"标签
+           让其不再"挂着"在待支付/已确认 tab 里)
+        - 其他状态保持原样
+
+    返回 (effective_status: str, effective_status_text: str)
+    """
+    text_map = {
+        "unpaid": "待支付",
+        "pending": "待确认",
+        "confirmed": "已确认",
+        "in_progress": "进行中",
+        "completed": "已完成",
+        "cancelled": "已取消",
+        "no_show": "未到场",
+    }
+    raw = res.status or "unpaid"
+    if raw in ("unpaid", "pending", "confirmed") and not res.is_verified:
+        try:
+            start_dt = datetime.combine(res.reservation_date, res.start_time)
+            if start_dt < datetime.now():
+                return "completed", "已结束"
+        except Exception:
+            pass
+    return raw, text_map.get(raw, raw)
+
+
 @router.get("/orders/{order_id}", response_model=ResponseModel)
 def get_member_order_detail(
     order_id: int,
@@ -1422,18 +1453,13 @@ def get_member_order_detail(
         end_str = r.end_time.strftime("%H:%M") if hasattr(r.end_time, 'strftime') else str(r.end_time)[:5]
         date_str = r.reservation_date.strftime("%Y-%m-%d") if hasattr(r.reservation_date, 'strftime') else str(r.reservation_date)
 
-        status_map = {
-            "unpaid": "待支付",
-            "pending": "待确认",
-            "confirmed": "已确认",
-            "in_progress": "进行中",
-            "completed": "已完成",
-            "cancelled": "已取消"
-        }
+        # 计算 effective_status: 过期未核销的订单展示为"已结束"
+        effective_status, effective_status_text = _compute_effective_status(r)
 
-        # 核销二维码（仅 pending/confirmed 且未核销时生成）
+        # 核销二维码（仅 effective 仍是 pending/confirmed 且未核销时生成,
+        # 过期订单不再展示二维码,避免与"已结束"徽章自相矛盾）
         qrcode_base64 = None
-        if r.status in ("pending", "confirmed") and not r.is_verified:
+        if effective_status in ("pending", "confirmed") and not r.is_verified:
             qrcode_base64 = _generate_verify_qrcode(r.reservation_no)
 
         can_cancel, cancel_deadline = _compute_can_cancel(r)
@@ -1442,8 +1468,9 @@ def get_member_order_detail(
             "order_no": r.reservation_no,
             "type": "reservation",
             "type_name": "场馆预约" if not r.coach_id else "教练预约",
-            "status": r.status,
-            "status_text": status_map.get(r.status, r.status),
+            "status": effective_status,
+            "raw_status": r.status,
+            "status_text": effective_status_text,
             # 场馆信息
             "venue_name": r.venue.name if r.venue else None,
             "venue_location": r.venue.location if r.venue else None,
