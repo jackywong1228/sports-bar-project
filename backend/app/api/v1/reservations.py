@@ -36,7 +36,7 @@ def get_reservations(
     member_id: Optional[int] = None,
     venue_id: Optional[int] = None,
     coach_id: Optional[int] = None,
-    status: Optional[int] = None,
+    status: Optional[str] = None,
     type: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,

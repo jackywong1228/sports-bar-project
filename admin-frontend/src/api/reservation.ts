@@ -34,3 +34,10 @@ export function completeReservation(id: number) {
 export function getReservationStats(params?: any) {
   return request.get('/reservations/stats', { params })
 }
+
+// 扫码核销预约（按预约编号）
+export function verifyReservationByNo(reservationNo: string) {
+  return request.post('/reservations/verify-by-no', {
+    reservation_no: reservationNo,
+  })
+}

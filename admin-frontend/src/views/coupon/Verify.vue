@@ -2,14 +2,14 @@
   <div class="page-container">
     <el-card class="search-card">
       <template #header>
-        <span>扫码核销优惠券</span>
+        <span>扫码核销（优惠券 / 预约）</span>
       </template>
       <el-form :inline="true" @submit.prevent="handleVerify">
-        <el-form-item label="券号">
+        <el-form-item label="编号">
           <el-input
             ref="inputRef"
             v-model="couponInput"
-            placeholder="扫码或输入券号（如 COUPON_VERIFY:42 或 42）"
+            placeholder="扫码或输入券号/预约号"
             clearable
             style="width: 400px; max-width: 90vw;"
             @keyup.enter="handleVerify"
@@ -26,7 +26,7 @@
         </el-form-item>
       </el-form>
       <div style="color: #909399; font-size: 13px; margin-top: 8px;">
-        提示：使用扫码枪扫描会员优惠券二维码，或手动输入券号后点击核销
+        支持优惠券二维码 (COUPON_VERIFY:xx) 和预约二维码 (VERIFY:xxx)，也可手动输入券号或预约编号
       </div>
 
       <div v-show="scanning" class="qr-reader-wrapper">
@@ -37,23 +37,47 @@
       </div>
     </el-card>
 
-    <el-card v-if="result" class="result-card" style="margin-top: 16px;">
+    <el-card v-if="result?.kind === 'coupon'" class="result-card" style="margin-top: 16px;">
       <template #header>
         <div style="display: flex; align-items: center; gap: 8px;">
           <el-icon color="#67C23A" :size="20"><CircleCheckFilled /></el-icon>
-          <span>核销成功</span>
+          <span>优惠券核销成功</span>
         </div>
       </template>
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="券ID">{{ result.coupon_id }}</el-descriptions-item>
-        <el-descriptions-item label="券名称">{{ result.coupon_name }}</el-descriptions-item>
+        <el-descriptions-item label="券ID">{{ result.data.coupon_id }}</el-descriptions-item>
+        <el-descriptions-item label="券名称">{{ result.data.coupon_name }}</el-descriptions-item>
         <el-descriptions-item label="券类型">
-          <el-tag>{{ typeMap[result.coupon_type] || result.coupon_type }}</el-tag>
+          <el-tag>{{ typeMap[result.data.coupon_type] || result.data.coupon_type }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="会员昵称">{{ result.member_nickname || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="会员手机">{{ result.member_phone || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="核销时间">{{ result.verified_at }}</el-descriptions-item>
-        <el-descriptions-item label="核销人">{{ result.verified_by }}</el-descriptions-item>
+        <el-descriptions-item label="会员昵称">{{ result.data.member_nickname || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="会员手机">{{ result.data.member_phone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="核销时间">{{ result.data.verified_at }}</el-descriptions-item>
+        <el-descriptions-item label="核销人">{{ result.data.verified_by }}</el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
+    <el-card v-if="result?.kind === 'reservation'" class="result-card" style="margin-top: 16px;">
+      <template #header>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <el-icon color="#67C23A" :size="20"><CircleCheckFilled /></el-icon>
+          <span>预约核销成功</span>
+        </div>
+      </template>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="预约编号">{{ result.data.reservation_no }}</el-descriptions-item>
+        <el-descriptions-item label="会员">
+          {{ result.data.member_nickname || result.data.member_name || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="场馆">{{ result.data.venue_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="日期">{{ result.data.booking_date || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="时段">
+          {{ result.data.start_time || '-' }} ~ {{ result.data.end_time || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="当前状态">
+          <el-tag type="warning">{{ reservationStatusText(result.data.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="核销时间" :span="2">{{ result.data.verified_at || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -74,11 +98,22 @@ import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue'
 import { verifyCoupon } from '@/api/coupon'
+import { verifyReservationByNo } from '@/api/reservation'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+
+type ScanTarget =
+  | { kind: 'coupon'; couponId: number }
+  | { kind: 'reservation'; reservationNo: string }
+  | null
+
+type VerifyResult =
+  | { kind: 'coupon'; data: any }
+  | { kind: 'reservation'; data: any }
+  | null
 
 const couponInput = ref('')
 const loading = ref(false)
-const result = ref<any>(null)
+const result = ref<VerifyResult>(null)
 const errorMsg = ref('')
 const inputRef = ref()
 const scanning = ref(false)
@@ -94,30 +129,62 @@ const typeMap: Record<string, string> = {
   experience: '体验券'
 }
 
-function parseCouponId(input: string): number | null {
-  const trimmed = input.trim()
-  if (!trimmed) return null
-  // 支持 COUPON_VERIFY:42 格式
-  const prefix = 'COUPON_VERIFY:'
-  if (trimmed.startsWith(prefix)) {
-    const id = parseInt(trimmed.substring(prefix.length), 10)
-    return isNaN(id) ? null : id
+const reservationStatusMap: Record<string, string> = {
+  pending: '待确认',
+  confirmed: '已确认',
+  in_progress: '进行中',
+  completed: '已完成',
+  cancelled: '已取消',
+}
+
+function reservationStatusText(status: string): string {
+  return reservationStatusMap[status] || status || '-'
+}
+
+function parseScanInput(raw: string): ScanTarget {
+  const input = (raw || '').trim()
+  if (!input) return null
+
+  // 预约二维码：VERIFY:xxx (member_api.py:_generate_verify_qrcode)
+  if (input.startsWith('VERIFY:')) {
+    const no = input.substring('VERIFY:'.length).trim()
+    return no ? { kind: 'reservation', reservationNo: no } : null
   }
-  // 支持纯数字
-  const id = parseInt(trimmed, 10)
-  return isNaN(id) ? null : id
+
+  // 优惠券二维码：COUPON_VERIFY:xxx
+  if (input.startsWith('COUPON_VERIFY:')) {
+    const id = parseInt(input.substring('COUPON_VERIFY:'.length), 10)
+    return isNaN(id) ? null : { kind: 'coupon', couponId: id }
+  }
+
+  // 兜底：纯数字 → 当优惠券（保持老行为）
+  if (/^\d+$/.test(input)) {
+    return { kind: 'coupon', couponId: parseInt(input, 10) }
+  }
+
+  // 其他字母数字串 → 当预约编号（reservation_no 格式如 RES20260405xxxABC）
+  if (/^[A-Za-z0-9_-]+$/.test(input)) {
+    return { kind: 'reservation', reservationNo: input }
+  }
+
+  return null
 }
 
 async function handleVerify() {
-  const couponId = parseCouponId(couponInput.value)
-  if (couponId === null) {
-    ElMessage.warning('请输入有效的券号')
+  const target = parseScanInput(couponInput.value)
+  if (!target) {
+    ElMessage.warning('请输入有效的券号或预约编号')
     return
   }
 
+  const confirmText =
+    target.kind === 'coupon'
+      ? `确认核销券号 ${target.couponId} ？核销后不可撤销。`
+      : `确认核销预约 ${target.reservationNo} ？核销后不可撤销。`
+
   try {
     await ElMessageBox.confirm(
-      `确认核销券号 ${couponId} ？核销后不可撤销。`,
+      confirmText,
       '确认核销',
       { confirmButtonText: '确认核销', cancelButtonText: '取消', type: 'warning' }
     )
@@ -130,8 +197,13 @@ async function handleVerify() {
   errorMsg.value = ''
 
   try {
-    const res = await verifyCoupon({ coupon_id: couponId })
-    result.value = res.data
+    if (target.kind === 'coupon') {
+      const res = await verifyCoupon({ coupon_id: target.couponId })
+      result.value = { kind: 'coupon', data: res.data }
+    } else {
+      const res = await verifyReservationByNo(target.reservationNo)
+      result.value = { kind: 'reservation', data: res.data }
+    }
     ElMessage.success('核销成功')
     couponInput.value = ''
   } catch (err: any) {

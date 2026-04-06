@@ -19,11 +19,13 @@ interface Reservation {
   venue_fee: number
   coach_fee: number
   total_fee: number
-  status: number
+  status: string
   status_text: string
   type: string
   remark: string
   created_at: string
+  is_verified?: boolean
+  verified_at?: string
 }
 
 const loading = ref(false)
@@ -32,25 +34,27 @@ const total = ref(0)
 const queryParams = reactive({
   page: 1,
   page_size: 10,
-  status: null as number | null,
+  status: null as string | null,
   type: ''
 })
 
 const statusOptions = [
-  { label: '待确认', value: 0 },
-  { label: '已确认', value: 1 },
-  { label: '进行中', value: 2 },
-  { label: '已完成', value: 3 },
-  { label: '已取消', value: 4 }
+  { label: '待确认', value: 'pending' },
+  { label: '已确认', value: 'confirmed' },
+  { label: '进行中', value: 'in_progress' },
+  { label: '已完成', value: 'completed' },
+  { label: '已取消', value: 'cancelled' }
 ]
 
-const statusMap: Record<number, { text: string; type: string }> = {
-  0: { text: '待确认', type: 'info' },
-  1: { text: '已确认', type: 'primary' },
-  2: { text: '进行中', type: 'warning' },
-  3: { text: '已完成', type: 'success' },
-  4: { text: '已取消', type: 'danger' }
+const statusMap: Record<string, { text: string; type: string }> = {
+  pending:     { text: '待确认', type: 'info' },
+  confirmed:   { text: '已确认', type: 'primary' },
+  in_progress: { text: '进行中', type: 'warning' },
+  completed:   { text: '已完成', type: 'success' },
+  cancelled:   { text: '已取消', type: 'danger' }
 }
+
+const finalStatuses = new Set(['completed', 'cancelled'])
 
 const fetchData = async () => {
   loading.value = true
@@ -141,10 +145,18 @@ onMounted(() => {
         </el-table-column>
         <el-table-column prop="duration" label="时长(分钟)" width="100" />
         <el-table-column prop="total_fee" label="总费用" width="100" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" width="160">
           <template #default="{ row }">
-            <el-tag :type="statusMap[row.status]?.type as any">
-              {{ statusMap[row.status]?.text }}
+            <el-tag :type="(statusMap[row.status]?.type as any) || 'info'">
+              {{ statusMap[row.status]?.text || row.status_text || row.status }}
+            </el-tag>
+            <el-tag
+              v-if="row.is_verified"
+              type="success"
+              size="small"
+              style="margin-left: 4px;"
+            >
+              已核销
             </el-tag>
           </template>
         </el-table-column>
@@ -157,7 +169,7 @@ onMounted(() => {
         <el-table-column label="操作" fixed="right" width="150">
           <template #default="{ row }">
             <el-button
-              v-if="row.status < 3"
+              v-if="!finalStatuses.has(row.status)"
               type="warning"
               link
               @click="handleCancel(row)"
