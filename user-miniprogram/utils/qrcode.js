@@ -59,10 +59,10 @@ const VERSION_TABLE = {
   2:  [44,  16, 1, 28, 0, 0],
   3:  [70,  26, 1, 44, 0, 0],
   4:  [100, 18, 2, 32, 0, 0],
-  5:  [134, 26, 2, 43, 0, 0],
-  6:  [172, 18, 4, 27, 0, 0],
-  7:  [196, 26, 4, 31, 0, 0],
-  8:  [242, 18, 2, 38, 2, 39],
+  5:  [134, 24, 2, 43, 0, 0],
+  6:  [172, 16, 4, 27, 0, 0],
+  7:  [196, 18, 4, 31, 0, 0],
+  8:  [242, 22, 2, 38, 2, 39],
   9:  [292, 22, 3, 36, 2, 37],
   10: [346, 26, 4, 43, 1, 44],
 }
@@ -249,7 +249,9 @@ function reserveFormatAndVersion(matrix, reserved, size, version) {
   }
   for (let i = 0; i < 7; i++) {
     reserved[size - 1 - i][8] = true
-    reserved[8][size - 1 - i] = true
+  }
+  for (let i = 0; i < 8; i++) {
+    reserved[8][size - 8 + i] = true
   }
   // Dark module
   matrix[size - 8][8] = 1
@@ -310,22 +312,25 @@ function applyMask(matrix, reserved, size, maskIdx) {
 
 function placeFormatInfo(matrix, size, maskIdx) {
   const formatBits = FORMAT_INFO[maskIdx]
-  // Horizontal: bits 0-7 at row 8, cols 0-7 (skip col 6)
+  // First copy (around top-left finder)
+  // Horizontal: row=8, cols 0,1,2,3,4,5,7,8 → bits 14..7
   const hCols = [0, 1, 2, 3, 4, 5, 7, 8]
   for (let i = 0; i < 8; i++) {
     matrix[8][hCols[i]] = (formatBits >> (14 - i)) & 1
   }
-  // Also at row 8, cols size-8 to size-1
-  for (let i = 0; i < 7; i++) {
-    matrix[8][size - 7 + i] = (formatBits >> (6 - i)) & 1
-  }
-  // Vertical: bits 8-14 at col 8, rows 7,5,4,3,2,1,0 + rows size-7 to size-1
-  const vRows = [7, 5, 4, 3, 2, 1, 0]
-  for (let i = 0; i < 7; i++) {
-    matrix[vRows[i]][8] = (formatBits >> (i)) & 1
-  }
+  // Vertical: col=8, rows 0,1,2,3,4,5,7,8 → bits 14..7
+  const vRows = [0, 1, 2, 3, 4, 5, 7, 8]
   for (let i = 0; i < 8; i++) {
-    matrix[size - 8 + i][8] = (formatBits >> (14 - i)) & 1
+    matrix[vRows[i]][8] = (formatBits >> (14 - i)) & 1
+  }
+  // Second copy (around top-right + bottom-left finders)
+  // Horizontal: row=8, cols size-8..size-1 → bits 7..0
+  for (let i = 0; i < 8; i++) {
+    matrix[8][size - 8 + i] = (formatBits >> (7 - i)) & 1
+  }
+  // Vertical: col=8, rows size-7..size-1 → bits 6..0
+  for (let i = 0; i < 7; i++) {
+    matrix[size - 7 + i][8] = (formatBits >> (6 - i)) & 1
   }
 }
 
@@ -372,6 +377,46 @@ function penaltyScore(matrix, size) {
       }
     }
   }
+
+  // Rule 3: finder-like patterns (1,0,1,1,1,0,1,0,0,0,0 or reverse) → +40 each
+  const finderA = [1,0,1,1,1,0,1,0,0,0,0]
+  const finderB = [0,0,0,0,1,0,1,1,1,0,1]
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c <= size - 11; c++) {
+      let matchA = true, matchB = true
+      for (let k = 0; k < 11; k++) {
+        if (matrix[r][c + k] !== finderA[k]) matchA = false
+        if (matrix[r][c + k] !== finderB[k]) matchB = false
+        if (!matchA && !matchB) break
+      }
+      if (matchA) score += 40
+      if (matchB) score += 40
+    }
+  }
+  for (let c = 0; c < size; c++) {
+    for (let r = 0; r <= size - 11; r++) {
+      let matchA = true, matchB = true
+      for (let k = 0; k < 11; k++) {
+        if (matrix[r + k][c] !== finderA[k]) matchA = false
+        if (matrix[r + k][c] !== finderB[k]) matchB = false
+        if (!matchA && !matchB) break
+      }
+      if (matchA) score += 40
+      if (matchB) score += 40
+    }
+  }
+
+  // Rule 4: dark module proportion penalty → +10 per 5% deviation from 50%
+  let darkCount = 0
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (matrix[r][c] === 1) darkCount++
+    }
+  }
+  const percent = (darkCount * 100) / (size * size)
+  const prevFive = Math.floor(percent / 5) * 5
+  const nextFive = prevFive + 5
+  score += Math.min(Math.abs(prevFive - 50) / 5, Math.abs(nextFive - 50) / 5) * 10
 
   return score
 }

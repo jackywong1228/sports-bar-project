@@ -58,8 +58,11 @@ Page({
 
     this.initDates()
 
+    console.log('[venue-booking] onLoad options:', JSON.stringify(options))
+
     if (options.type_id) {
       // 直接传入 type_id（正常路径）
+      console.log('[venue-booking] using type_id:', options.type_id)
       this.loadVenueTypes(options.type_id).then(() => {
         this.checkMemberPermission()
       })
