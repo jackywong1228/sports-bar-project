@@ -52,6 +52,16 @@ const menuList = [
     ]
   },
   {
+    path: '/checkin',
+    title: '打卡管理',
+    icon: 'Clock',
+    children: [
+      { path: '/checkin/records', title: '打卡记录' },
+      { path: '/checkin/rules', title: '积分规则' },
+      { path: '/checkin/leaderboard', title: '排行榜' }
+    ]
+  },
+  {
     path: '/coach',
     title: '教练管理',
     icon: 'Avatar',
@@ -73,8 +83,27 @@ const menuList = [
     title: '票券管理',
     icon: 'Ticket',
     children: [
+      { path: '/coupon/verify', title: '扫码核销' },
       { path: '/coupon/template', title: '优惠券模板' },
-      { path: '/coupon/record', title: '发放记录' }
+      { path: '/coupon/record', title: '发放记录' },
+      { path: '/coupon/pack', title: '优惠券合集' }
+    ]
+  },
+  {
+    path: '/review',
+    title: '评论管理',
+    icon: 'ChatDotSquare',
+    children: [
+      { path: '/review/list', title: '评论列表' },
+      { path: '/review/point-config', title: '积分配置' }
+    ]
+  },
+  {
+    path: '/feedback',
+    title: '反馈管理',
+    icon: 'ChatLineSquare',
+    children: [
+      { path: '/feedback/list', title: '反馈列表' }
     ]
   },
   {
@@ -95,7 +124,8 @@ const menuList = [
       { path: '/finance/overview', title: '财务概览' },
       { path: '/finance/recharge', title: '充值记录' },
       { path: '/finance/consume', title: '消费记录' },
-      { path: '/finance/settlement', title: '教练结算' }
+      { path: '/finance/settlement', title: '教练结算' },
+      { path: '/finance/recharge-package', title: '充值套餐' }
     ]
   },
   {
