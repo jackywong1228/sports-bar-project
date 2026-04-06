@@ -24,6 +24,7 @@
     "pages/invite/accept",
     "pages/coupons/coupons",
     "pages/coupon-use/coupon-use",
+    "pages/my-qrcode/my-qrcode",
     "pages/settings/settings",
     "pages/coach-home/coach-home",
     "pages/coach-login/coach-login",

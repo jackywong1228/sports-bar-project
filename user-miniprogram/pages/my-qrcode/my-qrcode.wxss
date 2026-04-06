@@ -1,0 +1,168 @@
+.page {
+  min-height: 100vh;
+  background: #F5F7F5;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+/* 会员卡片 */
+.member-card {
+  border-radius: 20rpx;
+  padding: 32rpx;
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(26, 93, 58, 0.15);
+  margin-bottom: 32rpx;
+}
+
+.member-card-row {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  border: 4rpx solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: bold;
+}
+
+.member-info {
+  margin-left: 24rpx;
+  flex: 1;
+}
+
+.nickname {
+  font-size: 36rpx;
+  font-weight: bold;
+  margin-bottom: 12rpx;
+}
+
+.level-tag {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 6rpx 20rpx;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+}
+
+.expire-text {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  opacity: 0.9;
+}
+
+/* 二维码区 */
+.qr-wrapper {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 48rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.qr-canvas-box {
+  width: 480rpx;
+  height: 480rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-canvas {
+  width: 480rpx;
+  height: 480rpx;
+}
+
+.qr-loading {
+  position: absolute;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.qr-tip {
+  margin-top: 24rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+/* 倒计时 */
+.countdown {
+  margin-top: 24rpx;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8rpx;
+  background: #EEE;
+  border-radius: 4rpx;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.2s linear;
+}
+
+.countdown-text {
+  font-size: 24rpx;
+  color: #999;
+  min-width: 60rpx;
+  text-align: right;
+}
+
+.refresh-btn {
+  margin-top: 24rpx;
+  font-size: 24rpx;
+  color: #1A5D3A;
+  border-color: #1A5D3A;
+}
+
+/* 提示 */
+.tips {
+  margin-top: 32rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+
+.tip-row {
+  display: flex;
+  align-items: flex-start;
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  padding: 8rpx 0;
+}
+
+.tip-icon {
+  color: #1A5D3A;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+/* 错误提示 */
+.error-box {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  background: #FEF0F0;
+  color: #F56C6C;
+  font-size: 26rpx;
+  border-radius: 12rpx;
+  text-align: center;
+}

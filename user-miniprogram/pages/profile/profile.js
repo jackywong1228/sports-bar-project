@@ -19,6 +19,7 @@ Page({
       month_points: 0
     },
     menus: [
+      { icon: '/assets/icons/member-card.png', text: '我的会员码', url: '/pages/my-qrcode/my-qrcode' },
       { icon: '/assets/icons/order.png', text: '我的订单', url: '/pages/orders/orders?type=venue' },
       { icon: '/assets/icons/reservation.png', text: '我的预约', url: '/pages/orders/orders?type=coach' },
       { icon: '/assets/icons/coupon.png', text: '我的优惠券', url: '/pages/coupons/coupons' },

@@ -608,6 +608,16 @@ const getMyFeedback = (params = {}) => {
   return get('/member/feedback', params)
 }
 
+// ==================== 会员动态二维码 ====================
+
+/**
+ * 获取我的会员动态二维码 token（30 秒短期 JWT）
+ * 配合 my-qrcode 页面使用，前端每 25 秒刷新一次
+ */
+const getMemberQrToken = () => {
+  return get('/member/qrcode/token')
+}
+
 module.exports = {
   // 认证
   loginByPhone,
@@ -729,5 +739,8 @@ module.exports = {
 
   // 意见反馈
   submitFeedback,
-  getMyFeedback
+  getMyFeedback,
+
+  // 会员动态二维码
+  getMemberQrToken
 }

@@ -1,0 +1,69 @@
+<view class="page">
+  <!-- 会员卡片 -->
+  <view class="member-card" style="background: {{themeGradient}};">
+    <view class="member-card-row">
+      <image
+        wx:if="{{member.avatar}}"
+        class="avatar"
+        src="{{member.avatar}}"
+        mode="aspectFill"
+      />
+      <view wx:else class="avatar avatar-placeholder">
+        {{(member.nickname || '会').slice(0, 1)}}
+      </view>
+      <view class="member-info">
+        <view class="nickname">{{member.nickname || '未命名会员'}}</view>
+        <view class="level-tag">{{themeName}}</view>
+      </view>
+    </view>
+    <view wx:if="{{member.member_expire_time}}" class="expire-text">
+      会员有效期至 {{member.member_expire_time}}
+    </view>
+  </view>
+
+  <!-- 二维码区 -->
+  <view class="qr-wrapper">
+    <view class="qr-canvas-box">
+      <canvas
+        type="2d"
+        id="qrCanvas"
+        class="qr-canvas"
+      ></canvas>
+      <view wx:if="{{!qrReady}}" class="qr-loading">加载中...</view>
+    </view>
+    <view class="qr-tip">出示给前台工作人员扫描</view>
+
+    <!-- 倒计时进度条 -->
+    <view class="countdown">
+      <view class="progress-bar">
+        <view class="progress-fill" style="width: {{countdownPercent}}%; background-color: {{themeColor}};"></view>
+      </view>
+      <view class="countdown-text">{{countdownText}}</view>
+    </view>
+
+    <button class="refresh-btn" size="mini" plain bindtap="refreshQrCode">
+      手动刷新
+    </button>
+  </view>
+
+  <!-- 说明 -->
+  <view class="tips">
+    <view class="tip-row">
+      <text class="tip-icon">⚠</text>
+      <text>二维码每 30 秒自动刷新，仅本人有效</text>
+    </view>
+    <view class="tip-row">
+      <text class="tip-icon">●</text>
+      <text>切勿截图分享给他人</text>
+    </view>
+    <view class="tip-row">
+      <text class="tip-icon">●</text>
+      <text>到店时由前台工作人员扫描，可识别您的预约</text>
+    </view>
+  </view>
+
+  <!-- 错误提示 -->
+  <view wx:if="{{errorMsg}}" class="error-box">
+    {{errorMsg}}
+  </view>
+</view>

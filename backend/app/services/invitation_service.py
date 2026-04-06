@@ -9,6 +9,10 @@ from app.models import Member, MemberLevel
 from app.models.member_invitation import MemberInvitation
 
 
+# walk-in 场景下邀请记录的存留时长（业务上仅用作历史，不影响配额）
+WALKIN_RECORD_RETAIN_DAYS = 30
+
+
 class InvitationService:
     """会员邀请服务 - 管理邀请码生成和使用"""
 
@@ -152,3 +156,72 @@ class InvitationService:
             "total": total,
             "items": items
         }
+
+    # ====================================================================
+    # 前台扫码场景：散客到店时由会员现场担保邀请
+    # ====================================================================
+
+    def use_quota_for_walkin(self, inviter_id: int, invitee_id: int) -> int:
+        """前台扫码场景：扣邀请人月度配额，返回剩余配额。
+
+        与现有"邀请码"流程的区别：
+          - 不需要预先生成邀请码
+          - 由前台员工人工担保（员工先扫被邀请人的会员码再扫邀请人的会员码）
+          - 直接写一条 status='used' 的 MemberInvitation 记录占用本月配额
+
+        Raises:
+            ValueError: 邀请人不存在/非有效会员/已过期/配额耗尽/不能邀请自己
+        """
+        if inviter_id == invitee_id:
+            raise ValueError("不能邀请自己")
+
+        inviter = self.db.query(Member).filter(
+            Member.id == inviter_id,
+            Member.is_deleted == False  # noqa: E712
+        ).first()
+        if not inviter:
+            raise ValueError("邀请人不存在")
+
+        level = self.db.query(MemberLevel).filter(MemberLevel.id == inviter.level_id).first() if inviter.level_id else None
+        if not level or level.level_code not in ("SS", "SSS"):
+            raise ValueError("邀请人不是有效的 SS/SSS 会员")
+
+        # 会员有效期检查
+        if inviter.subscription_status != "active":
+            raise ValueError("邀请人会员未激活")
+        if inviter.member_expire_time and inviter.member_expire_time < datetime.now():
+            raise ValueError("邀请人会员已过期")
+
+        monthly_limit = getattr(level, "monthly_invite_count", 0) or 0
+        if monthly_limit <= 0:
+            raise ValueError("邀请人当前等级无邀请权限")
+
+        # 检查本月已用次数（与 generate_invite 的统计口径保持一致）
+        current_month = datetime.now().strftime("%Y-%m")
+        used_count = self.db.query(func.count(MemberInvitation.id)).filter(
+            MemberInvitation.inviter_id == inviter_id,
+            MemberInvitation.invite_month == current_month
+        ).scalar() or 0
+
+        if used_count >= monthly_limit:
+            raise ValueError(f"邀请人本月配额已用完（{used_count}/{monthly_limit}）")
+
+        # 写一条已使用的邀请记录
+        # invite_code 必须 UNIQUE，用 WALKIN_<ts>_<uuid6> 防冲突
+        unique_suffix = uuid.uuid4().hex[:6].upper()
+        invite_code = f"WALKIN_{int(datetime.now().timestamp())}_{unique_suffix}"
+
+        record = MemberInvitation(
+            inviter_id=inviter_id,
+            invitee_id=invitee_id,
+            invite_code=invite_code,
+            invite_month=current_month,
+            status="used",
+            used_at=datetime.now(),
+            # expire_at 是 NOT NULL，walk-in 已立即使用，给一个象征性的过期时间
+            expire_at=datetime.now() + timedelta(days=WALKIN_RECORD_RETAIN_DAYS),
+        )
+        self.db.add(record)
+        self.db.flush()
+
+        return max(0, monthly_limit - used_count - 1)

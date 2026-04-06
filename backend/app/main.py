@@ -10,6 +10,7 @@ from app.api.v1 import activities, coupons, mall, payment, finance, dashboard, m
 from app.api.v1 import gate_api, checkin
 from app.api.v1 import coupon_packs, reviews
 from app.api.v1 import feedback as feedback_router
+from app.api.v1 import staff_scan
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -72,6 +73,8 @@ app.include_router(checkin.router, prefix=f"{settings.API_V1_PREFIX}/checkin", t
 app.include_router(coupon_packs.router, prefix=f"{settings.API_V1_PREFIX}/coupon-packs", tags=["优惠券合集"])
 app.include_router(reviews.router, prefix=f"{settings.API_V1_PREFIX}/reviews", tags=["评论管理"])
 app.include_router(feedback_router.router, prefix=f"{settings.API_V1_PREFIX}/feedback", tags=["反馈管理"])
+# 前台扫码核销（路径同时挂在 /member 和 /staff 下，所以 prefix 用根 API 前缀）
+app.include_router(staff_scan.router, prefix=settings.API_V1_PREFIX, tags=["前台扫码核销"])
 
 # 挂载静态文件目录（用于上传文件访问）
 upload_dir = settings.UPLOAD_DIR
