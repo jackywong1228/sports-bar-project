@@ -50,6 +50,9 @@ App({
     console.log('[APP] onLaunch 开始')
     console.log('[APP] baseUrl:', this.globalData.baseUrl)
 
+    // 检查小程序更新（有新版本时弹窗提示立即重启）
+    this.checkForUpdate()
+
     // 网络连接测试
     this.testNetworkConnection()
 
@@ -69,6 +72,40 @@ App({
       this.globalData.coachToken = coachToken
       this.getCoachInfo()
     }
+  },
+
+  // 小程序热更新检测
+  checkForUpdate() {
+    if (!wx.getUpdateManager) {
+      console.log('[UPDATE] 当前微信版本过低，无法使用自动更新')
+      return
+    }
+    const updateManager = wx.getUpdateManager()
+    updateManager.onCheckForUpdate((res) => {
+      console.log('[UPDATE] hasUpdate:', res.hasUpdate)
+    })
+    updateManager.onUpdateReady(() => {
+      wx.showModal({
+        title: '更新提示',
+        content: '发现新版本，是否立即重启体验？',
+        confirmText: '立即更新',
+        cancelText: '稍后',
+        success: (res) => {
+          if (res.confirm) {
+            // 新版本已下载，调用 applyUpdate 应用并重启
+            updateManager.applyUpdate()
+          }
+        }
+      })
+    })
+    updateManager.onUpdateFailed(() => {
+      console.error('[UPDATE] 新版本下载失败')
+      wx.showToast({
+        title: '新版本下载失败，请稍后重试',
+        icon: 'none',
+        duration: 2000
+      })
+    })
   },
 
   // 测试网络连接
