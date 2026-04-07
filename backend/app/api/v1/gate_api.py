@@ -40,7 +40,10 @@ def calculate_points(member_id: int, venue_id: int, duration: int, db: Session) 
             PointRuleConfig.venue_type_id == None
         )
     ).order_by(
-        PointRuleConfig.venue_type_id.desc().nullslast(),
+        # MySQL 不支持 NULLS LAST，用 IS NULL 排序键模拟：
+        # False(0) 排前 -> 非NULL优先；True(1) 排后 -> NULL 殿后
+        PointRuleConfig.venue_type_id.is_(None).asc(),
+        PointRuleConfig.venue_type_id.desc(),
         PointRuleConfig.priority.desc()
     ).first()
 
