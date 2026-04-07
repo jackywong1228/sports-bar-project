@@ -8,6 +8,7 @@ const QR_LIFETIME_S = 30
 Page({
   data: {
     member: {},
+    avatarLetter: '会',
     themeColor: '#1A5D3A',
     themeGradient: 'linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%)',
     themeName: '会员',
@@ -56,8 +57,11 @@ Page({
       gradient: 'linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%)',
       name: '会员',
     }
+    const nick = (member.nickname || '').trim()
+    const avatarLetter = nick ? nick.charAt(0) : '会'
     this.setData({
       member,
+      avatarLetter,
       themeColor: themeConfig.primary,
       themeGradient: themeConfig.gradient,
       themeName: themeConfig.name,

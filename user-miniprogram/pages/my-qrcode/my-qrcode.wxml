@@ -9,7 +9,7 @@
         mode="aspectFill"
       />
       <view wx:else class="avatar avatar-placeholder">
-        {{(member.nickname || '会').slice(0, 1)}}
+        {{avatarLetter}}
       </view>
       <view class="member-info">
         <view class="nickname">{{member.nickname || '未命名会员'}}</view>
