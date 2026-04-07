@@ -5,7 +5,7 @@ import request from '@/utils/request'
 interface CheckinRecord {
   id: number
   member_id: number
-  member_name: string
+  member_nickname: string
   member_phone: string
   venue_id: number
   venue_name: string
@@ -128,7 +128,7 @@ onMounted(() => {
 
       <el-table :data="tableData" v-loading="loading" stripe>
         <el-table-column prop="check_date" label="打卡日期" width="120" />
-        <el-table-column prop="member_name" label="会员" width="100" />
+        <el-table-column prop="member_nickname" label="会员" width="100" />
         <el-table-column prop="member_phone" label="手机号" width="120" />
         <el-table-column prop="venue_name" label="场馆" width="150" />
         <el-table-column prop="venue_type_name" label="场馆类型" width="100" />

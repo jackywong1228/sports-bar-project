@@ -138,9 +138,10 @@ onMounted(() => {
         <el-table-column prop="member_phone" label="联系电话" width="120" />
         <el-table-column prop="venue_name" label="场地" width="120" />
         <el-table-column prop="coach_name" label="教练" width="100" />
-        <el-table-column label="预约时间" width="180">
+        <el-table-column label="预约时间" min-width="220">
           <template #default="{ row }">
-            {{ row.start_time?.substring(0, 16) }} - {{ row.end_time?.substring(11, 16) }}
+            <!-- 后端 reservation_date 为 Date，start_time/end_time 为 Time(HH:MM:SS) -->
+            {{ row.reservation_date }} {{ row.start_time?.substring(0, 5) }} - {{ row.end_time?.substring(0, 5) }}
           </template>
         </el-table-column>
         <el-table-column prop="duration" label="时长(分钟)" width="100" />
