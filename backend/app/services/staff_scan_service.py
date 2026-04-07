@@ -18,10 +18,14 @@ from app.models import (
     Reservation,
     Venue,
 )
+from app.models.venue import VenueType
 
 # JWT 短期 token 设计
 QR_TOKEN_EXPIRE_SECONDS = 30
 QR_TOKEN_TYPE = "member_qr"
+
+# 散客接待虚拟场馆名称（用于无场地的散客到店记录）
+RECEPTION_VENUE_NAME = "散客接待"
 
 
 def generate_member_qr_token(member_id: int) -> dict:
@@ -125,6 +129,49 @@ def record_checkin_for_reservation(db: Session, res: Reservation) -> GateCheckRe
             db.add(point_record)
 
     return record
+
+
+def get_or_create_reception_venue(db: Session) -> Venue:
+    """获取或懒加载创建"散客接待"虚拟场馆行。
+
+    用于无场地散客到店打卡：GateCheckRecord.venue_id 不允许 NULL，
+    所以用一条 status=0（停用）的特殊 Venue 行承载散客到店记录。
+    status=0 保证小程序 /member/venues（过滤 status==1）自然不会展示它。
+
+    调用方负责 db.commit()；本函数需要时会 db.flush() 拿到新行 id。
+    """
+    venue = (
+        db.query(Venue)
+        .filter(
+            Venue.name == RECEPTION_VENUE_NAME,
+            Venue.is_deleted == False,  # noqa: E712
+        )
+        .first()
+    )
+    if venue:
+        return venue
+
+    # 需要一个有效的 type_id（表级 FK 约束）。取任意一条现存 VenueType，
+    # 如果一条都没有就先建一个"其他"类型兜底。
+    type_row = db.query(VenueType).order_by(VenueType.id.asc()).first()
+    if not type_row:
+        type_row = VenueType(name="其他", sort=9999, status=True)
+        db.add(type_row)
+        db.flush()
+
+    venue = Venue(
+        name=RECEPTION_VENUE_NAME,
+        type_id=type_row.id,
+        location=None,
+        capacity=0,
+        price=0,
+        status=0,  # 停用 → 小程序不可见、不可预约
+        sort=9999,  # 排在管理后台场馆列表最末
+        description="散客到店登记用虚拟场馆（系统自动创建，请勿删除）",
+    )
+    db.add(venue)
+    db.flush()
+    return venue
 
 
 def record_walk_in_checkin(db: Session, member_id: int, venue_id: int) -> GateCheckRecord:

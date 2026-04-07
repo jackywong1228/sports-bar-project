@@ -186,13 +186,13 @@
         <el-button
           type="primary"
           style="margin-top: 12px;"
-          :disabled="!currentVenueId || (hasInviter && !inviterToken)"
+          :disabled="currentVenueId === null || (hasInviter && !inviterToken)"
           :loading="walkInLoading"
           @click="handleWalkInCheckin"
         >
           记一条到店记录
         </el-button>
-        <div v-if="!currentVenueId" style="margin-top: 8px; color: #F56C6C; font-size: 12px;">
+        <div v-if="currentVenueId === null" style="margin-top: 8px; color: #F56C6C; font-size: 12px;">
           请先在顶部选择"当前服务场馆"
         </div>
       </div>
@@ -367,8 +367,9 @@ function closeMemberResult() {
   inviterToken.value = ''
 }
 
-function onVenueChange(id: number) {
-  if (id) {
+function onVenueChange(id: number | null) {
+  // 包含哨兵值 0（散客接待），只有 null 才不持久化
+  if (id !== null && id !== undefined) {
     localStorage.setItem(VENUE_LS_KEY, String(id))
   }
 }
@@ -393,7 +394,7 @@ async function handleVerify() {
     try {
       const res: any = await staffScanMember({
         token: target.token,
-        current_venue_id: currentVenueId.value || undefined,
+        current_venue_id: currentVenueId.value ?? undefined,
       })
       memberResult.value = res.data as MemberScanResult
       couponInput.value = ''
@@ -480,7 +481,7 @@ async function verifyReservationItem(reservationId: number) {
 
 // 散客到店登记
 async function handleWalkInCheckin() {
-  if (!memberResult.value || !currentVenueId.value) return
+  if (!memberResult.value || currentVenueId.value === null) return
 
   if (hasInviter.value && !inviterToken.value) {
     ElMessage.warning('请先扫描邀请人的会员二维码')
@@ -581,11 +582,19 @@ async function loadVenues() {
   try {
     const res: any = await getVenueList({ page: 1, page_size: 100 })
     const list = res.data?.items || res.data || []
-    venueOptions.value = (list as any[]).map((v) => ({ id: v.id, name: v.name }))
+    // 过滤掉后端的"散客接待"虚拟场馆行（避免和顶部哨兵项重复）
+    const realVenues = (list as any[])
+      .filter((v) => v.name !== '散客接待')
+      .map((v) => ({ id: v.id, name: v.name }))
+    // 顶部固定加一项哨兵：散客接待（无场地），value=0
+    venueOptions.value = [
+      { id: 0, name: '散客接待（无场地）' },
+      ...realVenues,
+    ]
 
-    // 从 localStorage 恢复
+    // 从 localStorage 恢复（包括 id=0）
     const saved = localStorage.getItem(VENUE_LS_KEY)
-    if (saved) {
+    if (saved !== null) {
       const id = parseInt(saved, 10)
       if (!isNaN(id) && venueOptions.value.some((v) => v.id === id)) {
         currentVenueId.value = id

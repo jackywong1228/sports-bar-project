@@ -184,10 +184,21 @@ def staff_walk_in_checkin(
     if not member:
         raise HTTPException(status_code=404, detail="会员不存在")
 
-    # venue_id 校验
-    venue = db.query(Venue).filter(Venue.id == payload.current_venue_id).first()
-    if not venue:
-        raise HTTPException(status_code=400, detail="当前服务场馆无效")
+    # venue_id 校验：
+    # - current_venue_id == 0：前端哨兵值，表示"散客接待（无场地）"，
+    #   懒加载一条 status=0 的虚拟 venue 行承载记录
+    # - current_venue_id > 0：普通场馆，必须存在且未删除
+    if payload.current_venue_id == 0:
+        venue = staff_scan_service.get_or_create_reception_venue(db)
+        actual_venue_id = venue.id
+    else:
+        venue = db.query(Venue).filter(
+            Venue.id == payload.current_venue_id,
+            Venue.is_deleted == False,  # noqa: E712
+        ).first()
+        if not venue:
+            raise HTTPException(status_code=400, detail="当前服务场馆无效")
+        actual_venue_id = payload.current_venue_id
 
     inviter_remaining: Optional[int] = None
     if payload.inviter_token:
@@ -202,7 +213,7 @@ def staff_walk_in_checkin(
 
     try:
         record = staff_scan_service.record_walk_in_checkin(
-            db, payload.member_id, payload.current_venue_id
+            db, payload.member_id, actual_venue_id
         )
         db.commit()
         db.refresh(record)
