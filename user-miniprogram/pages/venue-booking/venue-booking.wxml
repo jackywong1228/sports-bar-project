@@ -191,8 +191,11 @@
           <view class="coupon-check {{selectedCouponIndex === index ? 'checked' : ''}}"></view>
         </view>
       </view>
+      <view class="pay-free-tip" wx:if="{{actualPrice === 0 && selectedCouponIndex >= 0}}">
+        ✓ 本单已免单，无需选择支付方式
+      </view>
       <view class="pay-options">
-        <view class="pay-option {{selectedPayType === 'coin' ? 'active' : ''}}" bindtap="selectPayType" data-type="coin">
+        <view class="pay-option {{selectedPayType === 'coin' ? 'active' : ''}} {{actualPrice === 0 ? 'disabled' : ''}}" bindtap="selectPayType" data-type="coin">
           <view class="pay-option-icon coin-icon">$</view>
           <view class="pay-option-info">
             <text class="pay-option-name">金币支付</text>
@@ -200,7 +203,7 @@
           </view>
           <view class="pay-option-check {{selectedPayType === 'coin' ? 'checked' : ''}}"></view>
         </view>
-        <view class="pay-option {{selectedPayType === 'wechat' ? 'active' : ''}}" bindtap="selectPayType" data-type="wechat">
+        <view class="pay-option {{selectedPayType === 'wechat' ? 'active' : ''}} {{actualPrice === 0 ? 'disabled' : ''}}" bindtap="selectPayType" data-type="wechat">
           <view class="pay-option-icon wechat-icon">W</view>
           <view class="pay-option-info">
             <text class="pay-option-name">微信支付</text>

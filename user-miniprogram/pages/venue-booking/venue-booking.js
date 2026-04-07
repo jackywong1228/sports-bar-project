@@ -400,7 +400,15 @@ Page({
 
   // 选择支付方式
   selectPayType(e) {
-    this.setData({ selectedPayType: e.currentTarget.dataset.type })
+    // 免单（优惠券已覆盖全价）时禁止选择支付方式
+    if (this.data.actualPrice === 0) return
+    const type = e.currentTarget.dataset.type
+    // 点击已选项 → 取消选中
+    if (this.data.selectedPayType === type) {
+      this.setData({ selectedPayType: '' })
+    } else {
+      this.setData({ selectedPayType: type })
+    }
   },
 
   // 阻止事件冒泡（空操作）
@@ -432,35 +440,55 @@ Page({
   // 选择/取消优惠券
   selectCoupon(e) {
     const index = e.currentTarget.dataset.index
-    const { availableCoupons, selectedCouponIndex, estimatedPrice } = this.data
+    const { availableCoupons, selectedCouponIndex, estimatedPrice, selectedSlots } = this.data
 
     if (index === selectedCouponIndex) {
-      // 取消选中
+      // 取消选中 → 恢复默认金币支付
       this.setData({
         selectedCouponIndex: -1,
         couponDiscount: 0,
-        actualPrice: estimatedPrice
+        actualPrice: estimatedPrice,
+        selectedPayType: 'coin'
       })
     } else {
       const coupon = availableCoupons[index]
       let discount = 0
+      const bookedHours = selectedSlots.length || 1
       if (coupon.type === 'cash') {
         discount = Math.min(coupon.discount_value || 0, estimatedPrice)
       } else if (coupon.type === 'gift') {
         discount = estimatedPrice
+      } else if (coupon.type === 'hour_free') {
+        // 时长券：与后端逻辑一致，按预约时长比例抵扣
+        const freeHours = parseFloat(coupon.discount_value || 0)
+        if (bookedHours <= freeHours) {
+          discount = estimatedPrice
+        } else {
+          discount = Math.round(estimatedPrice * (freeHours / bookedHours) * 100) / 100
+        }
       }
+      const newActual = Math.max(0, estimatedPrice - discount)
       this.setData({
         selectedCouponIndex: index,
         couponDiscount: discount,
-        actualPrice: Math.max(0, estimatedPrice - discount)
+        actualPrice: newActual,
+        // 优惠券覆盖全价时清除支付方式选中；否则保持当前或默认金币
+        selectedPayType: newActual === 0 ? '' : (this.data.selectedPayType || 'coin')
       })
     }
   },
 
   // 确认支付方式后提交
   confirmPay() {
+    const { actualPrice, selectedPayType } = this.data
+    // 需付款但未选支付方式 → 拦截
+    if (actualPrice > 0 && !selectedPayType) {
+      wx.showToast({ title: '请选择支付方式', icon: 'none' })
+      return
+    }
     this.setData({ showPayModal: false })
-    this.doSubmit(this.data.selectedPayType)
+    // 免单时 pay_type 兜底传 coin（后端 actualPrice=0 会跳过余额校验）
+    this.doSubmit(selectedPayType || 'coin')
   },
 
   // 实际提交预约

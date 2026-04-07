@@ -567,6 +567,19 @@
   background: #f0f7f2;
 }
 
+.pay-option.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.pay-free-tip {
+  color: #67C23A;
+  font-size: 26rpx;
+  text-align: center;
+  padding: 16rpx 0 24rpx;
+  font-weight: 500;
+}
+
 .pay-option-icon {
   width: 64rpx;
   height: 64rpx;
