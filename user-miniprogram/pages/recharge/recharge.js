@@ -55,13 +55,20 @@ Page({
       return
     }
 
-    // 检查登录状态
+    // 检查登录状态（审核要求：带显式取消选项）
     const memberInfo = app.globalData.memberInfo
     if (!memberInfo || !memberInfo.id) {
-      wx.showToast({ title: '请先登录', icon: 'none' })
-      setTimeout(() => {
-        wx.navigateTo({ url: '/pages/login/login' })
-      }, 1500)
+      wx.showModal({
+        title: '提示',
+        content: '充值金币需要登录，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/login/login' })
+          }
+        }
+      })
       return
     }
 

@@ -20,17 +20,21 @@ Page({
       return
     }
 
-    // 检查用户是否已登录
+    // 检查用户是否已登录（审核要求：带显式取消选项）
     if (!app.globalData.token) {
-      wx.showToast({
-        title: '请先登录用户账号',
-        icon: 'none'
+      wx.showModal({
+        title: '提示',
+        content: '登录教练账号需要先登录用户账号，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/login/login' })
+          } else {
+            wx.navigateBack()
+          }
+        }
       })
-      setTimeout(() => {
-        wx.navigateTo({
-          url: '/pages/login/login'
-        })
-      }, 1500)
       return
     }
 

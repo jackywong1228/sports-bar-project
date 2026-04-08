@@ -29,8 +29,19 @@ Page({
 
   onShow() {
     if (!app.globalData.token) {
-      wx.showToast({ title: '请先登录', icon: 'none' })
-      setTimeout(() => wx.navigateBack(), 1000)
+      wx.showModal({
+        title: '提示',
+        content: '查看会员码需要登录，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/login/login' })
+          } else {
+            wx.navigateBack()
+          }
+        }
+      })
       return
     }
     this.pageActive = true

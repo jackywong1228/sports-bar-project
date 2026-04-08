@@ -16,13 +16,19 @@ Page({
   onLoad() {
     // 检查登录状态
     if (!app.globalData.token) {
-      wx.showToast({
-        title: '请先登录',
-        icon: 'none'
+      wx.showModal({
+        title: '提示',
+        content: '申请成为教练需要先登录，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/login/login' })
+          } else {
+            wx.navigateBack()
+          }
+        }
       })
-      setTimeout(() => {
-        wx.navigateBack()
-      }, 1500)
       return
     }
 

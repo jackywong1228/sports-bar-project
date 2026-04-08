@@ -12,13 +12,40 @@ Page({
     tempAvatar: '',
     tempNickname: '',
     isSaving: false,
-    showGuidePopup: false,
+    nicknameFocus: false,
     agreed: false
   },
 
   onLoad(options) {
     if (app.globalData.token) {
       wx.navigateBack()
+    }
+  },
+
+  // 关闭登录页（满足审核：登录页必须有显著有效的可取消按钮）
+  onClose() {
+    // 完善资料界面退出时，给出柔性提示避免用户遗漏资料补全
+    if (this.data.needCompleteProfile) {
+      wx.showModal({
+        title: '提示',
+        content: '头像和昵称可在"我的-个人资料"中随时补充',
+        confirmText: '我知道了',
+        showCancel: false,
+        success: () => {
+          this._doClose()
+        }
+      })
+      return
+    }
+    this._doClose()
+  },
+
+  _doClose() {
+    const pages = getCurrentPages()
+    if (pages.length > 1) {
+      wx.navigateBack()
+    } else {
+      wx.switchTab({ url: '/pages/index/index' })
     }
   },
 
@@ -78,33 +105,23 @@ Page({
   },
 
   // 微信一键登录
+  // 注：基础库 2.27.1+ 后 wx.getUserProfile 已返回灰色默认值，
+  // 改用「完善资料」流程让用户通过 chooseAvatar + type=nickname 主动填写
   async wxLogin() {
     if (!this.checkAgreed()) return
 
     this.setData({ isLoading: true })
 
     try {
-      // 1. 尝试获取微信头像和昵称（用户可能拒绝，不影响登录）
-      let userInfo = {}
-      try {
-        const profileRes = await wxApi.getUserProfile()
-        if (profileRes.userInfo) {
-          userInfo.nickname = profileRes.userInfo.nickName
-          userInfo.avatar = profileRes.userInfo.avatarUrl
-        }
-      } catch (e) {
-        console.log('获取用户信息跳过:', e.errMsg || e)
-      }
-
-      // 2. 获取登录 code
+      // 获取登录 code
       const loginRes = await wxApi.login()
       if (!loginRes.code) {
         wxApi.showToast('微信登录失败')
         return
       }
 
-      // 3. 调用后端登录（带头像和昵称）
-      const res = await api.wxLogin(loginRes.code, userInfo)
+      // 调用后端登录
+      const res = await api.wxLogin(loginRes.code, {})
       this.handleLoginSuccess(res.data)
 
     } catch (err) {
@@ -199,7 +216,7 @@ Page({
     // 检查是否需要完善资料（昵称为默认值）
     const nickname = data.member_info.nickname || ''
     if (nickname === '微信用户' || nickname.startsWith('用户')) {
-      this.setData({ needCompleteProfile: true, showGuidePopup: true })
+      this.setData({ needCompleteProfile: true })
       return
     }
 
@@ -221,47 +238,25 @@ Page({
 
   // ==================== 完善资料相关 ====================
 
-  // 引导弹窗 - 使用微信头像
-  onGuideChooseAvatar(e) {
-    const tempFilePath = e.detail.avatarUrl
-    this.setData({ tempAvatar: tempFilePath, showGuidePopup: false })
-  },
-
-  // 引导弹窗 - 从相册选择
-  async onGuideChooseAlbum() {
-    try {
-      const res = await new Promise((resolve, reject) => {
-        wx.chooseMedia({
-          count: 1,
-          mediaType: ['image'],
-          sourceType: ['album', 'camera'],
-          success: resolve,
-          fail: reject
-        })
-      })
-      this.setData({
-        tempAvatar: res.tempFiles[0].tempFilePath,
-        showGuidePopup: false
-      })
-    } catch (err) {
-      if (err.errMsg && err.errMsg.includes('cancel')) return
-    }
-  },
-
-  // 关闭引导弹窗
-  onCloseGuide() {
-    this.setData({ showGuidePopup: false })
-  },
-
-  // 选择头像回调
+  // 选择头像回调：选完头像立即自动聚焦昵称输入框，
+  // 触发微信原生「从微信昵称填入」键盘，让用户感觉是一次连贯动作
   onChooseAvatar(e) {
     const tempFilePath = e.detail.avatarUrl
-    this.setData({ tempAvatar: tempFilePath })
+    this.setData({ tempAvatar: tempFilePath, nicknameFocus: false })
+    // 跨 tick 触发 focus，避开框架的 setData 合并
+    setTimeout(() => {
+      this.setData({ nicknameFocus: true })
+    }, 50)
   },
 
   // 昵称输入回调
   onNicknameChange(e) {
     this.setData({ tempNickname: e.detail.value })
+  },
+
+  // 昵称失焦：把 focus 重置回 false，方便下次再次脉冲触发
+  onNicknameBlur() {
+    this.setData({ nicknameFocus: false })
   },
 
   // 保存资料

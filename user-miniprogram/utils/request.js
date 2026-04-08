@@ -8,6 +8,9 @@ const app = getApp()
 // 请求队列（用于请求去重）
 const pendingRequests = new Map()
 
+// 登录提示弹窗防抖 flag（防止并发 401 触发多个 modal）
+let isLoginPromptShowing = false
+
 // 生成请求key
 const generateRequestKey = (config) => {
   return `${config.method || 'GET'}_${config.url}_${JSON.stringify(config.data || {})}`
@@ -43,14 +46,30 @@ const responseInterceptor = (response, config) => {
     app.globalData.token = ''
     app.globalData.memberInfo = null
 
-    // 跳转登录页
+    // 审核要求：不再直接 navigateTo，改用 showModal 给用户显式取消选项
     const pages = getCurrentPages()
     const currentPage = pages[pages.length - 1]
-    if (currentPage && currentPage.route !== 'pages/login/login') {
-      wx.navigateTo({ url: '/pages/login/login' })
+    const alreadyOnLogin = currentPage && currentPage.route === 'pages/login/login'
+
+    if (!alreadyOnLogin && !isLoginPromptShowing) {
+      isLoginPromptShowing = true
+      wx.showModal({
+        title: '登录提示',
+        content: '登录已过期，是否重新登录？',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/login/login' })
+          }
+        },
+        complete: () => {
+          isLoginPromptShowing = false
+        }
+      })
     }
 
-    return Promise.reject({ code: 401, message: '登录已过期，请重新登录' })
+    return Promise.reject({ code: 401, message: '登录已过期' })
   }
 
   // 403 禁止访问
@@ -126,7 +145,8 @@ const request = (options) => {
         responseInterceptor(res, config)
           .then(resolve)
           .catch((err) => {
-            if (options.showError !== false) {
+            // 401 已通过 showModal 提示，不再重复 toast，避免 modal 和 toast 叠加
+            if (err.code !== 401 && options.showError !== false) {
               wx.showToast({
                 title: err.message || '请求失败',
                 icon: 'none',
@@ -222,6 +242,37 @@ const upload = (url, filePath, name = 'file', formData = {}) => {
         'Authorization': `Bearer ${token}`
       },
       success: (res) => {
+        // 401 单独处理：与 responseInterceptor 保持一致的 showModal 流程
+        if (res.statusCode === 401) {
+          wx.removeStorageSync('token')
+          app.globalData.token = ''
+          app.globalData.memberInfo = null
+
+          const pages = getCurrentPages()
+          const currentPage = pages[pages.length - 1]
+          const alreadyOnLogin = currentPage && currentPage.route === 'pages/login/login'
+
+          if (!alreadyOnLogin && !isLoginPromptShowing) {
+            isLoginPromptShowing = true
+            wx.showModal({
+              title: '登录提示',
+              content: '登录已过期，是否重新登录？',
+              confirmText: '去登录',
+              cancelText: '取消',
+              success: (r) => {
+                if (r.confirm) {
+                  wx.navigateTo({ url: '/pages/login/login' })
+                }
+              },
+              complete: () => {
+                isLoginPromptShowing = false
+              }
+            })
+          }
+          reject({ code: 401, message: '登录已过期' })
+          return
+        }
+
         if (res.statusCode === 200) {
           try {
             const data = JSON.parse(res.data)

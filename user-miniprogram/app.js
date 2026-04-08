@@ -17,7 +17,8 @@ App({
     },
     isMember: false,          // 是否为付费会员(SS/SSS)
     memberExpireTime: null,   // 会员到期时间
-    canBook: false            // 是否可以预约场馆
+    canBook: false,           // 是否可以预约场馆
+    _loginPromptShowing: false // checkLogin showModal 防抖 flag
   },
 
   // 会员等级主题色配置（三级会员制）
@@ -136,12 +137,28 @@ App({
     return url
   },
 
-  // 检查登录状态，未登录则跳转登录页
+  // 检查登录状态，未登录则弹出 modal 提示（满足审核：不强制跳转）
+  // 同步返回 boolean，调用方按 `if (!app.checkLogin()) return` 模式短路
   checkLogin() {
     if (!this.globalData.token) {
-      wx.navigateTo({
-        url: '/pages/login/login'
-      })
+      // 防抖：避免并发 onLoad/onShow 弹多个 modal
+      if (!this.globalData._loginPromptShowing) {
+        this.globalData._loginPromptShowing = true
+        wx.showModal({
+          title: '提示',
+          content: '该功能需要登录，是否前往登录？',
+          confirmText: '去登录',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              wx.navigateTo({ url: '/pages/login/login' })
+            }
+          },
+          complete: () => {
+            this.globalData._loginPromptShowing = false
+          }
+        })
+      }
       return false
     }
     return true

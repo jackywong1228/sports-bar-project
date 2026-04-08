@@ -1,4 +1,9 @@
 <view class="container">
+  <!-- 关闭按钮（任何状态都可见，满足审核可退出要求）-->
+  <view class="close-btn" hover-class="close-btn-hover" hover-stay-time="100" bindtap="onClose" aria-label="关闭">
+    <text class="close-icon">✕</text>
+  </view>
+
   <!-- 登录界面 -->
   <view wx:if="{{!needCompleteProfile}}">
     <view class="logo-section">
@@ -89,8 +94,10 @@
         type="nickname"
         placeholder="请输入昵称"
         value="{{tempNickname}}"
+        focus="{{nicknameFocus}}"
         bindinput="onNicknameChange"
         bindchange="onNicknameChange"
+        bindblur="onNicknameBlur"
       />
     </view>
 
@@ -104,21 +111,6 @@
     </button>
     <view class="skip-link" bindtap="skipProfile">
       <text>跳过，稍后设置</text>
-    </view>
-
-    <!-- 引导弹窗 -->
-    <view class="guide-overlay" wx:if="{{showGuidePopup}}" bindtap="onCloseGuide">
-      <view class="guide-popup" catchtap="">
-        <view class="guide-title">选择头像方式</view>
-        <view class="guide-subtitle">快速设置你的头像</view>
-        <button class="guide-btn guide-btn-wechat" open-type="chooseAvatar" bind:chooseavatar="onGuideChooseAvatar">
-          <text>使用微信头像</text>
-        </button>
-        <view class="guide-btn guide-btn-album" bindtap="onGuideChooseAlbum">
-          <text>从相册选择</text>
-        </view>
-        <view class="guide-close" bindtap="onCloseGuide">稍后再说</view>
-      </view>
     </view>
   </view>
 </view>

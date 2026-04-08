@@ -25,7 +25,23 @@ Page({
     if (app.globalData.token) {
       this.acceptInvite(code)
     } else {
-      wx.navigateTo({ url: '/pages/login/login' })
+      // 审核要求：带显式取消选项
+      wx.showModal({
+        title: '提示',
+        content: '接受好友邀请需要登录，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/login/login' })
+          } else {
+            this.setData({
+              status: 'error',
+              errorMsg: '已取消登录，邀请未接受'
+            })
+          }
+        }
+      })
     }
   },
 
