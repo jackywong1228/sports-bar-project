@@ -326,8 +326,10 @@ cd /var/www/sports-bar-project && \
   git remote set-url origin https://github.com/jackywong1228/sports-bar-project.git && \
   systemctl restart sports-bar
 
-# 重新构建前端
+# 重新构建前端（管理后台 + 前台扫码 H5）
 cd /var/www/sports-bar-project/admin-frontend && npm run build
+cd /var/www/sports-bar-project/staff-frontend && npm install && npm run build
+# staff-frontend 部署路径：https://yunlifang.cloud/staff/（nginx location /staff/ → staff-frontend/dist）
 
 # 查看日志
 journalctl -u sports-bar -f      # 后端日志
