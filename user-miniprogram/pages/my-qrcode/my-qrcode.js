@@ -79,6 +79,13 @@ Page({
     })
   },
 
+  reportError(key) {
+    // 线上错误上报：优先 reportMonitor（需在微信后台配置），失败则静默
+    try {
+      if (wx.reportMonitor) wx.reportMonitor(key, 1)
+    } catch (_) { /* 静默 */ }
+  },
+
   async refreshQrCode() {
     if (!this.pageActive) return
     try {
@@ -95,9 +102,9 @@ Page({
         countdownText: QR_LIFETIME_S + '秒',
       })
       this.drawQR('MEMBER:' + token)
-    } catch (err) {
-      console.error('刷新二维码失败:', err)
+    } catch (_err) {
       // 401 已由 app.request 统一处理（清除 token 并提示）
+      this.reportError('qrcode_refresh_fail')
       this.setData({ errorMsg: '刷新二维码失败，请检查网络或重新登录' })
     }
   },
@@ -108,7 +115,7 @@ Page({
       .fields({ node: true, size: true })
       .exec((res) => {
         if (!res || !res[0] || !res[0].node) {
-          console.error('Canvas node not found')
+          this.reportError('qrcode_canvas_missing')
           return
         }
         const canvas = res[0].node
@@ -120,8 +127,8 @@ Page({
             margin: 8,
           })
           this.setData({ qrReady: true })
-        } catch (err) {
-          console.error('QR code generation failed:', err)
+        } catch (_err) {
+          this.reportError('qrcode_generate_fail')
           this.setData({ errorMsg: '二维码生成失败' })
         }
       })

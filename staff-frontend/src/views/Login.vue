@@ -78,7 +78,12 @@ const handleLogin = async () => {
 <style scoped>
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #1A5D3A 0%, #2E7D52 50%, #F5F7F5 50%);
+  background: linear-gradient(
+    180deg,
+    var(--staff-primary) 0%,
+    var(--staff-primary-light) 50%,
+    var(--staff-bg) 50%
+  );
   display: flex;
   flex-direction: column;
   align-items: center;

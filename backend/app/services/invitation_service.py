@@ -175,10 +175,12 @@ class InvitationService:
         if inviter_id == invitee_id:
             raise ValueError("不能邀请自己")
 
+        # SELECT FOR UPDATE 锁住邀请人行，避免同一邀请人并发 walk-in 配额竞态
+        # （两个前台同时扫同一个邀请人时 COUNT-INSERT 会双双通过）
         inviter = self.db.query(Member).filter(
             Member.id == inviter_id,
             Member.is_deleted == False  # noqa: E712
-        ).first()
+        ).with_for_update().first()
         if not inviter:
             raise ValueError("邀请人不存在")
 

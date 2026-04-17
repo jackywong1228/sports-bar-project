@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-场馆体育社交系统（Sports Bar Project），包含三端架构：
+场馆体育社交系统（Sports Bar Project），包含四端架构：
 
 1. **微信小程序（用户+教练）** - `user-miniprogram/` - 面向普通用户和教练的移动端应用
 2. **管理后台（PC端）** - `admin-frontend/` + `backend/` - Web 管理系统
-3. **物联设备对接** - 智能门禁、闸机等（`/api/v1/gate` 接口）
+3. **前台扫码核销 H5（员工端）** - `staff-frontend/` - 面向前台/员工手机浏览器的 Vue 3 移动 Web，用于会员二维码扫描核销、散客接待、订单/预约/活动管理
+4. **物联设备对接** - 智能门禁、闸机等（`/api/v1/gate` 接口）。注：线上已用"会员动态二维码 + 前台扫码"链路替代停用的闸机硬件，`gate_api` 接口保留但不再是主数据源；核销链路走 `staff_scan` + `staff-frontend`
 
 > **注意**: 教练端功能已合并到用户端小程序中，`coach-miniprogram/` 目录已废弃。
 
@@ -37,6 +38,14 @@ npm install
 npm run dev                      # 开发服务器 http://localhost:5173
 npm run build                    # vue-tsc -b && vite build（类型检查 + 构建）
 vue-tsc -b                       # 仅运行类型检查
+```
+
+### 前台扫码核销 H5 (Vue 3 + Vant + html5-qrcode)
+```bash
+cd staff-frontend
+npm install
+npm run dev                      # 开发服务器
+npm run build                    # vue-tsc -b && vite build（类型检查 + 构建）
 ```
 
 ### 小程序
@@ -69,16 +78,20 @@ vue-tsc -b                       # 仅运行类型检查
 | `app/api/deps.py` | 三套认证依赖（管理员/会员/教练） |
 | `app/api/v1/member_api.py` | 会员端核心 API（2000+ 行） |
 | `app/api/v1/coach_api.py` | 教练端 API |
-| `app/api/v1/gate_api.py` | 闸机打卡 API（IoT 设备对接） |
+| `app/api/v1/gate_api.py` | 闸机打卡 API（IoT 设备对接，已被 staff_scan 替代，保留兜底） |
+| `app/api/v1/staff_scan.py` | 前台扫码核销（会员二维码 token 签发、扫码核销预约、散客接待登记、邀请人扫码消耗月度配额） |
+| `app/api/v1/feedback.py` | 用户反馈列表/详情/回复 |
+| `app/api/v1/wechat.py` | 微信小程序码生成、订阅消息、access_token |
 | `app/api/v1/upload.py` | 文件上传（图片/文档，最大10MB） |
 | `app/api/v1/ui_assets.py` | UI 素材管理（图标/主题/图片） |
 | `app/api/v1/ui_editor.py` | UI 可视化编辑器（页面配置/区块/菜单） |
 | `app/services/booking_service.py` | 预约权限检查（S拒绝/SS仅当天/SSS提前3天+免费时长） |
-| `app/services/invitation_service.py` | 邀请码生成/使用/月度配额/历史 |
+| `app/services/invitation_service.py` | 邀请码生成/使用/月度配额/历史（含 `use_quota_for_walkin()` 散客线扣减） |
 | `app/services/monthly_coupon_service.py` | SS月度券+SSS每日饮品券自动发放（查询需含 `is_deleted==False`） |
 | `app/services/venue_pricing_service.py` | 场馆按小时动态定价计算 |
 | `app/services/review_service.py` | 评论提交与积分发放 |
 | `app/services/coupon_pack_service.py` | 入会优惠券合集发放 |
+| `app/services/staff_scan_service.py` | QR JWT 签发/验证（25s 客户端刷新/30s 服务端过期）、`get_or_create_reception_venue()` 懒建散客虚拟场馆、`record_checkin_for_reservation()` |
 | `app/models/base.py` | TimestampMixin + SoftDeleteMixin |
 | `app/core/config.py` | pydantic-settings 配置 |
 | `app/core/security.py` | JWT 生成/验证 |
@@ -88,7 +101,7 @@ vue-tsc -b                       # 仅运行类型检查
 ### 后端 API 模块分组
 
 **管理后台 API**（`/api/v1/`，需 `get_current_user()`）：
-`auth`, `staff`, `members`, `venues`, `reservations`, `coaches`, `activities`, `coupons`, `mall`, `payment`, `finance`, `dashboard`, `messages`, `member_cards`, `upload`, `ui_assets`, `ui_editor`, `checkin`, `coupon_packs`, `reviews`
+`auth`, `staff`, `members`, `venues`, `reservations`, `coaches`, `activities`, `coupons`, `mall`, `payment`, `finance`, `dashboard`, `messages`, `member_cards`, `upload`, `ui_assets`, `ui_editor`, `checkin`, `coupon_packs`, `reviews`, `feedback`, `wechat`
 
 **会员端 API**（`/api/v1/member/`，需 `get_current_member()`）：
 `member_api`（核心）, `member_api_subscription_extension`（订阅扩展）
@@ -96,8 +109,15 @@ vue-tsc -b                       # 仅运行类型检查
 **教练端 API**（`/api/v1/coach/`，需 `get_current_coach()`）：
 `coach_api`
 
+**前台扫码 API**（`/api/v1/*`，混合认证）：
+`staff_scan` - 包含：
+- `GET /member/qrcode/token`（需会员 token）会员端获取动态二维码 JWT（30s 过期）
+- `POST /staff/scan-member` 前台扫码解析会员身份
+- `POST /staff/verify-with-checkin` 核销预约并写打卡记录
+- `POST /staff/walk-in-checkin` 散客接待打卡（可关联邀请人扫码）
+
 **设备 API**（`/api/v1/gate/`，无认证或设备认证）：
-`gate_api`（闸机入场/出场打卡）
+`gate_api`（闸机入场/出场打卡，已被 staff_scan 链路替代，保留兼容）
 
 ### 后端代码惯例
 
@@ -139,6 +159,7 @@ vue-tsc -b                       # 仅运行类型检查
 | `utils/request.js` | 请求封装，双 Token，请求去重（`pendingRequests` Map），401 处理 |
 | `utils/api.js` | 会员端 API（50+ 接口，690 行） |
 | `utils/coach-api.js` | 教练端 API（370 行） |
+| `pages/my-qrcode/` | 会员动态二维码页（JWT 每 25s 刷新，30s 过期，防截图复用），是前台扫码核销链路的起点 |
 | `pages/` | 40 个页面，教练端页面使用 `coach-*` 前缀 |
 
 ### 小程序代码惯例
@@ -153,6 +174,7 @@ vue-tsc -b                       # 仅运行类型检查
 - **邀请页面**: `pages/invite/invite.js` 邀请码生成、分享、历史记录
 - **优惠券页面**: `pages/coupons/coupons.js` Tab 分栏（可用/已用/已过期）、类型适配、点击跳转
 - **完善资料**: `pages/login/login.js` 登录后自动弹出头像选择引导弹窗
+- **会员二维码**: `pages/my-qrcode/my-qrcode.js` 使用 `REFRESH_INTERVAL_MS = 25000` 提前于 30s 服务端窗口刷新；`onHide` / `onUnload` 必须清理定时器；`drawQR` 的 canvas 渲染失败要降级提示
 
 ## 数据库配置
 
@@ -223,6 +245,14 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 - SSS级: `can_book_venue=True`, 检查 booking_date <= today+3天, 计算每日2h免费额度（超出部分付费）
 - 返回 `can_book`、`reason`、`available_coupons`、`free_usage_info`（SSS）等信息
 
+### 散客接待（Walk-in Reception）
+
+前台扫码时若选"散客接待"，前端传 `current_venue_id=0`，后端 `staff_scan_service.get_or_create_reception_venue()` 懒加载一条 `name='散客接待' status=0 sort=9999` 的虚拟 Venue 行：
+- `status=0` 会被 `/member/venues` 列表自然过滤（该接口只返回 `status==1`），不污染会员端场馆展示
+- 同时满足 `gate_check_record.venue_id NOT NULL` 约束，打卡记录可正常落库
+- 散客 + 邀请人链路：`InvitationService.use_quota_for_walkin()` 消耗月度邀请配额，写入 `member_invitation(status='used', invite_code='WALKIN_<ts>')`
+- 前端下拉框使用 `id=0` 哨兵值，判空必须用 `=== null` 而非真值判断（`!currentVenueId` 会对 0 误判）
+
 ### 核心数据模型
 
 主要表定义在 `backend/app/models/`：
@@ -245,6 +275,7 @@ CREATE DATABASE sports_bar DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 - `user.py`: SysUser, SysRole, SysDepartment, SysPermission（后台系统用户/权限）
 - `finance.py`: FinanceStat, RechargeOrder（财务统计）, RechargePackage（充值套餐配置）
 - `message.py`: Message, MessageTemplate, Announcement（消息/公告）
+- `feedback.py`: Feedback（用户反馈，含 content/type/status/reply_content/reply_time）
 
 ### 测试账号（生产环境）
 

@@ -156,19 +156,23 @@ onUnmounted(() => {
 }
 
 .result-section,
-.error-section {
+.error-section,
+.start-section {
   text-align: center;
   padding-top: 40px;
 }
 
+.result-title,
+.error-title {
+  margin: 12px 0 16px;
+}
+
 .result-title {
   color: #07c160;
-  margin: 12px 0 20px;
 }
 
 .error-title {
   color: #ee0a24;
-  margin: 12px 0 8px;
 }
 
 .error-msg {
@@ -184,9 +188,5 @@ onUnmounted(() => {
 
 .continue-btn {
   padding: 24px 0;
-}
-
-.start-section {
-  padding-top: 60px;
 }
 </style>

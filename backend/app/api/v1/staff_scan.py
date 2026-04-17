@@ -6,6 +6,7 @@
   POST /api/v1/staff/verify-with-checkin 核销预约 + 同步打卡（替代闸机数据源）
   POST /api/v1/staff/walk-in-checkin     散客到店：duration=0 + 可选扣邀请人配额
 """
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -21,6 +22,7 @@ from app.services import staff_scan_service
 from app.services.invitation_service import InvitationService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -72,6 +74,7 @@ def staff_scan_member(
             stats = InvitationService(db).get_monthly_stats(member_id)
             invite_remaining = stats.get("remaining", 0)
         except Exception:
+            logger.exception("获取邀请配额失败: member_id=%s", member_id)
             invite_remaining = 0
 
     return ResponseModel(data={
@@ -139,7 +142,7 @@ def staff_verify_with_checkin(
 
     # 1. 核销预约
     res.is_verified = True
-    res.verified_at = datetime.utcnow()
+    res.verified_at = datetime.now()
     res.verified_by = f"staff_{current_user.id}"
     res.status = "in_progress"
 
@@ -148,9 +151,10 @@ def staff_verify_with_checkin(
         record = staff_scan_service.record_checkin_for_reservation(db, res)
         db.commit()
         db.refresh(record)
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"核销失败: {str(e)}")
+        logger.exception("核销失败: reservation_id=%s", payload.reservation_id)
+        raise HTTPException(status_code=500, detail="核销失败，请稍后重试")
 
     return ResponseModel(message="核销成功", data={
         "reservation_id": res.id,
@@ -217,9 +221,10 @@ def staff_walk_in_checkin(
         )
         db.commit()
         db.refresh(record)
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"到店登记失败: {str(e)}")
+        logger.exception("到店登记失败: member_id=%s venue_id=%s", payload.member_id, actual_venue_id)
+        raise HTTPException(status_code=500, detail="到店登记失败，请稍后重试")
 
     return ResponseModel(message="到店登记成功", data={
         "checkin_id": record.id,

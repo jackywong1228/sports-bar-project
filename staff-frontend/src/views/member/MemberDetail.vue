@@ -126,7 +126,7 @@ onMounted(() => {
         <van-button type="primary" plain round block @click="openRecharge('coin')">
           金币充值
         </van-button>
-        <van-button type="warning" plain round block @click="openRecharge('point')" style="margin-top: 10px;">
+        <van-button type="warning" plain round block @click="openRecharge('point')" style="margin-top: 12px;">
           积分充值
         </van-button>
       </div>
@@ -157,13 +157,13 @@ onMounted(() => {
 
 <style scoped>
 .member-header {
-  padding: 30px 16px;
+  padding: 32px 16px;
   text-align: center;
   color: #fff;
 }
 
 .member-avatar {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .member-name {

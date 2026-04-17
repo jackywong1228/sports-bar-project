@@ -14,6 +14,15 @@ from app.schemas.common import ResponseModel
 router = APIRouter()
 
 
+def _escape_like(value: str) -> str:
+    """转义 LIKE 通配符，避免 '%'/'_' 被误解为模糊匹配"""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _serialize_time(value) -> Optional[str]:
+    return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
+
+
 @router.get("", response_model=ResponseModel)
 def list_feedback(
     page: int = Query(1, ge=1),
@@ -32,16 +41,22 @@ def list_feedback(
     if category:
         query = query.filter(Feedback.category == category)
     if keyword:
-        query = query.filter(Feedback.content.like(f"%{keyword}%"))
+        query = query.filter(Feedback.content.like(f"%{_escape_like(keyword)}%", escape="\\"))
 
     total = query.count()
     items = query.order_by(Feedback.created_at.desc()).offset(
         (page - 1) * page_size
     ).limit(page_size).all()
 
+    # 批量预取会员（避免 N+1 查询）
+    member_ids = {f.member_id for f in items if f.member_id}
+    members_map = {
+        m.id: m for m in db.query(Member).filter(Member.id.in_(member_ids)).all()
+    } if member_ids else {}
+
     result = []
     for f in items:
-        member = db.query(Member).filter(Member.id == f.member_id).first()
+        member = members_map.get(f.member_id)
         result.append({
             "id": f.id,
             "member_id": f.member_id,
@@ -54,8 +69,8 @@ def list_feedback(
             "contact": f.contact,
             "status": f.status,
             "admin_reply": f.admin_reply,
-            "reply_time": f.reply_time,
-            "created_at": str(f.created_at) if f.created_at else None
+            "reply_time": _serialize_time(f.reply_time),
+            "created_at": _serialize_time(f.created_at),
         })
 
     return ResponseModel(data={
@@ -95,8 +110,8 @@ def get_feedback_detail(
         "contact": feedback.contact,
         "status": feedback.status,
         "admin_reply": feedback.admin_reply,
-        "reply_time": feedback.reply_time,
-        "created_at": str(feedback.created_at) if feedback.created_at else None
+        "reply_time": _serialize_time(feedback.reply_time),
+        "created_at": _serialize_time(feedback.created_at),
     })
 
 
@@ -120,7 +135,7 @@ def reply_feedback(
         raise HTTPException(status_code=404, detail="反馈不存在")
 
     feedback.admin_reply = data.reply
-    feedback.reply_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    feedback.reply_time = datetime.now()
     feedback.status = "resolved"
     db.commit()
     return ResponseModel(message="回复成功")

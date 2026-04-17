@@ -123,7 +123,7 @@ onMounted(() => {
 
 <style scoped>
 .reservation-card {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .res-header {
@@ -141,7 +141,7 @@ onMounted(() => {
   margin-top: 4px;
   font-size: 13px;
   color: #666;
-  line-height: 2;
+  line-height: 1.8;
 }
 
 .res-info .van-icon {

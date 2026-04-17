@@ -144,6 +144,6 @@ const goDetail = (id: number) => {
 .member-phone {
   font-size: 13px;
   color: #999;
-  margin-top: 2px;
+  margin-top: 6px;
 }
 </style>

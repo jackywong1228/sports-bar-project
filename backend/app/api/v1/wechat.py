@@ -3,7 +3,7 @@ import os
 import uuid
 import base64
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -19,11 +19,18 @@ from app.core.wechat import (
     WeChatAPIError,
     subscribe_message_helper
 )
-from app.models import Member
+from app.models import Member, SysUser
 from app.schemas.common import ResponseModel
-from app.api.deps import get_current_member
+from app.api.deps import get_current_member, get_current_user
 
 router = APIRouter()
+
+
+AppType = Literal["user", "coach"]
+
+
+def _pick_wechat_service(app_type: AppType):
+    return user_wechat_service if app_type == "user" else coach_wechat_service
 
 
 # ==================== 小程序码生成 ====================
@@ -40,14 +47,15 @@ class WxacodeRequest(BaseModel):
 @router.post("/wxacode/unlimited")
 async def generate_wxacode_unlimited(
     data: WxacodeRequest,
-    app_type: str = Query("user", description="小程序类型: user/coach")
+    app_type: AppType = Query("user", description="小程序类型: user/coach"),
+    current_user: SysUser = Depends(get_current_user),
 ):
     """
     生成无限制小程序码
     scene最多32个字符，适用于需要的场景值很多的情况
     """
     try:
-        service = user_wechat_service if app_type == "user" else coach_wechat_service
+        service = _pick_wechat_service(app_type)
         image_data = await service.get_unlimited_wxacode(
             scene=data.scene,
             page=data.page,
@@ -69,14 +77,15 @@ async def generate_wxacode_unlimited(
 async def generate_wxacode_path(
     path: str = Query(..., description="页面路径带参数"),
     width: int = Query(430, description="宽度"),
-    app_type: str = Query("user", description="小程序类型: user/coach")
+    app_type: AppType = Query("user", description="小程序类型: user/coach"),
+    current_user: SysUser = Depends(get_current_user),
 ):
     """
     生成带路径的小程序码
     有总数限制（10万个），适用于需要的码数量较少的业务场景
     """
     try:
-        service = user_wechat_service if app_type == "user" else coach_wechat_service
+        service = _pick_wechat_service(app_type)
         image_data = await service.get_wxacode(
             path=path,
             width=width
@@ -94,11 +103,12 @@ async def generate_wxacode_path(
 @router.post("/wxacode/unlimited/base64", response_model=ResponseModel)
 async def generate_wxacode_unlimited_base64(
     data: WxacodeRequest,
-    app_type: str = Query("user", description="小程序类型: user/coach")
+    app_type: AppType = Query("user", description="小程序类型: user/coach"),
+    current_user: SysUser = Depends(get_current_user),
 ):
     """生成无限制小程序码（返回Base64）"""
     try:
-        service = user_wechat_service if app_type == "user" else coach_wechat_service
+        service = _pick_wechat_service(app_type)
         image_data = await service.get_unlimited_wxacode(
             scene=data.scene,
             page=data.page,
@@ -119,11 +129,12 @@ async def generate_wxacode_unlimited_base64(
 @router.post("/wxacode/unlimited/save", response_model=ResponseModel)
 async def generate_wxacode_unlimited_save(
     data: WxacodeRequest,
-    app_type: str = Query("user", description="小程序类型: user/coach")
+    app_type: AppType = Query("user", description="小程序类型: user/coach"),
+    current_user: SysUser = Depends(get_current_user),
 ):
     """生成无限制小程序码（保存到服务器）"""
     try:
-        service = user_wechat_service if app_type == "user" else coach_wechat_service
+        service = _pick_wechat_service(app_type)
         image_data = await service.get_unlimited_wxacode(
             scene=data.scene,
             page=data.page,
@@ -185,88 +196,63 @@ class SubscribeMessageRequest(BaseModel):
     data: dict  # 模板数据
 
 
+SUBSCRIBE_MESSAGE_DISPATCH = {
+    "reservation_success": lambda openid, data: subscribe_message_helper.send_reservation_success(
+        service=user_wechat_service, openid=openid,
+        venue_name=data.get("venue_name", ""), time_slot=data.get("time_slot", ""),
+        date=data.get("date", ""), price=data.get("price", ""), page=data.get("page", ""),
+    ),
+    "reservation_cancel": lambda openid, data: subscribe_message_helper.send_reservation_cancel(
+        service=user_wechat_service, openid=openid,
+        venue_name=data.get("venue_name", ""), time_slot=data.get("time_slot", ""),
+        reason=data.get("reason", ""), page=data.get("page", ""),
+    ),
+    "activity_remind": lambda openid, data: subscribe_message_helper.send_activity_remind(
+        service=user_wechat_service, openid=openid,
+        activity_name=data.get("activity_name", ""), activity_time=data.get("activity_time", ""),
+        location=data.get("location", ""), page=data.get("page", ""),
+    ),
+    "order_status": lambda openid, data: subscribe_message_helper.send_order_status(
+        service=user_wechat_service, openid=openid,
+        order_no=data.get("order_no", ""), status=data.get("status", ""),
+        remark=data.get("remark", ""), page=data.get("page", ""),
+    ),
+    "member_expire": lambda openid, data: subscribe_message_helper.send_member_expire_remind(
+        service=user_wechat_service, openid=openid,
+        member_name=data.get("member_name", ""), level_name=data.get("level_name", ""),
+        expire_date=data.get("expire_date", ""), page=data.get("page", ""),
+    ),
+    "coupon_received": lambda openid, data: subscribe_message_helper.send_coupon_received(
+        service=user_wechat_service, openid=openid,
+        coupon_name=data.get("coupon_name", ""), coupon_value=data.get("coupon_value", ""),
+        expire_date=data.get("expire_date", ""), remark=data.get("remark", "请在有效期内使用"),
+        page=data.get("page", ""),
+    ),
+}
+
+
 @router.post("/subscribe-message/send", response_model=ResponseModel)
 async def send_subscribe_message(
     request: SubscribeMessageRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user),
 ):
     """
     发送订阅消息（管理后台使用）
     需要用户先订阅对应的消息模板
     """
-    template_type = request.template_type
-    data = request.data
-    openid = request.openid
+    sender = SUBSCRIBE_MESSAGE_DISPATCH.get(request.template_type)
+    if not sender:
+        raise HTTPException(status_code=400, detail="不支持的消息类型")
 
     try:
-        success = False
-
-        if template_type == "reservation_success":
-            success = await subscribe_message_helper.send_reservation_success(
-                service=user_wechat_service,
-                openid=openid,
-                venue_name=data.get("venue_name", ""),
-                time_slot=data.get("time_slot", ""),
-                date=data.get("date", ""),
-                price=data.get("price", ""),
-                page=data.get("page", "")
-            )
-        elif template_type == "reservation_cancel":
-            success = await subscribe_message_helper.send_reservation_cancel(
-                service=user_wechat_service,
-                openid=openid,
-                venue_name=data.get("venue_name", ""),
-                time_slot=data.get("time_slot", ""),
-                reason=data.get("reason", ""),
-                page=data.get("page", "")
-            )
-        elif template_type == "activity_remind":
-            success = await subscribe_message_helper.send_activity_remind(
-                service=user_wechat_service,
-                openid=openid,
-                activity_name=data.get("activity_name", ""),
-                activity_time=data.get("activity_time", ""),
-                location=data.get("location", ""),
-                page=data.get("page", "")
-            )
-        elif template_type == "order_status":
-            success = await subscribe_message_helper.send_order_status(
-                service=user_wechat_service,
-                openid=openid,
-                order_no=data.get("order_no", ""),
-                status=data.get("status", ""),
-                remark=data.get("remark", ""),
-                page=data.get("page", "")
-            )
-        elif template_type == "member_expire":
-            success = await subscribe_message_helper.send_member_expire_remind(
-                service=user_wechat_service,
-                openid=openid,
-                member_name=data.get("member_name", ""),
-                level_name=data.get("level_name", ""),
-                expire_date=data.get("expire_date", ""),
-                page=data.get("page", "")
-            )
-        elif template_type == "coupon_received":
-            success = await subscribe_message_helper.send_coupon_received(
-                service=user_wechat_service,
-                openid=openid,
-                coupon_name=data.get("coupon_name", ""),
-                coupon_value=data.get("coupon_value", ""),
-                expire_date=data.get("expire_date", ""),
-                remark=data.get("remark", "请在有效期内使用"),
-                page=data.get("page", "")
-            )
-        else:
-            raise HTTPException(status_code=400, detail="不支持的消息类型")
-
-        if success:
-            return ResponseModel(message="发送成功")
-        else:
-            return ResponseModel(code=400, message="用户未订阅该消息模板")
-
+        success = await sender(request.openid, request.data)
     except WeChatAPIError as e:
         raise HTTPException(status_code=400, detail=f"发送失败: {e.errmsg}")
+
+    if success:
+        return ResponseModel(message="发送成功")
+    return ResponseModel(code=400, message="用户未订阅该消息模板")
 
 
 # ==================== 内容安全检测 ====================
@@ -279,7 +265,10 @@ class ContentCheckRequest(BaseModel):
 
 
 @router.post("/security/check-text", response_model=ResponseModel)
-async def check_text_content(request: ContentCheckRequest):
+async def check_text_content(
+    request: ContentCheckRequest,
+    current_user: SysUser = Depends(get_current_user),
+):
     """
     文本内容安全检测
     用于检测用户发布的文本是否包含违规内容
@@ -312,7 +301,10 @@ class ImageCheckRequest(BaseModel):
 
 
 @router.post("/security/check-image", response_model=ResponseModel)
-async def check_image_content(request: ImageCheckRequest):
+async def check_image_content(
+    request: ImageCheckRequest,
+    current_user: SysUser = Depends(get_current_user),
+):
     """
     图片内容安全检测
     用于检测用户上传的图片是否包含违规内容

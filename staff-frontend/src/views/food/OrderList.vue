@@ -251,7 +251,7 @@ onUnmounted(() => {
 
 <style scoped>
 .order-card {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .order-header {

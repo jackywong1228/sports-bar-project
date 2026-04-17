@@ -8,7 +8,9 @@ from datetime import datetime, date
 from typing import List, Optional
 
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.models import (
@@ -62,10 +64,17 @@ def verify_member_qr_token(token: str) -> int:
 
 
 def get_member_today_pending_reservations(db: Session, member_id: int) -> List[Reservation]:
-    """查询会员今日待核销预约（仅场馆/教练，不含饮品券）"""
+    """查询会员今日待核销预约（仅场馆/教练，不含饮品券）
+
+    使用 joinedload 预取 venue/coach，避免 API 层序列化时的 N+1 懒加载
+    """
     today = date.today()
     items = (
         db.query(Reservation)
+        .options(
+            joinedload(Reservation.venue),
+            joinedload(Reservation.coach),
+        )
         .filter(
             Reservation.member_id == member_id,
             Reservation.reservation_date == today,
@@ -131,6 +140,10 @@ def record_checkin_for_reservation(db: Session, res: Reservation) -> GateCheckRe
     return record
 
 
+RECEPTION_VENUE_LOCK_NAME = "sports_bar:reception_venue_create"
+RECEPTION_VENUE_LOCK_TIMEOUT = 5  # 秒
+
+
 def get_or_create_reception_venue(db: Session) -> Venue:
     """获取或懒加载创建"散客接待"虚拟场馆行。
 
@@ -138,8 +151,15 @@ def get_or_create_reception_venue(db: Session) -> Venue:
     所以用一条 status=0（停用）的特殊 Venue 行承载散客到店记录。
     status=0 保证小程序 /member/venues（过滤 status==1）自然不会展示它。
 
+    并发安全：
+      - Venue 表无 name 唯一约束，SELECT→INSERT 之间存在 TOCTOU 窗口。
+      - 使用 MySQL GET_LOCK 序列化"查-建"过程，避免多前台并发时产生重复行。
+      - GET_LOCK 失败（超时）则退回纯查询，若仍找不到则抛出；这属于极端
+        场景（其他连接持锁超过 5 秒还没释放），直接失败比静默建重复行安全。
+
     调用方负责 db.commit()；本函数需要时会 db.flush() 拿到新行 id。
     """
+    # 先做一次无锁快速查询，命中直接返回（避免热路径抢锁）
     venue = (
         db.query(Venue)
         .filter(
@@ -151,27 +171,70 @@ def get_or_create_reception_venue(db: Session) -> Venue:
     if venue:
         return venue
 
-    # 需要一个有效的 type_id（表级 FK 约束）。取任意一条现存 VenueType，
-    # 如果一条都没有就先建一个"其他"类型兜底。
-    type_row = db.query(VenueType).order_by(VenueType.id.asc()).first()
-    if not type_row:
-        type_row = VenueType(name="其他", sort=9999, status=True)
-        db.add(type_row)
-        db.flush()
+    # 抢锁再做一次"查→建"（double-checked pattern）
+    lock_acquired = db.execute(
+        text("SELECT GET_LOCK(:name, :timeout)"),
+        {"name": RECEPTION_VENUE_LOCK_NAME, "timeout": RECEPTION_VENUE_LOCK_TIMEOUT},
+    ).scalar()
 
-    venue = Venue(
-        name=RECEPTION_VENUE_NAME,
-        type_id=type_row.id,
-        location=None,
-        capacity=0,
-        price=0,
-        status=0,  # 停用 → 小程序不可见、不可预约
-        sort=9999,  # 排在管理后台场馆列表最末
-        description="散客到店登记用虚拟场馆（系统自动创建，请勿删除）",
-    )
-    db.add(venue)
-    db.flush()
-    return venue
+    try:
+        # 再查一次，锁前可能已被其他连接建好
+        venue = (
+            db.query(Venue)
+            .filter(
+                Venue.name == RECEPTION_VENUE_NAME,
+                Venue.is_deleted == False,  # noqa: E712
+            )
+            .first()
+        )
+        if venue:
+            return venue
+
+        if not lock_acquired:
+            raise RuntimeError("获取散客接待场馆锁超时，请重试")
+
+        # 需要一个有效的 type_id（表级 FK 约束）。取任意一条现存 VenueType，
+        # 如果一条都没有就先建一个"其他"类型兜底。
+        type_row = db.query(VenueType).order_by(VenueType.id.asc()).first()
+        if not type_row:
+            type_row = VenueType(name="其他", sort=9999, status=True)
+            db.add(type_row)
+            db.flush()
+
+        venue = Venue(
+            name=RECEPTION_VENUE_NAME,
+            type_id=type_row.id,
+            location=None,
+            capacity=0,
+            price=0,
+            status=0,  # 停用 → 小程序不可见、不可预约
+            sort=9999,  # 排在管理后台场馆列表最末
+            description="散客到店登记用虚拟场馆（系统自动创建，请勿删除）",
+        )
+        db.add(venue)
+        try:
+            db.flush()
+        except IntegrityError:
+            # 兜底：理论上不应发生（锁内已二次查询），但万一 schema 后续加了
+            # 唯一约束或时序异常，回滚后再查一次。
+            db.rollback()
+            venue = (
+                db.query(Venue)
+                .filter(
+                    Venue.name == RECEPTION_VENUE_NAME,
+                    Venue.is_deleted == False,  # noqa: E712
+                )
+                .first()
+            )
+            if not venue:
+                raise
+        return venue
+    finally:
+        if lock_acquired:
+            db.execute(
+                text("SELECT RELEASE_LOCK(:name)"),
+                {"name": RECEPTION_VENUE_LOCK_NAME},
+            )
 
 
 def record_walk_in_checkin(db: Session, member_id: int, venue_id: int) -> GateCheckRecord:
