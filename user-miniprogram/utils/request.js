@@ -72,31 +72,34 @@ const responseInterceptor = (response, config) => {
     return Promise.reject({ code: 401, message: '登录已过期' })
   }
 
+  // 统一从 FastAPI HTTPException({detail}) 或 ResponseModel({message}) 中取业务错误文案
+  const extractMessage = (fallback) => (data && (data.detail || data.message)) || fallback
+
   // 403 禁止访问
   if (statusCode === 403) {
-    return Promise.reject({ code: 403, message: '没有访问权限' })
+    return Promise.reject({ code: 403, message: extractMessage('没有访问权限') })
   }
 
   // 404 资源不存在
   if (statusCode === 404) {
-    return Promise.reject({ code: 404, message: '请求的资源不存在' })
+    return Promise.reject({ code: 404, message: extractMessage('请求的资源不存在') })
   }
 
   // 500 服务器错误
   if (statusCode >= 500) {
-    return Promise.reject({ code: statusCode, message: '服务器繁忙，请稍后重试' })
+    return Promise.reject({ code: statusCode, message: extractMessage('服务器繁忙，请稍后重试') })
   }
 
   // 业务响应处理
   if (statusCode === 200) {
-    // 后端返回的统一格式
     if (data.code === 200 || data.code === 0) {
       return Promise.resolve(data)
     }
-    return Promise.reject(data)
+    return Promise.reject({ code: data.code, message: extractMessage('请求失败'), data })
   }
 
-  return Promise.reject({ code: statusCode, message: '请求失败' })
+  // 其他（含 400）
+  return Promise.reject({ code: statusCode, message: extractMessage('请求失败'), data })
 }
 
 /**

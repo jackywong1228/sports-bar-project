@@ -280,13 +280,14 @@ App({
             wx.removeStorageSync('token')
             that.globalData.token = ''
             wx.showToast({
-              title: '登录已过期',
+              title: res.data.detail || res.data.message || '登录已过期',
               icon: 'none'
             })
             reject(res.data)
           } else {
+            // FastAPI HTTPException 使用 detail；ResponseModel 使用 message
             wx.showToast({
-              title: res.data.message || '请求失败',
+              title: res.data.detail || res.data.message || '请求失败',
               icon: 'none'
             })
             reject(res.data)
@@ -388,7 +389,7 @@ App({
             reject(res.data)
           } else {
             wx.showToast({
-              title: res.data.message || '请求失败',
+              title: res.data.detail || res.data.message || '请求失败',
               icon: 'none'
             })
             reject(res.data)
