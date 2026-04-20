@@ -12,6 +12,7 @@ from app.models.venue import VenueType, Venue
 from app.models.member import MemberCard
 from app.models.finance import RechargePackage
 from app.models.review import ReviewPointConfig
+from app.models.checkin import PointRuleConfig
 from app.models.coupon import CouponTemplate, CouponPack, CouponPackItem
 
 # 创建所有表
@@ -280,6 +281,37 @@ def init_review_config(db: Session):
         print("评论积分配置已存在")
 
 
+def init_point_rule_config(db: Session):
+    """初始化打卡积分规则（C方案：按时长 + 当日首次额外奖励）
+
+    - rule_type='duration'：每 duration_unit 分钟给 points_per_unit 分
+    - daily_fixed_points：当日首次有效打卡额外奖励（0 表示不发）
+    - 通用规则（venue_type_id=NULL），适用所有场馆
+    """
+    existing = db.query(PointRuleConfig).filter(
+        PointRuleConfig.is_active == True
+    ).first()
+
+    if not existing:
+        rule = PointRuleConfig(
+            name="默认打卡积分规则",
+            description="按时长每30分钟10分；当日首次有效打卡额外+10分；每日上限100分",
+            rule_type="duration",
+            venue_type_id=None,
+            duration_unit=30,
+            points_per_unit=10,
+            max_daily_points=100,
+            daily_fixed_points=10,
+            is_active=True,
+            priority=0,
+        )
+        db.add(rule)
+        db.commit()
+        print("打卡积分规则初始化完成")
+    else:
+        print("打卡积分规则已存在")
+
+
 def init_monthly_coupon_templates(db: Session):
     """初始化SS月度券模板"""
     templates = [
@@ -476,6 +508,7 @@ def main():
         init_welcome_coupon_packs(db)
         init_recharge_packages(db)
         init_review_config(db)
+        init_point_rule_config(db)
         init_venues(db)
         print("数据初始化完成!")
     finally:

@@ -58,21 +58,25 @@ def calculate_points(member_id: int, venue_id: int, duration: int, db: Session) 
         GateCheckRecord.points_settled == True
     ).scalar() or 0
 
+    # 是否今日首次有效打卡（沿用既有判定：已结算且 points_earned>0 的记录）
+    first_today = db.query(GateCheckRecord).filter(
+        GateCheckRecord.member_id == member_id,
+        GateCheckRecord.check_date == today,
+        GateCheckRecord.points_settled == True,
+        GateCheckRecord.points_earned > 0,
+    ).first() is None
+
     # 计算积分
     if rule.rule_type == "duration":
-        # 按时长计算
-        units = duration // rule.duration_unit
+        # 按时长：(duration // unit) * points_per_unit
+        units = duration // rule.duration_unit if rule.duration_unit else 0
         points = units * rule.points_per_unit
+        # 当日首次打卡额外奖励（复用 daily_fixed_points 字段，0 表示不发）
+        if first_today and rule.daily_fixed_points and rule.daily_fixed_points > 0:
+            points += rule.daily_fixed_points
     else:
         # 每日打卡固定积分（每天只发一次）
-        # 检查今天是否已经发过每日打卡积分
-        daily_checked = db.query(GateCheckRecord).filter(
-            GateCheckRecord.member_id == member_id,
-            GateCheckRecord.check_date == today,
-            GateCheckRecord.points_settled == True,
-            GateCheckRecord.points_earned > 0
-        ).first()
-        if daily_checked:
+        if not first_today:
             return 0
         points = rule.daily_fixed_points
 
