@@ -117,3 +117,19 @@ def get_current_member(
         raise credentials_exception
 
     return member
+
+
+def get_current_member_optional(
+    db: Session = Depends(get_db),
+    token: str = Depends(coach_oauth2_scheme)
+) -> Optional[Member]:
+    """获取当前会员（可选，Token无效/缺失时返回 None）"""
+    if not token:
+        return None
+    payload = decode_token(token)
+    if payload is None:
+        return None
+    member_id = payload.get("member_id")
+    if member_id is None:
+        return None
+    return db.query(Member).filter(Member.id == member_id, Member.is_deleted == False).first()

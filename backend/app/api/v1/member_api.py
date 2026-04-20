@@ -20,7 +20,7 @@ from app.core.wechat import user_wechat_service, WeChatAPIError
 from app.models import Member, Venue, VenueType, Coach, Reservation, CoinRecord, PointRecord
 from app.models.checkin import GateCheckRecord, PointRuleConfig, Leaderboard
 from app.models.coach import CoachApplication
-from app.models.activity import Activity
+from app.models.activity import Activity, ActivityRegistration
 from app.models.message import Banner, Announcement
 from app.models.mall import ProductCategory, Product
 from app.models.member import MemberCard, MemberLevel, MemberCardOrder
@@ -28,7 +28,7 @@ from app.core.wechat_pay import wechat_pay
 from app.models.coupon import MemberCoupon, CouponTemplate
 from app.models.ui_editor import UIConfigVersion, UIPageConfig, UIBlockConfig, UIMenuItem
 from app.schemas.common import ResponseModel
-from app.api.deps import get_current_member
+from app.api.deps import get_current_member, get_current_member_optional
 
 router = APIRouter()
 
@@ -506,19 +506,40 @@ def get_activities(
     status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """获取活动列表"""
-    query = db.query(Activity).filter(Activity.is_deleted == False)
+    """获取活动列表
 
-    if status:
-        query = query.filter(Activity.status == status)
+    Tab 语义基于"时间"而非 Activity.status 字段，避免运营未手动标记时活动"永远招募中"：
+    - upcoming: start_time > now
+    - ongoing:  start_time <= now < end_time
+    - ended:    end_time <= now
+    - None(全部): 仅展示未过期的 published/ongoing 活动，过期活动默认隐藏
+    """
+    now = datetime.now()
+    query = db.query(Activity).filter(
+        Activity.is_deleted == False,
+        Activity.status.in_(["published", "ongoing", "ended"]),
+    )
+
+    if status == "upcoming":
+        query = query.filter(Activity.start_time > now)
+    elif status == "ongoing":
+        query = query.filter(Activity.start_time <= now, Activity.end_time > now)
+    elif status == "ended":
+        query = query.filter(Activity.end_time <= now)
     else:
-        # 默认显示已发布和进行中的活动
-        query = query.filter(Activity.status.in_(["published", "ongoing"]))
+        # 全部：只显示未过期
+        query = query.filter(Activity.end_time > now)
 
-    activities = query.order_by(Activity.start_time.desc()).offset((page - 1) * limit).limit(limit).all()
+    activities = query.order_by(Activity.start_time.asc()).offset((page - 1) * limit).limit(limit).all()
 
     result = []
     for a in activities:
+        if a.end_time and a.end_time <= now:
+            display_status = "ended"
+        elif a.start_time and a.start_time > now:
+            display_status = "upcoming"
+        else:
+            display_status = "ongoing"
         result.append({
             "id": a.id,
             "title": a.title,
@@ -527,19 +548,24 @@ def get_activities(
             "start_date": str(a.start_time.date()) if a.start_time else None,
             "start_time": str(a.start_time.time()) if a.start_time else None,
             "end_date": str(a.end_time.date()) if a.end_time else None,
+            "end_time": str(a.end_time.time()) if a.end_time else None,
             "location": a.location,
             "price": float(a.price or 0),
             "max_participants": a.max_participants,
             "enrolled": a.current_participants or 0,
-            "status": a.status
+            "status": display_status,
         })
 
     return ResponseModel(data=result)
 
 
 @router.get("/activities/{activity_id}", response_model=ResponseModel)
-def get_activity_detail(activity_id: int, db: Session = Depends(get_db)):
-    """获取活动详情"""
+def get_activity_detail(
+    activity_id: int,
+    db: Session = Depends(get_db),
+    current_member: Optional[Member] = Depends(get_current_member_optional),
+):
+    """获取活动详情（可选登录；登录后返回 is_enrolled）"""
     activity = db.query(Activity).filter(
         Activity.id == activity_id,
         Activity.is_deleted == False
@@ -547,6 +573,23 @@ def get_activity_detail(activity_id: int, db: Session = Depends(get_db)):
 
     if not activity:
         raise HTTPException(status_code=404, detail="活动不存在")
+
+    is_enrolled = False
+    if current_member:
+        existing = db.query(ActivityRegistration).filter(
+            ActivityRegistration.activity_id == activity_id,
+            ActivityRegistration.member_id == current_member.id,
+            ActivityRegistration.status.in_(["registered", "attended"]),
+        ).first()
+        is_enrolled = existing is not None
+
+    now = datetime.now()
+    if activity.end_time and activity.end_time <= now:
+        display_status = "ended"
+    elif activity.start_time and activity.start_time > now:
+        display_status = "upcoming"
+    else:
+        display_status = "ongoing"
 
     return ResponseModel(data={
         "id": activity.id,
@@ -562,8 +605,102 @@ def get_activity_detail(activity_id: int, db: Session = Depends(get_db)):
         "price": float(activity.price or 0),
         "max_participants": activity.max_participants,
         "enrolled": activity.current_participants or 0,
-        "status": activity.status
+        "status": display_status,
+        "is_enrolled": is_enrolled,
     })
+
+
+@router.post("/activities/{activity_id}/enroll", response_model=ResponseModel)
+def enroll_activity(
+    activity_id: int,
+    db: Session = Depends(get_db),
+    current_member: Member = Depends(get_current_member),
+):
+    """会员报名活动（报名费从金币余额扣）"""
+    activity = db.query(Activity).filter(
+        Activity.id == activity_id,
+        Activity.is_deleted == False,
+    ).first()
+    if not activity:
+        raise HTTPException(status_code=404, detail="活动不存在")
+    if activity.status in ("draft", "cancelled"):
+        raise HTTPException(status_code=400, detail="活动不可报名")
+
+    now = datetime.now()
+    if activity.end_time and activity.end_time <= now:
+        raise HTTPException(status_code=400, detail="活动已结束")
+    if activity.registration_deadline and activity.registration_deadline < now:
+        raise HTTPException(status_code=400, detail="报名已截止")
+
+    existing = db.query(ActivityRegistration).filter(
+        ActivityRegistration.activity_id == activity_id,
+        ActivityRegistration.member_id == current_member.id,
+        ActivityRegistration.status.in_(["registered", "attended"]),
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="您已报名该活动")
+
+    if activity.max_participants and (activity.current_participants or 0) >= activity.max_participants:
+        raise HTTPException(status_code=400, detail="报名名额已满")
+
+    price = float(activity.price or 0)
+    if price > 0:
+        current_balance = float(current_member.coin_balance or 0)
+        if current_balance < price:
+            raise HTTPException(status_code=400, detail="金币余额不足")
+        current_member.coin_balance = current_balance - price
+
+    reg = ActivityRegistration(
+        activity_id=activity_id,
+        member_id=current_member.id,
+        name=current_member.nickname or current_member.phone,
+        phone=current_member.phone,
+        pay_amount=price,
+        pay_time=now if price > 0 else None,
+        status="registered",
+    )
+    db.add(reg)
+    activity.current_participants = (activity.current_participants or 0) + 1
+    db.commit()
+
+    return ResponseModel(message="报名成功", data={"registration_id": reg.id})
+
+
+@router.post("/activities/{activity_id}/cancel", response_model=ResponseModel)
+def cancel_enrollment(
+    activity_id: int,
+    db: Session = Depends(get_db),
+    current_member: Member = Depends(get_current_member),
+):
+    """取消报名；已支付金币原路退回"""
+    activity = db.query(Activity).filter(
+        Activity.id == activity_id,
+        Activity.is_deleted == False,
+    ).first()
+    if not activity:
+        raise HTTPException(status_code=404, detail="活动不存在")
+
+    reg = db.query(ActivityRegistration).filter(
+        ActivityRegistration.activity_id == activity_id,
+        ActivityRegistration.member_id == current_member.id,
+        ActivityRegistration.status == "registered",
+    ).first()
+    if not reg:
+        raise HTTPException(status_code=400, detail="您未报名该活动或报名已取消")
+
+    now = datetime.now()
+    if activity.start_time and activity.start_time <= now:
+        raise HTTPException(status_code=400, detail="活动已开始，无法取消")
+
+    refund = float(reg.pay_amount or 0)
+    if refund > 0:
+        current_member.coin_balance = float(current_member.coin_balance or 0) + refund
+
+    reg.status = "cancelled"
+    activity.current_participants = max(0, (activity.current_participants or 0) - 1)
+    db.commit()
+
+    return ResponseModel(message="已取消报名", data={"refund": refund})
 
 
 # ==================== 场馆相关 ====================
