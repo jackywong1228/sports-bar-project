@@ -22,7 +22,7 @@ from app.models.checkin import GateCheckRecord, PointRuleConfig, Leaderboard
 from app.models.coach import CoachApplication
 from app.models.activity import Activity, ActivityRegistration
 from app.models.message import Banner, Announcement
-from app.models.mall import ProductCategory, Product
+from app.models.mall import ProductCategory, Product, ProductOrder
 from app.models.member import MemberCard, MemberLevel, MemberCardOrder
 from app.core.wechat_pay import wechat_pay
 from app.models.coupon import MemberCoupon, CouponTemplate
@@ -1973,12 +1973,13 @@ def get_mall_goods(
             "id": p.id,
             "name": p.name,
             "image": p.image,
-            "price": p.points or 0,  # 积分商城用积分
+            "points": p.points or 0,
+            "price": float(p.price or 0),
             "original_price": float(p.market_price or 0) if p.market_price else 0,
             "description": p.description,
             "category_id": p.category_id,
             "stock": p.stock or 0,
-            "sales": p.sales or 0
+            "sales": p.sales or 0,
         })
 
     return ResponseModel(data=result)
@@ -1999,14 +2000,108 @@ def get_mall_goods_detail(product_id: int, db: Session = Depends(get_db)):
         "id": product.id,
         "name": product.name,
         "image": product.image,
-        "images": product.images.split(",") if hasattr(product, 'images') and product.images else [],
-        "price": product.points if hasattr(product, 'points') else 0,
-        "original_price": float(product.price or 0) if hasattr(product, 'price') else 0,
-        "description": product.description if hasattr(product, 'description') else None,
-        "content": product.content if hasattr(product, 'content') else None,
-        "stock": product.stock if hasattr(product, 'stock') else 0,
-        "sales": product.sales if hasattr(product, 'sales') else 0
+        "images": product.images.split(",") if product.images else [],
+        "points": product.points or 0,
+        "price": float(product.price or 0),
+        "original_price": float(product.market_price or 0) if product.market_price else 0,
+        "description": product.description,
+        "content": product.content,
+        "stock": product.stock or 0,
+        "sales": product.sales or 0,
     })
+
+
+class MallExchangeRequest(BaseModel):
+    quantity: int = 1
+    receiver_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
+    receiver_address: Optional[str] = None
+    remark: Optional[str] = None
+
+
+@router.post("/mall/goods/{product_id}/exchange", response_model=ResponseModel)
+def exchange_mall_goods(
+    product_id: int,
+    payload: Optional[MallExchangeRequest] = None,
+    db: Session = Depends(get_db),
+    current_member: Member = Depends(get_current_member),
+):
+    """积分商城兑换：扣积分(+金币附加)、减库存、建订单，同事务写记录"""
+    data = payload or MallExchangeRequest()
+    qty = max(1, int(data.quantity or 1))
+
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.is_deleted == False,
+    ).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="商品不存在")
+    if not product.is_active:
+        raise HTTPException(status_code=400, detail="商品已下架")
+    if (product.stock or 0) < qty:
+        raise HTTPException(status_code=400, detail="库存不足")
+
+    total_points = int(product.points or 0) * qty
+    total_coins = float(product.price or 0) * qty
+
+    current_points = int(current_member.point_balance or 0)
+    if current_points < total_points:
+        raise HTTPException(status_code=400, detail="积分不足")
+
+    current_coins = float(current_member.coin_balance or 0)
+    if total_coins > 0 and current_coins < total_coins:
+        raise HTTPException(status_code=400, detail="金币余额不足")
+
+    now = datetime.now()
+    order_no = now.strftime("%Y%m%d%H%M%S") + f"{current_member.id:06d}"
+
+    order = ProductOrder(
+        order_no=order_no,
+        member_id=current_member.id,
+        product_id=product.id,
+        product_name=product.name,
+        product_image=product.image,
+        quantity=qty,
+        points_used=total_points,
+        coins_used=total_coins,
+        receiver_name=data.receiver_name,
+        receiver_phone=data.receiver_phone or current_member.phone,
+        receiver_address=data.receiver_address,
+        remark=data.remark,
+        status="pending",
+    )
+    db.add(order)
+
+    current_member.point_balance = current_points - total_points
+    db.add(PointRecord(
+        member_id=current_member.id,
+        type="expense",
+        amount=total_points,
+        balance=current_member.point_balance,
+        source="mall_exchange",
+        remark=f"兑换：{product.name} x{qty}",
+    ))
+
+    if total_coins > 0:
+        current_member.coin_balance = current_coins - total_coins
+        db.add(CoinRecord(
+            member_id=current_member.id,
+            type="expense",
+            amount=total_coins,
+            balance=current_member.coin_balance,
+            source="mall_exchange",
+            remark=f"兑换：{product.name} x{qty}",
+        ))
+
+    product.stock = (product.stock or 0) - qty
+    product.sales = (product.sales or 0) + qty
+
+    db.commit()
+
+    return ResponseModel(
+        message="兑换成功",
+        data={"order_no": order_no, "points_used": total_points, "coins_used": total_coins},
+    )
 
 
 # ==================== 组队相关 ====================
