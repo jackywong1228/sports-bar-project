@@ -1905,6 +1905,7 @@ def get_teams(
 ):
     """获取组队列表"""
     from app.models.team import Team, TeamMember
+    from sqlalchemy import and_, or_
 
     query = db.query(Team).filter(Team.is_deleted == False)
 
@@ -1916,8 +1917,20 @@ def get_teams(
     if status:
         query = query.filter(Team.status == status)
 
-    # 按时间排序，最新的在前
-    teams = query.order_by(Team.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    # 过滤已过期组队：activity_date/activity_time 均为字符串，字典序即时间序
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M")
+    query = query.filter(
+        or_(
+            Team.activity_date > today_str,
+            and_(Team.activity_date == today_str, Team.activity_time >= time_str),
+        )
+    )
+
+    # 按活动时间升序，最近要开始的排前面
+    teams = query.order_by(Team.activity_date.asc(), Team.activity_time.asc())\
+                 .offset((page - 1) * limit).limit(limit).all()
 
     result = []
     for t in teams:

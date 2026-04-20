@@ -457,7 +457,10 @@
 .btn-submit {
   width: 220rpx;
   height: 92rpx;
-  line-height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   background: #1A5D3A;
   color: #fff;
   font-size: 30rpx;

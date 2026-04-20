@@ -260,7 +260,7 @@ const handleAdd = () => {
   Object.assign(formData, {
     id: 0, title: '', cover_image: '', description: '', content: '',
     start_time: '', end_time: '', registration_deadline: '', location: '',
-    max_participants: 0, price: 0, status: 'draft', tags: '', sort_order: 0
+    max_participants: 0, price: 0, status: 'published', tags: '', sort_order: 0
   })
   dialogVisible.value = true
 }
