@@ -28,7 +28,7 @@
         <view class="activity-info">
           <view class="info-item">
             <text class="info-icon">📅</text>
-            <text>{{item.start_date}} {{item.start_time}}</text>
+            <text>{{item.timeDisplay}}</text>
           </view>
           <view class="info-item" wx:if="{{item.location}}">
             <text class="info-icon">📍</text>

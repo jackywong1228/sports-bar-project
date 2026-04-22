@@ -58,7 +58,8 @@ Page({
       const res = await app.request({ url })
       const activities = (res.data || []).map(item => ({
         ...item,
-        statusInfo: this.getActivityStatus(item)
+        statusInfo: this.getActivityStatus(item),
+        timeDisplay: this.formatTimeRange(item)
       }))
 
       this.setData({
@@ -76,6 +77,24 @@ Page({
   loadMore() {
     this.setData({ page: this.data.page + 1 })
     this.loadActivities()
+  },
+
+  // 格式化活动时段：同一天显示 "MM-DD HH:MM - HH:MM"，跨天显示 "MM-DD HH:MM 至 MM-DD HH:MM"
+  formatTimeRange(activity) {
+    const startDate = activity.start_date || ''
+    const endDate = activity.end_date || startDate
+    // start_time/end_time 后端返回 "HH:MM:SS"，这里截前 5 位变 "HH:MM"
+    const startTime = (activity.start_time || '').slice(0, 5)
+    const endTime = (activity.end_time || '').slice(0, 5)
+
+    if (!startDate) return ''
+    if (endDate && endDate !== startDate) {
+      return `${startDate} ${startTime} 至 ${endDate} ${endTime}`
+    }
+    if (endTime && endTime !== startTime) {
+      return `${startDate} ${startTime} - ${endTime}`
+    }
+    return `${startDate} ${startTime}`
   },
 
   // 获取活动状态
