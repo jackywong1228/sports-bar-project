@@ -100,7 +100,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="结束时间" prop="end_time">
-              <el-date-picker v-model="formData.end_time" type="datetime" placeholder="选择结束时间" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width: 100%;" />
+              <el-date-picker v-model="formData.end_time" type="datetime" placeholder="选择结束时间" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" :disabled-date="disableEndDateBeforeStart" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -272,8 +272,43 @@ const handleEdit = async (row: any) => {
   dialogVisible.value = true
 }
 
+// 结束日期选择器禁用早于开始时间所在日的日期
+const disableEndDateBeforeStart = (date: Date) => {
+  if (!formData.start_time) return false
+  const startDay = new Date(formData.start_time)
+  startDay.setHours(0, 0, 0, 0)
+  return date.getTime() < startDay.getTime()
+}
+
 const handleSubmit = async () => {
   await formRef.value?.validate()
+
+  // 硬校验：结束时间必须晚于开始时间
+  const startMs = new Date(formData.start_time).getTime()
+  const endMs = new Date(formData.end_time).getTime()
+  if (isNaN(startMs) || isNaN(endMs)) {
+    ElMessage.error('开始/结束时间格式无效')
+    return
+  }
+  if (endMs <= startMs) {
+    ElMessage.error('结束时间必须晚于开始时间')
+    return
+  }
+
+  // 防手滑：时段 > 7 天二次确认
+  const durationDays = Math.round((endMs - startMs) / 86400000)
+  if (durationDays > 7) {
+    try {
+      await ElMessageBox.confirm(
+        `活动时段长达 ${durationDays} 天（${formData.start_time} 至 ${formData.end_time}），确认无误吗？`,
+        '跨时段活动确认',
+        { type: 'warning', confirmButtonText: '确认创建', cancelButtonText: '返回修改' }
+      )
+    } catch {
+      return // 用户取消
+    }
+  }
+
   submitting.value = true
   try {
     if (formData.id) {
