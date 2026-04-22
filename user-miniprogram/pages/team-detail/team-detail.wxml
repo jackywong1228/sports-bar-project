@@ -8,8 +8,9 @@
     <!-- 运动类型标签 -->
     <view class="sport-header {{team.sport_type}}">
       <view class="sport-name">{{team.sport_type_name}}</view>
-      <view class="team-status-badge {{team.status}}">
-        <text wx:if="{{team.status === 'recruiting'}}">招募中</text>
+      <view class="team-status-badge {{team.is_expired ? 'expired' : team.status}}">
+        <text wx:if="{{team.is_expired}}">已过期</text>
+        <text wx:elif="{{team.status === 'recruiting'}}">招募中</text>
         <text wx:elif="{{team.status === 'full'}}">已满员</text>
         <text wx:elif="{{team.status === 'completed'}}">已完成</text>
         <text wx:else>已取消</text>
@@ -82,7 +83,7 @@
       </button>
 
       <!-- 根据状态显示不同按钮 -->
-      <block wx:if="{{team.status === 'recruiting'}}">
+      <block wx:if="{{team.status === 'recruiting' && !team.is_expired}}">
         <button class="btn-quit" wx:if="{{hasJoined && !isCreator}}" bindtap="quitTeam" loading="{{submitting}}" disabled="{{submitting}}">
           退出队伍
         </button>
@@ -95,7 +96,8 @@
       </block>
       <block wx:else>
         <button class="btn-disabled" disabled>
-          <text wx:if="{{team.status === 'full'}}">已满员</text>
+          <text wx:if="{{team.is_expired}}">已过期</text>
+          <text wx:elif="{{team.status === 'full'}}">已满员</text>
           <text wx:elif="{{team.status === 'completed'}}">已结束</text>
           <text wx:else>已取消</text>
         </button>

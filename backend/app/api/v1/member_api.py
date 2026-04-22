@@ -2322,6 +2322,18 @@ def get_team_detail(
         }
         member_list.append(member_info)
 
+    # 计算过期态（与 /teams、/my-teams 保持一致）
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M")
+    is_expired = (
+        team.status == "recruiting"
+        and (
+            (team.activity_date or "") < today_str
+            or (team.activity_date == today_str and (team.activity_time or "") < time_str)
+        )
+    )
+
     return ResponseModel(data={
         "id": team.id,
         "title": team.title,
@@ -2336,6 +2348,7 @@ def get_team_detail(
         "fee_type": team.fee_type,
         "fee_amount": team.fee_amount,
         "status": team.status,
+        "is_expired": is_expired,
         "creator_id": team.creator_id,
         "creator": creator_info,
         "members": member_list,
@@ -2362,6 +2375,15 @@ def join_team(
 
     if team.status != "recruiting":
         raise HTTPException(status_code=400, detail="该组队已停止招募")
+
+    # 过期兜底：活动时间已过，即便 status 仍是 recruiting 也不允许加入
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M")
+    if (team.activity_date or "") < today_str or (
+        team.activity_date == today_str and (team.activity_time or "") < time_str
+    ):
+        raise HTTPException(status_code=400, detail="该组队活动已过期")
 
     if team.current_members >= team.max_members:
         raise HTTPException(status_code=400, detail="该组队已满员")

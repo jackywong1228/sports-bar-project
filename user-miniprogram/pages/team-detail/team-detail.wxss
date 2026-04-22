@@ -50,6 +50,11 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
+.team-status-badge.expired {
+  background: rgba(0, 0, 0, 0.25);
+  color: #e0e0e0;
+}
+
 /* 信息卡片 */
 .info-card {
   background: #fff;
