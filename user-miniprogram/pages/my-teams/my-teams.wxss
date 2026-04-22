@@ -96,6 +96,11 @@
   color: #999;
 }
 
+.status-tag.expired {
+  background: #f0f0f0;
+  color: #8c8c8c;
+}
+
 .card-title {
   font-size: 32rpx;
   font-weight: 600;

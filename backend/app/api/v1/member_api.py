@@ -2173,6 +2173,16 @@ def get_teams(
             creator_name = t.creator.nickname or t.creator.phone or "匿名用户"
             creator_avatar = t.creator.avatar
 
+        # 防御层：理论上此处已被 activity_date/time 过滤器剔除，
+        # 但非标准格式（如 "2026-3-27"）可能字典序反转，保留标记让前端渲染"已过期"
+        is_expired = (
+            t.status == "recruiting"
+            and (
+                (t.activity_date or "") < today_str
+                or (t.activity_date == today_str and (t.activity_time or "") < time_str)
+            )
+        )
+
         result.append({
             "id": t.id,
             "title": t.title,
@@ -2187,6 +2197,7 @@ def get_teams(
             "fee_type": t.fee_type,
             "fee_amount": t.fee_amount,
             "status": t.status,
+            "is_expired": is_expired,
             "creator_id": t.creator_id,
             "creator_name": creator_name,
             "creator_avatar": creator_avatar,
@@ -3764,8 +3775,21 @@ def get_my_teams(
     total = query.count()
     teams = query.offset((page - 1) * page_size).limit(page_size).all()
 
+    # 计算活动过期态：recruiting 且 activity_date+time 已早于当前时间 → 显示为"已过期"
+    # 仅覆盖 recruiting，保留 full/completed/cancelled 的语义（user 关心的是历史状态）
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M")
+
     result = []
     for t in teams:
+        is_expired = (
+            t.status == "recruiting"
+            and (
+                (t.activity_date or "") < today_str
+                or (t.activity_date == today_str and (t.activity_time or "") < time_str)
+            )
+        )
         result.append({
             "id": t.id,
             "title": t.title,
@@ -3777,6 +3801,7 @@ def get_my_teams(
             "max_members": t.max_members,
             "current_members": t.current_members,
             "status": t.status,
+            "is_expired": is_expired,
             "role": "creator" if t.id in created_ids else "member",
             "created_at": str(t.created_at) if t.created_at else None
         })

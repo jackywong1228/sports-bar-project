@@ -99,6 +99,11 @@
   color: #999;
 }
 
+.team-status.expired {
+  background: #f0f0f0;
+  color: #8c8c8c;
+}
+
 .team-title {
   font-size: 32rpx;
   font-weight: 600;
