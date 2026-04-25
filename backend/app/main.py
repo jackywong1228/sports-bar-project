@@ -11,6 +11,7 @@ from app.api.v1 import gate_api, checkin
 from app.api.v1 import coupon_packs, reviews
 from app.api.v1 import feedback as feedback_router
 from app.api.v1 import staff_scan
+from app.api.v1 import internal_api
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -75,6 +76,8 @@ app.include_router(reviews.router, prefix=f"{settings.API_V1_PREFIX}/reviews", t
 app.include_router(feedback_router.router, prefix=f"{settings.API_V1_PREFIX}/feedback", tags=["反馈管理"])
 # 前台扫码核销（路径同时挂在 /member 和 /staff 下，所以 prefix 用根 API 前缀）
 app.include_router(staff_scan.router, prefix=settings.API_V1_PREFIX, tags=["前台扫码核销"])
+# 服务间内部接口（供 wechat-bot 等受信任后端调用，X-Service-Token 鉴权）
+app.include_router(internal_api.router, prefix=f"{settings.API_V1_PREFIX}/internal", tags=["服务间内部接口"])
 
 # 挂载静态文件目录（用于上传文件访问）
 upload_dir = settings.UPLOAD_DIR

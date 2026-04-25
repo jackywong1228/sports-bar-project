@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # 静态文件基础URL（用于图片等资源的完整URL拼接）
     STATIC_BASE_URL: str = ""  # 生产环境设为 https://yunlifang.cloud
 
+    # 服务间内部接口共享密钥（供 wechat-bot 等受信任后端调用 /api/v1/internal/*）
+    INTERNAL_SERVICE_TOKEN: str = ""
+
     # 文件上传配置
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
