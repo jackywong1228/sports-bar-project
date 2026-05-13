@@ -291,6 +291,13 @@ Page({
     if (!venue) return
 
     const slot = venue.slots.find(s => s.hour === hour)
+    if (slot.status === 'closed') {
+      wx.showToast({
+        title: '非营业时段',
+        icon: 'none'
+      })
+      return
+    }
     if (slot.status === 'past') {
       wx.showToast({
         title: '该时段已过期',

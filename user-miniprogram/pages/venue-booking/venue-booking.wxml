@@ -83,7 +83,8 @@
               data-venue-price="{{venue.price}}"
               data-hour="{{timeSlot.hour}}"
             >
-              <text wx:if="{{venue.slots[slotIndex].status === 'past'}}">已过</text>
+              <text wx:if="{{venue.slots[slotIndex].status === 'closed'}}">非营业</text>
+              <text wx:elif="{{venue.slots[slotIndex].status === 'past'}}">已过</text>
               <text wx:elif="{{venue.slots[slotIndex].status === 'reserved'}}">已约</text>
               <text wx:else>可约</text>
             </view>
@@ -110,6 +111,10 @@
     <view class="legend-item">
       <view class="legend-dot available"></view>
       <text>可预约</text>
+    </view>
+    <view class="legend-item">
+      <view class="legend-dot closed"></view>
+      <text>非营业</text>
     </view>
     <view class="legend-item">
       <view class="legend-dot past"></view>

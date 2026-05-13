@@ -797,6 +797,8 @@ def get_venue_slots(
     db: Session = Depends(get_db)
 ):
     """获取场馆时间段"""
+    from app.services.booking_service import BookingService
+
     # 获取已预约的时间段
     reservations = db.query(Reservation).filter(
         Reservation.venue_id == venue_id,
@@ -812,10 +814,15 @@ def get_venue_slots(
         for h in range(start_hour, end_hour):
             reserved_hours.add(h)
 
-    # 生成时间段列表（06:00-24:00）
+    # 生成时间段列表（06:00-24:00），非营业时段标记 closed
     slots = []
     for hour in range(6, 24):
-        status = "reserved" if hour in reserved_hours else "available"
+        if not BookingService.is_business_hour(hour):
+            status = "closed"
+        elif hour in reserved_hours:
+            status = "reserved"
+        else:
+            status = "available"
         slots.append({
             "time": f"{hour:02d}:00",
             "label": f"{hour:02d}:00 - {hour+1:02d}:00",
@@ -906,12 +913,17 @@ def get_venue_calendar(
     is_today = (date == today_str)
 
     # 构建场馆数据
+    from app.services.booking_service import BookingService
     venue_data = []
     for v in venues:
         slots = []
         venue_reservations = reservation_map.get(v.id, {})
         for hour in range(6, 24):
-            if is_today and hour <= current_hour:
+            # 优先级：closed > past > reserved > available
+            # closed 在最前是因为非营业时段无论是否过期/被约都应统一显示为"非营业"
+            if not BookingService.is_business_hour(hour):
+                status = "closed"
+            elif is_today and hour <= current_hour:
                 status = "past"
             elif hour in venue_reservations:
                 status = "reserved"
@@ -1030,6 +1042,7 @@ def get_coach_schedule(
 ):
     """获取教练排期"""
     from app.models import CoachSchedule
+    from app.services.booking_service import BookingService
 
     schedules = db.query(CoachSchedule).filter(
         CoachSchedule.coach_id == coach_id,
@@ -1053,10 +1066,14 @@ def get_coach_schedule(
         for h in range(start_hour, end_hour):
             reserved_hours.add(h)
 
+    # 输出 06:00-24:00 全时段（与场馆 venue-calendar 一致）
+    # 营业窗口外标记 closed，前端禁用点击
     slots = []
-    for hour in range(8, 22):
+    for hour in range(6, 24):
         time_slot = f"{hour:02d}:00"
-        if hour in reserved_hours:
+        if not BookingService.is_business_hour(hour):
+            status = "closed"
+        elif hour in reserved_hours:
             status = "reserved"
         elif time_slot in schedule_map:
             status = schedule_map[time_slot]
@@ -1100,6 +1117,14 @@ def create_reservation(
     perm = booking_service.check_booking_permission(current_member, venue_id, booking_date)
     if not perm["can_book"]:
         raise HTTPException(status_code=403, detail=perm["reason"])
+
+    # 1.5 营业时间兜底校验（前端 closed 态已禁用点击，此处防绕过）
+    if start_time and end_time:
+        start_hour = int(start_time.split(":")[0]) if isinstance(start_time, str) else start_time
+        end_hour = int(end_time.split(":")[0]) if isinstance(end_time, str) else end_time
+        biz_err = BookingService.check_business_hours_range(start_hour, end_hour)
+        if biz_err:
+            raise HTTPException(status_code=400, detail=biz_err)
 
     level = current_member.level
     level_code = level.level_code if level else "S"

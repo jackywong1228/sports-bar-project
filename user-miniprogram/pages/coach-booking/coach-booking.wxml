@@ -50,7 +50,7 @@
     <view class="section-title">选择时间段（可多选）</view>
     <view class="time-grid">
       <view
-        class="time-item {{item.status !== 'available' ? 'disabled' : ''}} {{selectedSlotsMap[item.time] ? 'selected' : ''}}"
+        class="time-item {{item.status === 'closed' ? 'closed' : (item.status !== 'available' ? 'disabled' : '')}} {{selectedSlotsMap[item.time] ? 'selected' : ''}}"
         wx:for="{{timeSlots}}"
         wx:key="time"
         bindtap="selectSlot"

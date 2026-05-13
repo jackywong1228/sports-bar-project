@@ -297,6 +297,19 @@
   color: #bbb;
 }
 
+.slot-cell.closed {
+  background: repeating-linear-gradient(
+    45deg,
+    #f5f5f5 0,
+    #f5f5f5 10rpx,
+    #ececec 10rpx,
+    #ececec 20rpx
+  );
+  color: #b0b0b0;
+  font-size: 22rpx;
+  pointer-events: none;
+}
+
 .slot-cell.reserved {
   background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
   color: #c62828;
@@ -386,6 +399,17 @@
 .legend-dot.past {
   background: #f0f0f0;
   border: 1rpx solid #bbb;
+}
+
+.legend-dot.closed {
+  background: repeating-linear-gradient(
+    45deg,
+    #f5f5f5 0,
+    #f5f5f5 4rpx,
+    #ececec 4rpx,
+    #ececec 8rpx
+  );
+  border: 1rpx solid #b0b0b0;
 }
 
 .legend-dot.reserved {

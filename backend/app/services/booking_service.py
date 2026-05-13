@@ -1,10 +1,16 @@
 """预约权限检查服务（三级会员制版本: S/SS/SSS）"""
 from datetime import date, datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
 from app.models import Member, MemberLevel, Reservation, MemberCoupon, CouponTemplate
+
+
+# 场馆营业时间（半开区间 [start, end)）
+# 8 表示 08:00 开始营业，22 表示 22:00 闭店（即 21:00-22:00 是最后一个可约时段）
+BUSINESS_HOUR_START = 8
+BUSINESS_HOUR_END = 22
 
 
 class BookingService:
@@ -12,6 +18,32 @@ class BookingService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def is_business_hour(hour: int) -> bool:
+        """判断某个整点小时是否在营业时间内（08:00-22:00）
+
+        hour 代表 "该小时开始的 1 小时段"。
+        例如 hour=8 表示 08:00-09:00 段，hour=21 表示 21:00-22:00 段（营业内）；
+        hour=22 表示 22:00-23:00 段（已闭店）。
+        """
+        return BUSINESS_HOUR_START <= hour < BUSINESS_HOUR_END
+
+    @staticmethod
+    def check_business_hours_range(start_hour: int, end_hour: int) -> Optional[str]:
+        """校验整段预约时间是否完全落在营业时间内
+
+        start_hour: 起始小时（含），如 14 表示 14:00 开始
+        end_hour: 结束小时（不含），如 16 表示 16:00 结束（即占用 14:00-16:00 两小时）
+
+        返回 None 表示通过，否则返回拒绝原因。
+        """
+        if start_hour < BUSINESS_HOUR_START or end_hour > BUSINESS_HOUR_END:
+            return (
+                f"营业时间为 {BUSINESS_HOUR_START:02d}:00-{BUSINESS_HOUR_END:02d}:00，"
+                "非营业时段无法预约"
+            )
+        return None
 
     def check_booking_permission(
         self,

@@ -118,7 +118,8 @@ Page({
     const map = {
       'available': '可预约',
       'reserved': '已预约',
-      'unavailable': '休息'
+      'unavailable': '休息',
+      'closed': '非营业'
     }
     return map[status] || '可预约'
   },
@@ -127,6 +128,14 @@ Page({
   selectSlot(e) {
     const time = e.currentTarget.dataset.time
     const slot = this.data.timeSlots.find(s => s.time === time)
+
+    if (slot.status === 'closed') {
+      wx.showToast({
+        title: '非营业时段',
+        icon: 'none'
+      })
+      return
+    }
 
     if (slot.status !== 'available') {
       wx.showToast({
