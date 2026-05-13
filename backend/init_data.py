@@ -237,14 +237,14 @@ def init_member_cards(db: Session):
 
 
 def init_recharge_packages(db: Session):
-    """初始化充值套餐"""
+    """初始化充值套餐（1元=1金币，阶梯激励赠送 0% ~ 30%）"""
     packages = [
         {"name": "小试牛刀", "amount": 100, "coin_amount": 100, "bonus_coins": 0, "sort_order": 1},
         {"name": "初露锋芒", "amount": 500, "coin_amount": 500, "bonus_coins": 20, "sort_order": 2},
-        {"name": "渐入佳境", "amount": 1000, "coin_amount": 1000, "bonus_coins": 50, "sort_order": 3},
-        {"name": "炉火纯青", "amount": 2000, "coin_amount": 2000, "bonus_coins": 120, "sort_order": 4},
-        {"name": "登峰造极", "amount": 5000, "coin_amount": 5000, "bonus_coins": 350, "sort_order": 5},
-        {"name": "一掷千金", "amount": 10000, "coin_amount": 10000, "bonus_coins": 800, "sort_order": 6},
+        {"name": "渐入佳境", "amount": 1000, "coin_amount": 1000, "bonus_coins": 110, "sort_order": 3},
+        {"name": "炉火纯青", "amount": 2000, "coin_amount": 2000, "bonus_coins": 300, "sort_order": 4},
+        {"name": "登峰造极", "amount": 5000, "coin_amount": 5000, "bonus_coins": 1000, "sort_order": 5},
+        {"name": "一掷千金", "amount": 10000, "coin_amount": 10000, "bonus_coins": 3000, "sort_order": 6},
     ]
 
     for pkg_data in packages:
