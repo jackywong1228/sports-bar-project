@@ -20,15 +20,15 @@ Page({
       }
     } catch (err) {
       console.error('加载套餐失败:', err)
-      // 使用默认套餐
+      // 使用默认套餐（与 backend init_data 种子一致，1元=1金币）
       this.setData({
         packages: [
-          { id: 1, amount: 10, coins: 100, bonus: 0, label: '10元=100金币' },
-          { id: 2, amount: 50, coins: 500, bonus: 50, label: '50元=550金币' },
-          { id: 3, amount: 100, coins: 1000, bonus: 150, label: '100元=1150金币' },
-          { id: 4, amount: 200, coins: 2000, bonus: 400, label: '200元=2400金币' },
-          { id: 5, amount: 500, coins: 5000, bonus: 1500, label: '500元=6500金币' },
-          { id: 6, amount: 1000, coins: 10000, bonus: 4000, label: '1000元=14000金币' }
+          { id: 1, amount: 100, coins: 100, bonus: 0, label: '100元=100金币' },
+          { id: 2, amount: 500, coins: 500, bonus: 20, label: '500元=520金币' },
+          { id: 3, amount: 1000, coins: 1000, bonus: 50, label: '1000元=1050金币' },
+          { id: 4, amount: 2000, coins: 2000, bonus: 120, label: '2000元=2120金币' },
+          { id: 5, amount: 5000, coins: 5000, bonus: 350, label: '5000元=5350金币' },
+          { id: 6, amount: 10000, coins: 10000, bonus: 800, label: '10000元=10800金币' }
         ]
       })
     }

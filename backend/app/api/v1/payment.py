@@ -9,7 +9,7 @@ import json
 
 from app.core.database import get_db
 from app.core.wechat_pay import wechat_pay
-from app.models.finance import RechargeOrder
+from app.models.finance import RechargeOrder, RechargePackage
 from app.models.member import Member, CoinRecord, PointRecord, MemberCardOrder, MemberCard
 from app.models import Reservation
 from app.models.coupon import MemberCoupon
@@ -21,21 +21,29 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# 充值套餐配置
-RECHARGE_PACKAGES = [
-    {"id": 1, "amount": 10, "coins": 100, "bonus": 0, "label": "10元=100金币"},
-    {"id": 2, "amount": 50, "coins": 500, "bonus": 50, "label": "50元=550金币"},
-    {"id": 3, "amount": 100, "coins": 1000, "bonus": 150, "label": "100元=1150金币"},
-    {"id": 4, "amount": 200, "coins": 2000, "bonus": 400, "label": "200元=2400金币"},
-    {"id": 5, "amount": 500, "coins": 5000, "bonus": 1500, "label": "500元=6500金币"},
-    {"id": 6, "amount": 1000, "coins": 10000, "bonus": 4000, "label": "1000元=14000金币"},
-]
+def _package_to_legacy_dict(pkg: RechargePackage) -> dict:
+    """将 RechargePackage ORM 对象映射到旧 API 字段结构（保持前端兼容）"""
+    amount = float(pkg.amount)
+    coins = pkg.coin_amount
+    bonus = pkg.bonus_coins or 0
+    total = coins + bonus
+    return {
+        "id": pkg.id,
+        "amount": amount,
+        "coins": coins,
+        "bonus": bonus,
+        "label": f"{int(amount) if amount.is_integer() else amount}元={total}金币",
+    }
 
 
 @router.get("/packages", response_model=ResponseModel)
-def get_recharge_packages():
-    """获取充值套餐列表"""
-    return ResponseModel(data=RECHARGE_PACKAGES)
+def get_recharge_packages(db: Session = Depends(get_db)):
+    """获取充值套餐列表（从数据库读取，1元=1金币）"""
+    packages = db.query(RechargePackage).filter(
+        RechargePackage.is_active == True,
+        RechargePackage.is_deleted == False
+    ).order_by(RechargePackage.sort_order, RechargePackage.id).all()
+    return ResponseModel(data=[_package_to_legacy_dict(p) for p in packages])
 
 
 @router.post("/create-order", response_model=ResponseModel)
@@ -58,10 +66,19 @@ def create_recharge_order(
     if not all([member_id, package_id, openid]):
         return ResponseModel(code=400, message="参数不完整")
 
-    # 查找套餐
-    package = next((p for p in RECHARGE_PACKAGES if p["id"] == package_id), None)
+    # 从数据库读取套餐
+    package = db.query(RechargePackage).filter(
+        RechargePackage.id == package_id,
+        RechargePackage.is_active == True,
+        RechargePackage.is_deleted == False
+    ).first()
     if not package:
         return ResponseModel(code=400, message="套餐不存在")
+
+    pkg_amount = float(package.amount)
+    pkg_coins = package.coin_amount
+    pkg_bonus = package.bonus_coins or 0
+    pkg_label = f"{int(pkg_amount) if pkg_amount.is_integer() else pkg_amount}元={pkg_coins + pkg_bonus}金币"
 
     # 检查会员是否存在
     member = db.query(Member).filter(Member.id == member_id).first()
@@ -75,9 +92,9 @@ def create_recharge_order(
     order = RechargeOrder(
         order_no=order_no,
         member_id=member_id,
-        amount=package["amount"],
-        coins=package["coins"],
-        bonus_coins=package["bonus"],
+        amount=pkg_amount,
+        coins=pkg_coins,
+        bonus_coins=pkg_bonus,
         status="pending",
         expire_time=datetime.now() + timedelta(minutes=30)
     )
@@ -86,11 +103,11 @@ def create_recharge_order(
     db.refresh(order)
 
     # 调用微信支付创建预支付订单
-    total_amount = int(package["amount"] * 100)  # 转为分
+    total_amount = int(pkg_amount * 100)  # 元转分（微信支付要求）
     result = wechat_pay.create_jsapi_order(
         out_trade_no=order_no,
         total_amount=total_amount,
-        description=f"金币充值-{package['label']}",
+        description=f"金币充值-{pkg_label}",
         openid=openid,
         attach=json.dumps({"order_id": order.id, "type": "recharge"})
     )
