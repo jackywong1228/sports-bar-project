@@ -25,7 +25,7 @@ Page({
         packages: [
           { id: 1, amount: 100, coins: 100, bonus: 0, label: '100元=100金币' },
           { id: 2, amount: 500, coins: 500, bonus: 20, label: '500元=520金币' },
-          { id: 3, amount: 1000, coins: 1000, bonus: 110, label: '1000元=1110金币' },
+          { id: 3, amount: 1000, coins: 1000, bonus: 100, label: '1000元=1100金币' },
           { id: 4, amount: 2000, coins: 2000, bonus: 300, label: '2000元=2300金币' },
           { id: 5, amount: 5000, coins: 5000, bonus: 1000, label: '5000元=6000金币' },
           { id: 6, amount: 10000, coins: 10000, bonus: 3000, label: '10000元=13000金币' }
