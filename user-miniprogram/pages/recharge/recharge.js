@@ -75,52 +75,13 @@ Page({
     this.setData({ loading: true })
 
     try {
-      let openid = app.globalData.openid || ''
-
-      if (!openid) {
-        // 尝试用 wx.login 的 code 换取 openid
-        const loginRes = await new Promise((resolve, reject) => {
-          wx.login({
-            success: res => resolve(res),
-            fail: err => reject(err)
-          })
-        })
-        if (loginRes.code) {
-          const wxRes = await app.request({
-            url: '/member/auth/wx-login',
-            method: 'POST',
-            data: { code: loginRes.code }
-          })
-          if (wxRes.data && wxRes.data.openid) {
-            openid = wxRes.data.openid
-            app.globalData.openid = openid
-            wx.setStorageSync('openid', openid)
-            // 同步更新 token
-            if (wxRes.data.access_token) {
-              app.globalData.token = wxRes.data.access_token
-              wx.setStorageSync('token', wxRes.data.access_token)
-            }
-          }
-        }
-        if (!openid) {
-          wx.showModal({
-            title: '提示',
-            content: '请先完成微信授权登录',
-            showCancel: false
-          })
-          this.setData({ loading: false })
-          return
-        }
-      }
-
-      // 创建充值订单
+      // 后端从 token 解出 member_id 和 member.openid，前端只需传 package_id
+      // 若 member.openid 为空，后端会返回 400 提示完成微信授权
       const res = await app.request({
         url: '/payment/create-order',
         method: 'POST',
         data: {
-          member_id: memberInfo.id,
-          package_id: selectedPackage,
-          openid: openid
+          package_id: selectedPackage
         }
       })
 

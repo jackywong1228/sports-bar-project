@@ -127,6 +127,16 @@ def create_reservation(
         if not coach:
             raise HTTPException(status_code=404, detail="教练不存在")
 
+    # P1-1 修复：admin 后台手动创建预约也要校验营业时间
+    # 与 member_api.create_reservation 保持同样的防御层（防止后台员工录入凌晨预约）
+    from app.services.booking_service import BookingService
+    start_hour = data.start_time.hour
+    # end_hour 半开区间：22:30 算作占用到 23 小时段
+    end_hour = data.end_time.hour + (1 if data.end_time.minute > 0 else 0)
+    biz_err = BookingService.check_business_hours_range(start_hour, end_hour)
+    if biz_err:
+        raise HTTPException(status_code=400, detail=biz_err)
+
     # 计算时长和费用
     duration = int((data.end_time - data.start_time).total_seconds() / 60)
     hours = duration / 60

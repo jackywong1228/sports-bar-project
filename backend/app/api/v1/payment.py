@@ -1,7 +1,7 @@
 """
 微信支付相关API（小程序端使用）
 """
-from fastapi import APIRouter, Depends, Request, Header
+from fastapi import APIRouter, Depends, Request, Header, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -9,6 +9,7 @@ import json
 
 from app.core.database import get_db
 from app.core.wechat_pay import wechat_pay
+from app.api.deps import get_current_member
 from app.models.finance import RechargeOrder, RechargePackage
 from app.models.member import Member, CoinRecord, PointRecord, MemberCardOrder, MemberCard
 from app.models import Reservation
@@ -19,6 +20,45 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _confirm_recharge_paid(out_trade_no: str, transaction_id: str, db: Session) -> bool:
+    """确认充值订单已支付（带行锁 + 幂等检查）
+
+    供微信回调和前端轮询两条路径共用，防止并发重复发放金币（P0-2 修复）。
+    返回 True 表示订单已是 paid 状态（本次确认或之前已确认）。
+    """
+    order = db.query(RechargeOrder).filter(
+        RechargeOrder.order_no == out_trade_no
+    ).with_for_update().first()
+
+    if not order:
+        return False
+
+    # 幂等：已支付则直接返回，不重复加金币
+    if order.status == "paid":
+        return True
+
+    order.status = "paid"
+    order.transaction_id = transaction_id
+    order.pay_time = datetime.now()
+
+    # 会员加金币（带会员锁防并发）
+    member = db.query(Member).filter(Member.id == order.member_id).with_for_update().first()
+    if member:
+        total_coins = order.coins + order.bonus_coins
+        member.coin_balance = (member.coin_balance or 0) + total_coins
+        coin_record = CoinRecord(
+            member_id=member.id,
+            type="recharge",
+            amount=total_coins,
+            balance=member.coin_balance,
+            remark=f"充值{order.amount}元，获得{order.coins}金币，赠送{order.bonus_coins}金币"
+        )
+        db.add(coin_record)
+
+    db.commit()
+    return True
 
 
 def _package_to_legacy_dict(pkg: RechargePackage) -> dict:
@@ -49,22 +89,19 @@ def get_recharge_packages(db: Session = Depends(get_db)):
 @router.post("/create-order", response_model=ResponseModel)
 def create_recharge_order(
     data: dict,
+    current_member: Member = Depends(get_current_member),
     db: Session = Depends(get_db)
 ):
     """
     创建充值订单
 
+    认证：需要会员 token（P0-1 修复，禁止匿名为他人发起支付）
     参数:
-        member_id: 会员ID
         package_id: 套餐ID
-        openid: 用户openid
     """
-    member_id = data.get("member_id")
     package_id = data.get("package_id")
-    openid = data.get("openid")
-
-    if not all([member_id, package_id, openid]):
-        return ResponseModel(code=400, message="参数不完整")
+    if not package_id:
+        return ResponseModel(code=400, message="缺少 package_id")
 
     # 从数据库读取套餐
     package = db.query(RechargePackage).filter(
@@ -80,10 +117,11 @@ def create_recharge_order(
     pkg_bonus = package.bonus_coins or 0
     pkg_label = f"{int(pkg_amount) if pkg_amount.is_integer() else pkg_amount}元={pkg_coins + pkg_bonus}金币"
 
-    # 检查会员是否存在
-    member = db.query(Member).filter(Member.id == member_id).first()
-    if not member:
-        return ResponseModel(code=404, message="会员不存在")
+    # 从 token 解出的当前会员获取身份（不再信请求体的 member_id/openid）
+    member_id = current_member.id
+    openid = current_member.openid
+    if not openid:
+        return ResponseModel(code=400, message="请先完成微信授权")
 
     # 生成订单号
     order_no = wechat_pay.generate_out_trade_no("CZ")
@@ -169,7 +207,7 @@ async def payment_notify(
         trade_state = decrypted.get("trade_state")
         attach = decrypted.get("attach")
 
-        # 根据订单号前缀判断订单类型
+        # 根据订单号前缀判断订单类型（P1-3 修复：用显式 elif 代替兜底 else，未知前缀拒绝处理）
         if out_trade_no.startswith("MC"):
             # 会员卡订单
             return _handle_member_card_notify(out_trade_no, transaction_id, trade_state, db)
@@ -180,55 +218,24 @@ async def payment_notify(
             # 餐饮订单(已迁移至美团，兼容历史未支付订单回调)
             logger.warning(f"收到已废弃的餐饮订单回调: {out_trade_no}")
             return {"code": "SUCCESS", "message": "成功"}
-        else:
-            # 充值订单（默认）
+        elif out_trade_no.startswith("CZ"):
+            # 充值订单
             return _handle_recharge_notify(out_trade_no, transaction_id, trade_state, db)
+        else:
+            logger.warning(f"未知订单类型，前缀不匹配: {out_trade_no}")
+            return {"code": "FAIL", "message": "未知订单类型"}
 
     except Exception as e:
         return {"code": "FAIL", "message": str(e)}
 
 
 def _handle_recharge_notify(out_trade_no: str, transaction_id: str, trade_state: str, db: Session):
-    """处理充值订单支付回调"""
+    """处理充值订单支付回调（薄包装，实际逻辑在 _confirm_recharge_paid 中）"""
     try:
-        # 使用悲观锁查询订单，确保幂等性
-        order = db.query(RechargeOrder).filter(
-            RechargeOrder.order_no == out_trade_no
-        ).with_for_update().first()
-
-        if not order:
-            db.rollback()
-            return {"code": "FAIL", "message": "订单不存在"}
-
-        # 幂等性检查：如果订单已支付，直接返回成功
-        if order.status == "paid":
-            db.rollback()
-            return {"code": "SUCCESS", "message": "成功"}
-
         if trade_state == "SUCCESS":
-            order.status = "paid"
-            order.transaction_id = transaction_id
-            order.pay_time = datetime.now()
-
-            # 使用悲观锁查询会员，防止并发问题
-            member = db.query(Member).filter(Member.id == order.member_id).with_for_update().first()
-            if member:
-                total_coins = order.coins + order.bonus_coins
-                member.coin_balance = (member.coin_balance or 0) + total_coins
-
-                coin_record = CoinRecord(
-                    member_id=member.id,
-                    type="recharge",
-                    amount=total_coins,
-                    balance=member.coin_balance,
-                    remark=f"充值{order.amount}元，获得{order.coins}金币，赠送{order.bonus_coins}金币"
-                )
-                db.add(coin_record)
-
-            db.commit()
-        else:
-            db.rollback()
-
+            ok = _confirm_recharge_paid(out_trade_no, transaction_id, db)
+            if not ok:
+                return {"code": "FAIL", "message": "订单不存在"}
         return {"code": "SUCCESS", "message": "成功"}
     except Exception as e:
         db.rollback()
@@ -382,41 +389,33 @@ def _handle_reservation_notify(out_trade_no: str, transaction_id: str, trade_sta
 @router.get("/order/{order_no}", response_model=ResponseModel)
 def query_order(
     order_no: str,
+    current_member: Member = Depends(get_current_member),
     db: Session = Depends(get_db)
 ):
-    """查询充值订单状态"""
+    """查询充值订单状态
+
+    认证：需要会员 token（P0-1 修复，防止匿名遍历订单）
+    并发：通过 _confirm_recharge_paid 加行锁 + 幂等检查（P0-2 修复，防止回调与轮询双发金币）
+    """
     order = db.query(RechargeOrder).filter(
-        RechargeOrder.order_no == order_no
+        RechargeOrder.order_no == order_no,
+        RechargeOrder.member_id == current_member.id  # 归属校验，防止越权查他人订单
     ).first()
 
     if not order:
         return ResponseModel(code=404, message="订单不存在")
 
-    # 如果订单未支付，查询微信支付状态
+    # 如果订单仍 pending，主动查询微信确认状态（处理回调延迟场景）
     if order.status == "pending":
         result = wechat_pay.query_order(order_no)
         if result.get("trade_state") == "SUCCESS":
-            # 更新订单状态
-            order.status = "paid"
-            order.transaction_id = result.get("transaction_id")
-            order.pay_time = datetime.now()
-
-            # 给会员加金币
-            member = db.query(Member).filter(Member.id == order.member_id).first()
-            if member:
-                total_coins = order.coins + order.bonus_coins
-                member.coin_balance = (member.coin_balance or 0) + total_coins
-
-                coin_record = CoinRecord(
-                    member_id=member.id,
-                    type="recharge",
-                    amount=total_coins,
-                    balance=member.coin_balance,
-                    remark=f"充值{order.amount}元"
-                )
-                db.add(coin_record)
-
-            db.commit()
+            # 复用回调路径的带锁幂等逻辑，与 _handle_recharge_notify 完全一致
+            _confirm_recharge_paid(
+                out_trade_no=order_no,
+                transaction_id=result.get("transaction_id"),
+                db=db
+            )
+            db.refresh(order)
 
     return ResponseModel(data={
         "order_no": order.order_no,
@@ -431,11 +430,13 @@ def query_order(
 @router.post("/close/{order_no}", response_model=ResponseModel)
 def close_order(
     order_no: str,
+    current_member: Member = Depends(get_current_member),
     db: Session = Depends(get_db)
 ):
-    """关闭充值订单"""
+    """关闭充值订单（P0-1 修复：需会员认证 + 归属校验，禁止恶意关闭他人订单）"""
     order = db.query(RechargeOrder).filter(
         RechargeOrder.order_no == order_no,
+        RechargeOrder.member_id == current_member.id,
         RechargeOrder.status == "pending"
     ).first()
 

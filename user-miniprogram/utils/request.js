@@ -36,15 +36,25 @@ const requestInterceptor = (config) => {
   return config
 }
 
+// 401 时重置所有登录态字段（P2-1 修复：原来只清 token/memberInfo，遗留 memberLevel/isMember 残值）
+const resetMemberState = () => {
+  wx.removeStorageSync('token')
+  app.globalData.token = ''
+  app.globalData.memberInfo = null
+  // 与 app.logout() 中重置逻辑对齐，避免 UI 滞后显示登录态
+  app.globalData.memberLevel = 'S'
+  app.globalData.isMember = false
+  app.globalData.memberExpireTime = null
+  app.globalData.canBook = false
+}
+
 // 响应拦截器
 const responseInterceptor = (response, config) => {
   const { statusCode, data } = response
 
   // 401 未授权
   if (statusCode === 401) {
-    wx.removeStorageSync('token')
-    app.globalData.token = ''
-    app.globalData.memberInfo = null
+    resetMemberState()
 
     // 审核要求：不再直接 navigateTo，改用 showModal 给用户显式取消选项
     const pages = getCurrentPages()
@@ -126,11 +136,12 @@ const request = (options) => {
       timeout: options.timeout || 30000
     })
 
-    // 请求去重
     const requestKey = generateRequestKey(config)
+
+    // P1-2 修复：请求去重用 waiters 列表，确保所有等待者最终都被 resolve/reject
+    // 旧实现把 _resolve/_reject 挂在 requestTask 上但从未触发，导致复用 Promise 永久 pending
     if (options.dedupe && pendingRequests.has(requestKey)) {
-      const pending = pendingRequests.get(requestKey)
-      pending.then(resolve).catch(reject)
+      pendingRequests.get(requestKey).waiters.push({ resolve, reject })
       return
     }
 
@@ -142,11 +153,26 @@ const request = (options) => {
       })
     }
 
-    const requestTask = wx.request({
+    // 首个等待者就是当前调用方；后续 dedupe 复用者会 push 进同一个 waiters 数组
+    const entry = { waiters: [{ resolve, reject }] }
+    if (options.dedupe) {
+      pendingRequests.set(requestKey, entry)
+    }
+
+    const notifyAll = (kind, value) => {
+      if (options.dedupe) {
+        entry.waiters.forEach(w => w[kind](value))
+      } else {
+        if (kind === 'resolve') resolve(value)
+        else reject(value)
+      }
+    }
+
+    wx.request({
       ...config,
       success: (res) => {
         responseInterceptor(res, config)
-          .then(resolve)
+          .then((data) => notifyAll('resolve', data))
           .catch((err) => {
             // 401 已通过 showModal 提示，不再重复 toast，避免 modal 和 toast 叠加
             if (err.code !== 401 && options.showError !== false) {
@@ -156,7 +182,7 @@ const request = (options) => {
                 duration: 2000
               })
             }
-            reject(err)
+            notifyAll('reject', err)
           })
       },
       fail: (err) => {
@@ -182,7 +208,7 @@ const request = (options) => {
             duration: 2000
           })
         }
-        reject({ code: -1, message, errMsg: err.errMsg, errno: err.errno })
+        notifyAll('reject', { code: -1, message, errMsg: err.errMsg, errno: err.errno })
       },
       complete: () => {
         // 隐藏加载提示
@@ -190,18 +216,11 @@ const request = (options) => {
           wx.hideLoading()
         }
         // 移除请求队列
-        pendingRequests.delete(requestKey)
+        if (options.dedupe) {
+          pendingRequests.delete(requestKey)
+        }
       }
     })
-
-    // 存入请求队列
-    if (options.dedupe) {
-      const promise = new Promise((res, rej) => {
-        requestTask._resolve = res
-        requestTask._reject = rej
-      })
-      pendingRequests.set(requestKey, promise)
-    }
   })
 }
 
@@ -247,9 +266,7 @@ const upload = (url, filePath, name = 'file', formData = {}) => {
       success: (res) => {
         // 401 单独处理：与 responseInterceptor 保持一致的 showModal 流程
         if (res.statusCode === 401) {
-          wx.removeStorageSync('token')
-          app.globalData.token = ''
-          app.globalData.memberInfo = null
+          resetMemberState()
 
           const pages = getCurrentPages()
           const currentPage = pages[pages.length - 1]

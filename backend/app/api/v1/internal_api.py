@@ -29,9 +29,13 @@ logger = logging.getLogger(__name__)
 def require_service_token(
     x_service_token: Optional[str] = Header(None, alias="X-Service-Token"),
 ) -> None:
-    """校验服务间共享密钥；未配置则视为接口未启用。"""
+    """校验服务间共享密钥；未配置或仅含空白则视为接口未启用。
+
+    P1-6 修复：原来 `if not expected` 对 `" "`（含空格）返回 False，
+    会落入比较分支，攻击者送 `X-Service-Token: ` 即可绕过。改用 strip() 防御。
+    """
     expected = settings.INTERNAL_SERVICE_TOKEN
-    if not expected:
+    if not expected or not expected.strip():
         raise HTTPException(status_code=503, detail="Internal API 未启用：未配置 INTERNAL_SERVICE_TOKEN")
     if not x_service_token or x_service_token != expected:
         raise HTTPException(status_code=401, detail="无效的服务间凭证")
@@ -108,14 +112,33 @@ def internal_get_activities(
 def internal_get_member_info(
     member: Member = Depends(get_member_by_unionid),
 ):
-    """根据 unionid 返回会员标识。openid 用于公众号侧推送模板消息。"""
+    """根据 unionid 返回会员基本信息（P2-2 修复：不再返回 openid）。
+
+    通用 GET 不携带 openid，避免泄露面。需要 openid 推送模板消息的调用方
+    应改用 /members/me/notify-info 端点（明确用途，便于审计）。
+    """
     return ResponseModel(data={
         "member_id": member.id,
-        "openid": member.openid,
         "unionid": member.unionid,
         "nickname": member.nickname,
         "phone": member.phone,
         "coin_balance": float(member.coin_balance or 0),
+    })
+
+
+@router.get("/members/me/notify-info", response_model=ResponseModel)
+def internal_get_member_notify_info(
+    member: Member = Depends(get_member_by_unionid),
+):
+    """专用于公众号侧推送模板消息——单独暴露 openid 的端点。
+
+    拆出独立接口而不在 /members/me 中暴露 openid，便于：
+    1. 审计：日志能区分"读基本资料"和"读推送凭证"
+    2. 未来权限分级：可对此接口加更严格的 service token scope
+    """
+    return ResponseModel(data={
+        "member_id": member.id,
+        "openid": member.openid,
     })
 
 

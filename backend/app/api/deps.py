@@ -9,6 +9,7 @@ from app.models import SysUser, Coach, Member
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 coach_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/coach/auth/login", auto_error=False)
+member_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/member/auth/login", auto_error=False)
 
 
 def get_current_user(
@@ -92,7 +93,7 @@ def get_current_coach(
 
 def get_current_member(
     db: Session = Depends(get_db),
-    token: str = Depends(coach_oauth2_scheme)
+    token: str = Depends(member_oauth2_scheme)
 ) -> Member:
     """获取当前会员"""
     credentials_exception = HTTPException(
@@ -121,7 +122,7 @@ def get_current_member(
 
 def get_current_member_optional(
     db: Session = Depends(get_db),
-    token: str = Depends(coach_oauth2_scheme)
+    token: str = Depends(member_oauth2_scheme)
 ) -> Optional[Member]:
     """获取当前会员（可选，Token无效/缺失时返回 None）"""
     if not token:

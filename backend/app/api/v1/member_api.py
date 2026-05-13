@@ -1273,24 +1273,23 @@ def create_reservation(
         )
         db.add(coin_record)
 
-    # 9. 核销优惠券
+    # 9. 核销优惠券（P1-4 修复：用 flush() 一次性 commit，避免崩溃留下 order_id=None 的脏数据）
+    # flush 把 reservation 写入 DB 但不提交事务，使 reservation.id 可用，order_id 同事务回填
+    db.flush()
+
     if used_coupon:
         if pay_type == "wechat":
-            # 微信支付：锁定优惠券，回调成功后正式核销
+            # 微信支付：锁定优惠券，回调成功后正式核销并回填 order_id
             used_coupon.status = 'locked'
             used_coupon.order_type = 'reservation'
         else:
-            # 金币支付：直接核销
+            # 金币支付：直接核销，同事务回填 order_id
             used_coupon.status = 'used'
             used_coupon.use_time = datetime.now()
             used_coupon.order_type = 'reservation'
-            used_coupon.order_id = None
+            used_coupon.order_id = reservation.id
 
     db.commit()
-
-    if used_coupon and pay_type != "wechat":
-        used_coupon.order_id = reservation.id
-        db.commit()
 
     # 10. 微信支付：创建预支付订单
     if actual_price > 0 and pay_type == "wechat":
