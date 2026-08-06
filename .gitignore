@@ -48,3 +48,9 @@ yunlifang.cloud_bundle.pem
 
 # Claude local settings
 .claude/
+
+# Security incident artifacts (DB dumps with member data, forensics)
+security-incident-*/
+
+# Local asset backups (original images before compression)
+backup/

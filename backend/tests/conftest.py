@@ -26,7 +26,9 @@ class MockMemberLevel:
         booking_period: str = 'day',
         food_discount_rate: Decimal = Decimal('1.00'),
         monthly_coupon_count: int = 0,
-        can_book_golf: bool = False
+        can_book_golf: bool = False,
+        can_book_venue: bool = False,
+        daily_free_hours: int = 0
     ):
         self.id = 1
         self.level_code = level_code
@@ -37,6 +39,8 @@ class MockMemberLevel:
         self.food_discount_rate = food_discount_rate
         self.monthly_coupon_count = monthly_coupon_count
         self.can_book_golf = can_book_golf
+        self.can_book_venue = can_book_venue
+        self.daily_free_hours = daily_free_hours
 
 
 class MockMember:
@@ -51,7 +55,8 @@ class MockMember:
         penalty_start_at: Optional[datetime] = None,
         penalty_end_at: Optional[datetime] = None,
         penalty_reason: Optional[str] = None,
-        subscription_status: str = 'active'
+        subscription_status: str = 'active',
+        member_expire_time: Optional[datetime] = None
     ):
         self.id = id
         self.level = level
@@ -62,6 +67,7 @@ class MockMember:
         self.penalty_end_at = penalty_end_at
         self.penalty_reason = penalty_reason
         self.subscription_status = subscription_status
+        self.member_expire_time = member_expire_time
 
 
 class MockReservation:

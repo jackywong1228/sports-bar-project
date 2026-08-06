@@ -70,7 +70,14 @@ def member_login(
     data: MemberLoginRequest,
     db: Session = Depends(get_db)
 ):
-    """会员登录（手机号）"""
+    """会员登录（手机号，仅限开发/测试环境）
+
+    安全说明：该接口无验证码校验，任何人输入任意手机号即可登录他人账号。
+    生产环境必须使用 /auth/wx-login（微信 code 换登录态）+ /auth/phone（绑定手机号）。
+    """
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="接口不存在")
+
     member = db.query(Member).filter(
         Member.phone == data.phone,
         Member.is_deleted == False
@@ -1393,6 +1400,114 @@ def query_reservation_pay_status(
         "status": reservation.status,
         "pay_type": reservation.pay_type,
         "total_price": float(reservation.total_price or 0)
+    })
+
+
+@router.post("/reservations/{reservation_id}/repay", response_model=ResponseModel)
+def repay_reservation(
+    reservation_id: int,
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db)
+):
+    """重新拉起微信支付（创建预约时取消支付后，从订单页/订单详情补支付）
+
+    仅允许 status=unpaid 且 pay_type=wechat 的预约。
+    金额直接使用下单时锁定的 total_price，不重新计价，保证补付金额与下单一致。
+    out_trade_no 优先复用（微信允许未支付订单用同一商户单号重复下单，
+    回调与轮询均以该单号定位预约）；若旧单已关闭导致下单失败，换新单号重试一次。
+    """
+    reservation = db.query(Reservation).filter(
+        Reservation.id == reservation_id,
+        Reservation.member_id == current_member.id,
+        Reservation.is_deleted == False
+    ).first()
+
+    if not reservation:
+        raise HTTPException(status_code=404, detail="预约记录不存在")
+
+    if reservation.pay_type != "wechat":
+        raise HTTPException(status_code=400, detail="该订单不支持微信支付")
+
+    if reservation.status != "unpaid":
+        raise HTTPException(status_code=400, detail="订单当前状态不可支付")
+
+    # 过期校验：预约结束时间已过则直接取消订单并解锁优惠券
+    end_dt = datetime.combine(reservation.reservation_date, reservation.end_time)
+    if end_dt <= datetime.now():
+        reservation.status = "cancelled"
+        if reservation.remark:
+            try:
+                coupon_id = json.loads(reservation.remark).get("coupon_id")
+                if coupon_id:
+                    coupon = db.query(MemberCoupon).filter(
+                        MemberCoupon.id == coupon_id,
+                        MemberCoupon.member_id == reservation.member_id,
+                        MemberCoupon.status == 'locked'
+                    ).first()
+                    if coupon:
+                        coupon.status = 'unused'
+                        coupon.order_type = None
+            except (json.JSONDecodeError, TypeError):
+                pass
+        db.commit()
+        raise HTTPException(status_code=400, detail="订单已过期，请重新预约")
+
+    if not current_member.openid:
+        raise HTTPException(status_code=400, detail="请先完成微信授权")
+
+    total_price = float(reservation.total_price or 0)
+    if total_price <= 0:
+        raise HTTPException(status_code=400, detail="订单金额异常，请重新预约")
+
+    venue = db.query(Venue).filter(Venue.id == reservation.venue_id).first()
+    description = f"场馆预约-{venue.name if venue else '场馆'}"
+    coupon_id = None
+    if reservation.remark:
+        try:
+            coupon_id = json.loads(reservation.remark).get("coupon_id")
+        except (json.JSONDecodeError, TypeError):
+            coupon_id = None
+    attach = json.dumps({
+        "reservation_id": reservation.id,
+        "type": "reservation",
+        "coupon_id": coupon_id
+    })
+    total_amount_fen = round(total_price * 100)
+
+    out_trade_no = reservation.out_trade_no or wechat_pay.generate_out_trade_no("RV")
+    result = wechat_pay.create_jsapi_order(
+        out_trade_no=out_trade_no,
+        total_amount=total_amount_fen,
+        description=description,
+        openid=current_member.openid,
+        attach=attach
+    )
+    if "error" in result and reservation.out_trade_no and out_trade_no == reservation.out_trade_no:
+        # 旧微信单可能已关闭/过期，换新商户单号重试一次（旧单自然失效）
+        out_trade_no = wechat_pay.generate_out_trade_no("RV")
+        result = wechat_pay.create_jsapi_order(
+            out_trade_no=out_trade_no,
+            total_amount=total_amount_fen,
+            description=description,
+            openid=current_member.openid,
+            attach=attach
+        )
+
+    reservation.out_trade_no = out_trade_no
+    db.commit()
+
+    if "error" in result:
+        # 与创建时不同：不取消预约，保留 unpaid 让用户可稍后重试
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    return ResponseModel(message="请完成微信支付", data={
+        "reservation_id": reservation.id,
+        "reservation_no": reservation.reservation_no,
+        "order_no": out_trade_no,
+        "actual_price": total_price,
+        "pay_type": "wechat",
+        "pay_params": result,
+        "is_free": False
     })
 
 

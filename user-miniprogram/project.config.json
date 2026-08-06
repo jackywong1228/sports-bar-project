@@ -26,7 +26,16 @@
   "compileType": "miniprogram",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "docs"
+      },
+      {
+        "type": "file",
+        "value": "tmpclaude-.*"
+      }
+    ],
     "include": []
   },
   "appid": "wxa780255d50dfbf1e",

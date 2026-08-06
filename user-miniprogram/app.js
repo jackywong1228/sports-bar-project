@@ -5,7 +5,6 @@ App({
     token: '',
     openid: '',
     baseUrl: 'https://yunlifang.cloud/api/v1',
-    cartCount: 0,
     // 教练相关
     coachInfo: null,
     coachToken: '',
@@ -244,7 +243,6 @@ App({
     this.globalData.token = ''
     this.globalData.openid = ''
     this.globalData.memberInfo = null
-    this.globalData.cartCount = 0
     // 重置会员状态
     this.globalData.memberLevel = 'S'
     this.globalData.isMember = false
@@ -302,21 +300,6 @@ App({
         }
       })
     })
-  },
-
-  // 更新购物车数量
-  updateCartCount(count) {
-    this.globalData.cartCount = count
-    if (count > 0) {
-      wx.setTabBarBadge({
-        index: 2,
-        text: String(count)
-      })
-    } else {
-      wx.removeTabBarBadge({
-        index: 2
-      })
-    }
   },
 
   // ==================== 教练相关方法 ====================

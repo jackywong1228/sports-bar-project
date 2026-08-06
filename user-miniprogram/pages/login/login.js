@@ -146,7 +146,10 @@ Page({
 
       try {
         const res = await api.getPhoneNumber(e.detail.code)
-        app.globalData.memberInfo.phone = res.data.phone
+        // memberInfo 可能因 profile 尚未加载而为 null，需判空避免 TypeError 被误报为“绑定失败”
+        if (app.globalData.memberInfo) {
+          app.globalData.memberInfo.phone = res.data.phone
+        }
 
         wxApi.showToast('绑定成功', 'success')
         setTimeout(() => {
@@ -178,7 +181,10 @@ Page({
       this.handleLoginSuccess(res.data, false)
 
       const phoneRes = await api.getPhoneNumber(phoneCode)
-      app.globalData.memberInfo.phone = phoneRes.data.phone
+      // 同上：判空保护
+      if (app.globalData.memberInfo) {
+        app.globalData.memberInfo.phone = phoneRes.data.phone
+      }
 
       wxApi.showToast('登录成功', 'success')
       setTimeout(() => {

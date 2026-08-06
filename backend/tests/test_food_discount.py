@@ -3,12 +3,17 @@
 
 覆盖测试计划 5.3 餐食折扣测试（6个用例）和 5.4 边界条件测试（折扣时间边界）
 
-测试场景：
-- P0: 各等级会员白天点餐折扣、晚间无折扣
-- P1: 折扣标签显示
-- P2: 折扣时间边界（17:59 vs 18:00）
+⚠️ 整文件跳过说明（2026-08 测试套件重建）：
+餐食折扣功能在后端从未实现——app.services.food_discount_service 模块不存在，
+MemberLevel.food_discount_rate 仅为数据库预留字段，无任何接口/服务消费它，
+用户端小程序也没有点餐功能。本文件是旧设计稿的前瞻性测试，
+保留作为功能规格参考；若将来实现餐食折扣，需按实际实现重写本文件。
 """
 import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="餐食折扣功能未实现（food_discount_service 不存在），功能上线后需按实际实现重写"
+)
 from datetime import datetime, time
 from decimal import Decimal
 from unittest.mock import MagicMock, patch

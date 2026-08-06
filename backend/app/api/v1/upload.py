@@ -1,5 +1,6 @@
 """文件上传API"""
 import os
+import re
 import uuid
 from datetime import datetime
 from typing import List, Optional
@@ -38,8 +39,13 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
 def ensure_upload_dir(folder: str = ""):
-    """确保上传目录存在"""
-    path = os.path.join(UPLOAD_DIR, folder) if folder else UPLOAD_DIR
+    """确保上传目录存在（folder 仅限字母数字/横线/下划线，防路径穿越）"""
+    if folder:
+        if not re.fullmatch(r"[a-zA-Z0-9_-]+", folder):
+            raise HTTPException(status_code=400, detail="非法的目录参数")
+        path = os.path.join(UPLOAD_DIR, folder)
+    else:
+        path = UPLOAD_DIR
     if not os.path.exists(path):
         os.makedirs(path)
     return path

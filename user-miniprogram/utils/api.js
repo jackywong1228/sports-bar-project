@@ -64,25 +64,19 @@ const getCoachApplyStatus = () => {
 
 // ==================== 首页 ====================
 
-/**
- * 获取首页数据
- */
-const getHomeData = () => {
-  return get('/home')
-}
 
 /**
  * 获取轮播图
  */
 const getBanners = () => {
-  return get('/banners')
+  return get('/member/banners')
 }
 
 /**
  * 获取公告列表
  */
 const getAnnouncements = () => {
-  return get('/announcements')
+  return get('/member/announcements')
 }
 
 // ==================== 场馆预约 ====================
@@ -98,14 +92,14 @@ const getVenueTypes = () => {
  * 获取场馆列表
  */
 const getVenueList = (params = {}) => {
-  return get('/venues', params)
+  return get('/member/venues', params)
 }
 
 /**
  * 获取场馆详情
  */
 const getVenueDetail = (id) => {
-  return get(`/venues/${id}`)
+  return get(`/member/venues/${id}`)
 }
 
 /**
@@ -114,14 +108,14 @@ const getVenueDetail = (id) => {
  * @param {string} date 日期 YYYY-MM-DD
  */
 const getVenueSchedule = (venueId, date) => {
-  return get(`/venues/${venueId}/schedule`, { date })
+  return get(`/member/venues/${venueId}/slots`, { date })
 }
 
 /**
  * 创建场馆预约
  */
 const createVenueReservation = (data) => {
-  return post('/reservations/venue', data, { showLoading: true })
+  return post('/member/reservations', data, { showLoading: true })
 }
 
 // ==================== 教练预约 ====================
@@ -130,28 +124,28 @@ const createVenueReservation = (data) => {
  * 获取教练列表
  */
 const getCoachList = (params = {}) => {
-  return get('/coaches', params)
+  return get('/member/coaches', params)
 }
 
 /**
  * 获取教练详情
  */
 const getCoachDetail = (id) => {
-  return get(`/coaches/${id}`)
+  return get(`/member/coaches/${id}`)
 }
 
 /**
  * 获取教练排期
  */
 const getCoachSchedule = (coachId, date) => {
-  return get(`/coaches/${coachId}/schedule`, { date })
+  return get(`/member/coaches/${coachId}/schedule`, { date })
 }
 
 /**
  * 创建教练预约
  */
 const createCoachReservation = (data) => {
-  return post('/reservations/coach', data, { showLoading: true })
+  return post('/member/reservations', data, { showLoading: true })
 }
 
 // ==================== 预约记录 ====================
@@ -160,21 +154,15 @@ const createCoachReservation = (data) => {
  * 获取预约列表
  */
 const getReservationList = (params = {}) => {
-  return get('/reservations', params)
+  return get('/member/reservations', params)
 }
 
-/**
- * 获取预约详情
- */
-const getReservationDetail = (id) => {
-  return get(`/reservations/${id}`)
-}
 
 /**
  * 取消预约
  */
 const cancelReservation = (id) => {
-  return post(`/reservations/${id}/cancel`, {}, { showLoading: true })
+  return post(`/member/reservations/${id}/cancel`, {}, { showLoading: true })
 }
 
 // ==================== 活动 ====================
@@ -183,28 +171,28 @@ const cancelReservation = (id) => {
  * 获取活动列表
  */
 const getActivityList = (params = {}) => {
-  return get('/activities', params)
+  return get('/member/activities', params)
 }
 
 /**
  * 获取活动详情
  */
 const getActivityDetail = (id) => {
-  return get(`/activities/${id}`)
+  return get(`/member/activities/${id}`)
 }
 
 /**
  * 报名活动
  */
 const joinActivity = (activityId) => {
-  return post(`/activities/${activityId}/join`, {}, { showLoading: true })
+  return post(`/member/activities/${activityId}/enroll`, {}, { showLoading: true })
 }
 
 /**
  * 取消报名
  */
 const quitActivity = (activityId) => {
-  return post(`/activities/${activityId}/quit`, {}, { showLoading: true })
+  return post(`/member/activities/${activityId}/cancel`, {}, { showLoading: true })
 }
 
 // ==================== 会员卡 ====================
@@ -257,36 +245,30 @@ const queryMemberCardOrder = (orderNo) => {
  * 获取商城分类
  */
 const getMallCategories = () => {
-  return get('/mall/categories')
+  return get('/member/mall/categories')
 }
 
 /**
  * 获取商城商品列表
  */
 const getMallProducts = (params = {}) => {
-  return get('/mall/products', params)
+  return get('/member/mall/goods', params)
 }
 
 /**
  * 获取商品详情
  */
 const getMallProductDetail = (id) => {
-  return get(`/mall/products/${id}`)
+  return get(`/member/mall/goods/${id}`)
 }
 
 /**
  * 兑换商品
  */
 const exchangeProduct = (productId, quantity = 1, addressId = null) => {
-  return post('/mall/exchange', { product_id: productId, quantity, address_id: addressId }, { showLoading: true })
+  return post(`/member/mall/goods/${productId}/exchange`, { quantity, address_id: addressId }, { showLoading: true })
 }
 
-/**
- * 获取兑换订单列表
- */
-const getMallOrders = (params = {}) => {
-  return get('/mall/orders', params)
-}
 
 // ==================== 组队广场 ====================
 
@@ -294,35 +276,35 @@ const getMallOrders = (params = {}) => {
  * 获取组队列表
  */
 const getTeamList = (params = {}) => {
-  return get('/teams', params)
+  return get('/member/teams', params)
 }
 
 /**
  * 获取组队详情
  */
 const getTeamDetail = (id) => {
-  return get(`/teams/${id}`)
+  return get(`/member/teams/${id}`)
 }
 
 /**
  * 发起组队
  */
 const createTeam = (data) => {
-  return post('/teams', data, { showLoading: true })
+  return post('/member/teams', data, { showLoading: true })
 }
 
 /**
  * 加入组队
  */
 const joinTeam = (teamId) => {
-  return post(`/teams/${teamId}/join`, {}, { showLoading: true })
+  return post(`/member/teams/${teamId}/join`, {}, { showLoading: true })
 }
 
 /**
  * 退出组队
  */
 const quitTeam = (teamId) => {
-  return post(`/teams/${teamId}/quit`, {}, { showLoading: true })
+  return post(`/member/teams/${teamId}/quit`, {}, { showLoading: true })
 }
 
 /**
@@ -334,40 +316,22 @@ const getMyTeams = (params = {}) => {
 
 // ==================== 钱包 ====================
 
-/**
- * 获取钱包信息
- */
-const getWallet = () => {
-  return get('/wallet')
-}
 
 /**
  * 获取金币记录
  */
 const getCoinRecords = (params = {}) => {
-  return get('/wallet/coins', params)
+  return get('/member/coin-records', params)
 }
 
 /**
  * 获取积分记录
  */
 const getPointRecords = (params = {}) => {
-  return get('/wallet/points', params)
+  return get('/member/point-records', params)
 }
 
-/**
- * 获取充值套餐
- */
-const getRechargePackages = () => {
-  return get('/wallet/recharge-packages')
-}
 
-/**
- * 发起充值
- */
-const createRecharge = (amount, packageId = null) => {
-  return post('/wallet/recharge', { amount, package_id: packageId }, { showLoading: true })
-}
 
 // ==================== 打卡与训练 ====================
 
@@ -432,12 +396,6 @@ const getMyCoupons = (status = '', applicableType = '') => {
   return get('/member/coupons', params)
 }
 
-/**
- * 领取优惠券
- */
-const receiveCoupon = (templateId) => {
-  return post('/coupons/receive', { template_id: templateId })
-}
 
 // ==================== 订单 ====================
 
@@ -445,29 +403,17 @@ const receiveCoupon = (templateId) => {
  * 获取所有订单
  */
 const getOrders = (params = {}) => {
-  return get('/orders', params)
+  return get('/member/orders', params)
 }
 
 /**
  * 获取订单详情
  */
 const getOrderDetail = (id) => {
-  return get(`/orders/${id}`)
+  return get(`/member/orders/${id}`)
 }
 
-/**
- * 支付订单
- */
-const payOrder = (orderId, payType = 'coin') => {
-  return post(`/orders/${orderId}/pay`, { pay_type: payType }, { showLoading: true })
-}
 
-/**
- * 取消订单
- */
-const cancelOrder = (orderId) => {
-  return post(`/orders/${orderId}/cancel`, {}, { showLoading: true })
-}
 
 // ==================== 文件上传 ====================
 
@@ -489,23 +435,7 @@ const checkBookingPermission = (params = {}) => {
   return get('/member/booking-permission', params)
 }
 
-/**
- * 获取违规记录
- * @param {Object} params { page?, page_size? }
- * @returns {Promise} { total, items: [{ id, type, description, created_at }] }
- */
-const getViolations = (params = {}) => {
-  return get('/member/violations', params)
-}
 
-/**
- * 核销预约（教练/前台使用）
- * @param {Object} data { reservation_id, verify_code? }
- * @returns {Promise} { success, message }
- */
-const verifyReservation = (data) => {
-  return post('/member/reservations/verify', data, { showLoading: true })
-}
 
 // ==================== 评论 ====================
 
@@ -538,12 +468,6 @@ const getVenuePriceTable = (venueId, date) => {
 
 // ==================== 充值套餐（会员端） ====================
 
-/**
- * 获取充值套餐列表
- */
-const getMemberRechargePackages = () => {
-  return get('/member/recharge-packages')
-}
 
 // ==================== 人脸识别（预留） ====================
 
@@ -631,7 +555,6 @@ module.exports = {
   getCoachApplyStatus,
 
   // 首页
-  getHomeData,
   getBanners,
   getAnnouncements,
 
@@ -650,7 +573,6 @@ module.exports = {
 
   // 预约
   getReservationList,
-  getReservationDetail,
   cancelReservation,
 
   // 活动
@@ -672,7 +594,6 @@ module.exports = {
   getMallProducts,
   getMallProductDetail,
   exchangeProduct,
-  getMallOrders,
 
   // 组队
   getTeamList,
@@ -683,11 +604,8 @@ module.exports = {
   getMyTeams,
 
   // 钱包
-  getWallet,
   getCoinRecords,
   getPointRecords,
-  getRechargePackages,
-  createRecharge,
 
   // 打卡与训练
   getCheckinStats,
@@ -701,21 +619,16 @@ module.exports = {
 
   // 优惠券
   getMyCoupons,
-  receiveCoupon,
 
   // 订单
   getOrders,
   getOrderDetail,
-  payOrder,
-  cancelOrder,
 
   // 上传
   uploadImage,
 
   // 会员权限检查
   checkBookingPermission,
-  getViolations,
-  verifyReservation,
 
   // 评论
   submitReview,
@@ -725,7 +638,6 @@ module.exports = {
   getVenuePriceTable,
 
   // 充值套餐（会员端）
-  getMemberRechargePackages,
 
   // 人脸识别（预留）
   registerFace,

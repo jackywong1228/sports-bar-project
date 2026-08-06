@@ -160,9 +160,9 @@ Page({
     })
   },
 
-  // 跳转到首页
+  // 跳转到首页（coach-home 不是 tabBar 页面，必须用 redirectTo，switchTab 会报错失败）
   goToIndex() {
-    wx.switchTab({
+    wx.redirectTo({
       url: '/pages/coach-home/coach-home'
     })
   }

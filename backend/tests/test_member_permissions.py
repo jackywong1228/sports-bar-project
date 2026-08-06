@@ -1,477 +1,297 @@
 """
-会员预约权限测试
+会员预约权限测试（三级订阅制版本：S/SS/SSS）
 
-覆盖测试计划 5.1 预约权限测试（10个用例）和 5.4 边界条件测试（部分）
+针对 app.services.booking_service.BookingService 当前实现重写，
+旧版二级会员制（booking_max_count / 惩罚期 / 高尔夫场馆类型配置）语义已废弃。
 
-测试场景：
-- P0: TRIAL会员预约、S/SS/SSS会员日期范围、高尔夫权限、预约次数超限
-- P1: 边界条件测试
+覆盖规则：
+- S级（can_book_venue=False）：无预约权限
+- SS级：仅可预约当天，需 active 订阅且在有效期内
+- SSS级：可提前 booking_range_days 天（默认3天），每日 daily_free_hours 小时免费
+- 通用：不可预约过去日期
+- SSS 免费时长计算 check_sss_free_limit
+- 营业时间校验 is_business_hour / check_business_hours_range
 """
 import pytest
 from datetime import date, datetime, timedelta
-from decimal import Decimal
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock
 
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tests.conftest import (
-    MockMember, MockMemberLevel, MockReservation, MockVenueTypeConfig,
-    create_trial_member, create_s_member, create_ss_member, create_sss_member,
-    create_penalized_member
-)
+from tests.conftest import MockMember, MockMemberLevel
+
+
+# ==================== 测试辅助 ====================
+
+def make_level(level_code, can_book_venue, booking_range_days=0, daily_free_hours=0):
+    """按生产配置（init_data.py）构造会员等级"""
+    names = {'S': 'S级会员', 'SS': 'SS级会员', 'SSS': 'SSS级会员'}
+    return MockMemberLevel(
+        level_code=level_code,
+        name=names.get(level_code, level_code),
+        booking_range_days=booking_range_days,
+        can_book_venue=can_book_venue,
+        daily_free_hours=daily_free_hours
+    )
+
+
+def make_active_member(level, member_id=1):
+    """构造订阅有效（active + 30天后到期）的会员"""
+    return MockMember(
+        id=member_id,
+        level=level,
+        subscription_status='active',
+        member_expire_time=datetime.now() + timedelta(days=30)
+    )
+
+
+def make_s_level():
+    return make_level('S', can_book_venue=False)
+
+
+def make_ss_level():
+    return make_level('SS', can_book_venue=True, booking_range_days=0)
+
+
+def make_sss_level():
+    return make_level('SSS', can_book_venue=True, booking_range_days=3, daily_free_hours=2)
 
 
 class TestBookingPermission:
-    """预约权限检查测试类"""
+    """check_booking_permission 权限检查测试"""
 
     def setup_method(self):
-        """每个测试方法前的设置"""
+        from app.services.booking_service import BookingService
         self.mock_db = MagicMock()
+        # _get_daily_used_minutes -> 0；_get_available_coupons -> []
+        self.mock_db.query.return_value.filter.return_value.scalar.return_value = 0
+        self.mock_db.query.return_value.join.return_value.filter.return_value.all.return_value = []
+        self.service = BookingService(self.mock_db)
 
-    # ==================== P0: TRIAL会员测试 ====================
+    # ---------- 无权限等级 ----------
 
-    def test_trial_member_cannot_book(self):
-        """
-        测试场景: TRIAL会员预约
-        预期结果: 显示"无法自行预约，请致电咨询"
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
+    def test_s_member_cannot_book(self):
+        """S级（注册默认等级）无预约权限"""
+        member = make_active_member(make_s_level())
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-        member = create_trial_member()
-        service = BookingService(self.mock_db)
+        assert result['can_book'] is False
+        assert result['need_membership'] is True
+        assert '无预约权限' in result['reason']
 
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=1,
-            booking_date=date.today()
-        )
+    def test_member_without_level_cannot_book(self):
+        """无等级会员按无权限处理"""
+        member = make_active_member(None)
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-        assert result['can_book'] == False
-        assert '体验会员无法自行预约' in result['reason']
-        assert 'contact_phone' in result
+        assert result['can_book'] is False
+        assert result['need_membership'] is True
 
-    # ==================== P0: S会员预约范围测试 ====================
+    # ---------- 订阅状态 ----------
 
-    def test_s_member_can_book_today(self):
-        """
-        测试场景: S会员今日预约
-        预期结果: 可以成功预约
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
+    def test_inactive_subscription_cannot_book(self):
+        """SS级但订阅未激活，无法预约"""
+        member = make_active_member(make_ss_level())
+        member.subscription_status = 'inactive'
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-        member = create_s_member()
-        service = BookingService(self.mock_db)
+        assert result['can_book'] is False
+        assert '开通会员' in result['reason']
 
-        # 模拟查询无已有预约
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 0
+    def test_missing_expire_time_cannot_book(self):
+        """订阅 active 但无到期时间，无法预约"""
+        member = make_active_member(make_ss_level())
+        member.member_expire_time = None
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=date.today()
-        )
+        assert result['can_book'] is False
+        assert '开通会员' in result['reason']
 
-        assert result['can_book'] == True
-        assert 'booking_range' in result
+    def test_expired_member_cannot_book(self):
+        """会员已过期，无法预约"""
+        member = make_active_member(make_ss_level())
+        member.member_expire_time = datetime.now() - timedelta(days=1)
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-    def test_s_member_can_book_tomorrow(self):
-        """
-        测试场景: S会员明天预约
-        预期结果: 可以成功预约（在2天范围内）
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
+        assert result['can_book'] is False
+        assert '已过期' in result['reason']
 
-        member = create_s_member()
-        service = BookingService(self.mock_db)
-
-        # 模拟查询无已有预约
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 0
-
-        tomorrow = date.today() + timedelta(days=1)
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=tomorrow
-        )
-
-        assert result['can_book'] == True
-
-    def test_s_member_cannot_book_day_after_tomorrow(self):
-        """
-        测试场景: S会员后天预约
-        预期结果: 显示"超出可预约范围"
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_s_member()
-        service = BookingService(self.mock_db)
-
-        day_after_tomorrow = date.today() + timedelta(days=3)
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=day_after_tomorrow
-        )
-
-        assert result['can_book'] == False
-        assert '2天内' in result['reason']
-
-    # ==================== P0: 高尔夫权限测试 ====================
-
-    def test_s_member_cannot_book_golf(self):
-        """
-        测试场景: S会员预约高尔夫场地
-        预期结果: 显示"您的等级不支持预约高尔夫"
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_s_member()
-        service = BookingService(self.mock_db)
-
-        # 模拟高尔夫场馆配置
-        golf_config = MockVenueTypeConfig(venue_type_id=1, is_golf=True)
-        self.mock_db.query.return_value.filter.return_value.first.return_value = golf_config
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 0
-
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=1,
-            booking_date=date.today()
-        )
-
-        assert result['can_book'] == False
-        assert '高尔夫' in result['reason']
-
-    def test_sss_member_can_book_golf(self):
-        """
-        测试场景: SSS会员预约高尔夫场地
-        预期结果: 可以成功预约
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_sss_member()
-        service = BookingService(self.mock_db)
-
-        # 模拟高尔夫场馆配置
-        golf_config = MockVenueTypeConfig(venue_type_id=1, is_golf=True)
-        self.mock_db.query.return_value.filter.return_value.first.return_value = golf_config
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 0
-
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=1,
-            booking_date=date.today()
-        )
-
-        assert result['can_book'] == True
-
-    # ==================== P0: SS会员预约范围测试 ====================
-
-    def test_ss_member_can_book_this_week(self):
-        """
-        测试场景: SS会员本周预约
-        预期结果: 可以成功预约
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_ss_member()
-        service = BookingService(self.mock_db)
-
-        # 模拟无已有预约
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 0
-
-        # 预约本周内的日期（6天后，仍在7天范围内）
-        booking_date = date.today() + timedelta(days=6)
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=booking_date
-        )
-
-        assert result['can_book'] == True
-
-    def test_ss_member_cannot_book_next_week(self):
-        """
-        测试场景: SS会员下周预约
-        预期结果: 显示"超出可预约范围"
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_ss_member()
-        service = BookingService(self.mock_db)
-
-        # 预约下周（8天后，超出7天范围）
-        booking_date = date.today() + timedelta(days=8)
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=booking_date
-        )
-
-        assert result['can_book'] == False
-        assert '7天内' in result['reason']
-
-    # ==================== P0: 预约次数超限测试 ====================
-
-    def test_s_member_exceed_booking_quota(self):
-        """
-        测试场景: S会员超额预约（已有2次预约，尝试第3次）
-        预期结果: 显示"今明两天预约次数已达上限"
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_s_member()
-        service = BookingService(self.mock_db)
-
-        # 模拟已有2次预约（达到上限）
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 2
-
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=date.today()
-        )
-
-        assert result['can_book'] == False
-        assert '上限' in result['reason']
-        assert '2次' in result['reason']
-
-    def test_ss_member_exceed_weekly_quota(self):
-        """
-        测试场景: SS会员本周超额预约（已有3次预约，尝试第4次）
-        预期结果: 显示"本周预约次数已达上限"
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_ss_member()
-        service = BookingService(self.mock_db)
-
-        # 模拟已有3次预约（达到上限）
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 3
-
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=date.today()
-        )
-
-        assert result['can_book'] == False
-        assert '上限' in result['reason']
-        assert '3次' in result['reason']
-
-    def test_sss_member_exceed_monthly_quota(self):
-        """
-        测试场景: SSS会员本月超额预约（已有5次预约，尝试第6次）
-        预期结果: 显示"本月预约次数已达上限"
-        优先级: P0
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_sss_member()
-        service = BookingService(self.mock_db)
-
-        # 模拟已有5次预约（达到上限）
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 5
-
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=date.today()
-        )
-
-        assert result['can_book'] == False
-        assert '上限' in result['reason']
-        assert '5次' in result['reason']
-
-
-class TestBookingBoundaryConditions:
-    """预约边界条件测试类（5.4 边界条件测试）"""
-
-    def setup_method(self):
-        """每个测试方法前的设置"""
-        self.mock_db = MagicMock()
+    # ---------- 日期边界 ----------
 
     def test_cannot_book_past_date(self):
-        """
-        测试场景: 预约过去的日期
-        预期结果: 显示"不能预约过去的日期"
-        优先级: P1
-        """
-        from app.services.booking_service import BookingService
-
-        member = create_s_member()
-        service = BookingService(self.mock_db)
-
+        """不可预约过去的日期"""
+        member = make_active_member(make_ss_level())
         yesterday = date.today() - timedelta(days=1)
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=yesterday
-        )
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=yesterday)
 
-        assert result['can_book'] == False
+        assert result['can_book'] is False
         assert '过去' in result['reason']
 
-    def test_penalized_member_reduced_permissions(self):
-        """
-        测试场景: 惩罚期会员预约
-        预期结果: 使用惩罚期的预约限制（1天范围，1次上限）
-        优先级: P1
-        """
-        from app.services.booking_service import BookingService
+    # ---------- SS级：仅当天 ----------
 
-        # 创建惩罚期会员（原本是S级，惩罚后只能预约当天1次）
-        level = MockMemberLevel(
-            level_code='S',
-            name='初级会员',
-            booking_range_days=2,
-            booking_max_count=2,
-            booking_period='day'
-        )
-        member = create_penalized_member(level)
-        service = BookingService(self.mock_db)
+    def test_ss_member_can_book_today(self):
+        """SS级可预约当天"""
+        member = make_active_member(make_ss_level())
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-        # 模拟无已有预约
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 0
+        assert result['can_book'] is True
+        assert result['level_code'] == 'SS'
+        today = date.today().isoformat()
+        assert result['booking_range']['min_date'] == today
+        assert result['booking_range']['max_date'] == today
 
-        # 尝试预约明天（超出惩罚期1天范围）
-        tomorrow = date.today() + timedelta(days=2)
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=tomorrow
-        )
+    def test_ss_member_cannot_book_tomorrow(self):
+        """SS级不可预约明天"""
+        member = make_active_member(make_ss_level())
+        tomorrow = date.today() + timedelta(days=1)
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=tomorrow)
 
-        assert result['can_book'] == False
-        assert '1天内' in result['reason']
+        assert result['can_book'] is False
+        assert '仅可预约当天' in result['reason']
 
-    def test_sss_member_can_book_30_days(self):
-        """
-        测试场景: SSS会员预约30天范围
-        预期结果: 30天内可以预约
-        优先级: P1
-        """
-        from app.services.booking_service import BookingService
+    # ---------- SSS级：提前3天 ----------
 
-        member = create_sss_member()
-        service = BookingService(self.mock_db)
+    def test_sss_member_can_book_today(self):
+        """SSS级可预约当天"""
+        member = make_active_member(make_sss_level())
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-        # 模拟无已有预约
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 0
+        assert result['can_book'] is True
+        assert result['level_code'] == 'SSS'
 
-        # 预约29天后（在30天范围内）
-        booking_date = date.today() + timedelta(days=29)
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=booking_date
-        )
+    def test_sss_member_can_book_within_range(self):
+        """SSS级可预约提前3天范围内的日期（边界：恰好第3天）"""
+        member = make_active_member(make_sss_level())
+        target = date.today() + timedelta(days=3)
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=target)
 
-        assert result['can_book'] == True
+        assert result['can_book'] is True
+        assert result['booking_range']['max_date'] == target.isoformat()
 
-    def test_sss_member_cannot_book_beyond_30_days(self):
-        """
-        测试场景: SSS会员预约超过30天范围
-        预期结果: 超出30天无法预约
-        优先级: P1
-        """
-        from app.services.booking_service import BookingService
+    def test_sss_member_cannot_book_beyond_range(self):
+        """SSS级不可预约超出3天范围的日期（边界：第4天）"""
+        member = make_active_member(make_sss_level())
+        target = date.today() + timedelta(days=4)
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=target)
 
-        member = create_sss_member()
-        service = BookingService(self.mock_db)
+        assert result['can_book'] is False
+        assert '提前3天' in result['reason']
 
-        # 预约31天后（超出30天范围）
-        booking_date = date.today() + timedelta(days=31)
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=booking_date
-        )
+    # ---------- SSS免费时长信息 ----------
 
-        assert result['can_book'] == False
-        assert '30天内' in result['reason']
+    def test_sss_free_usage_info_present(self):
+        """SSS级（daily_free_hours>0）返回免费时长使用信息"""
+        member = make_active_member(make_sss_level())
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-    def test_member_without_level(self):
-        """
-        测试场景: 没有等级的会员
-        预期结果: 按体验会员处理，无法预约
-        优先级: P1
-        """
-        from app.services.booking_service import BookingService
+        assert result['can_book'] is True
+        free_info = result['free_usage_info']
+        assert free_info['daily_free_hours'] == 2
+        assert free_info['used_minutes'] == 0
+        assert free_info['remaining_free_minutes'] == 120
 
-        # 创建没有等级的会员
-        member = MockMember(id=1, level=None)
-        service = BookingService(self.mock_db)
+    def test_ss_no_free_usage_info(self):
+        """SS级（daily_free_hours=0）不返回免费时长信息"""
+        member = make_active_member(make_ss_level())
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
 
-        result = service.check_booking_permission(
-            member=member,
-            venue_type_id=2,
-            booking_date=date.today()
-        )
+        assert result['can_book'] is True
+        assert 'free_usage_info' not in result
 
-        assert result['can_book'] == False
+    # ---------- 返回结构 ----------
+
+    def test_result_contains_available_coupons(self):
+        """可预约结果包含可用优惠券列表"""
+        member = make_active_member(make_ss_level())
+        result = self.service.check_booking_permission(member, venue_id=1, booking_date=date.today())
+
+        assert 'available_coupons' in result
+        assert isinstance(result['available_coupons'], list)
 
 
-class TestBookingStats:
-    """预约统计测试类"""
+class TestSssFreeLimit:
+    """check_sss_free_limit 免费时长计算测试（超出部分允许付费，不拒绝）"""
 
     def setup_method(self):
-        """每个测试方法前的设置"""
+        from app.services.booking_service import BookingService
         self.mock_db = MagicMock()
+        self.service = BookingService(self.mock_db)
 
-    def test_get_booking_stats_for_s_member(self):
-        """测试S级会员统计信息"""
-        from app.services.booking_service import BookingService
+    def _set_used_minutes(self, minutes):
+        self.mock_db.query.return_value.filter.return_value.scalar.return_value = minutes
 
-        member = create_s_member()
-        service = BookingService(self.mock_db)
-
-        # 模拟已有1次预约
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 1
-
-        stats = service.get_booking_stats(member)
-
-        assert stats['this_period_bookings'] == 1
-        assert stats['remaining_quota'] == 1  # 2-1=1
-        assert stats['booking_period'] == 'day'
-
-    def test_get_booking_stats_for_penalized_member(self):
-        """测试惩罚期会员统计信息"""
-        from app.services.booking_service import BookingService
-
-        level = MockMemberLevel(
-            level_code='S',
-            booking_range_days=2,
-            booking_max_count=2,
-            booking_period='day'
+    def test_fully_free_within_quota(self):
+        """预约时长在免费额度内：全部免费"""
+        self._set_used_minutes(0)
+        result = self.service.check_sss_free_limit(
+            member_id=1, booking_date=date.today(),
+            duration_minutes=60, daily_free_hours=2
         )
-        member = create_penalized_member(level)
-        service = BookingService(self.mock_db)
 
-        # 模拟无预约
-        self.mock_db.query.return_value.filter.return_value.count.return_value = 0
+        assert result['allowed'] is True
+        assert result['fully_free'] is True
+        assert result['free_minutes'] == 60
+        assert result['paid_minutes'] == 0
+        assert result['remaining_after'] == 60
 
-        stats = service.get_booking_stats(member)
+    def test_partially_paid_when_exceeding_quota(self):
+        """超出免费额度：剩余免费 + 超出付费"""
+        self._set_used_minutes(90)  # 已用1.5h，剩余30分钟免费
+        result = self.service.check_sss_free_limit(
+            member_id=1, booking_date=date.today(),
+            duration_minutes=120, daily_free_hours=2
+        )
 
-        assert stats['remaining_quota'] == 1  # 惩罚期只能1次
-        assert stats['booking_period'] == 'day'
+        assert result['allowed'] is True
+        assert result['fully_free'] is False
+        assert result['free_minutes'] == 30
+        assert result['paid_minutes'] == 90
+        assert result['remaining_after'] == 0
+
+    def test_fully_paid_when_quota_exhausted(self):
+        """免费额度耗尽：全部付费，仍允许预约"""
+        self._set_used_minutes(120)
+        result = self.service.check_sss_free_limit(
+            member_id=1, booking_date=date.today(),
+            duration_minutes=60, daily_free_hours=2
+        )
+
+        assert result['allowed'] is True
+        assert result['fully_free'] is False
+        assert result['free_minutes'] == 0
+        assert result['paid_minutes'] == 60
+
+
+class TestBusinessHours:
+    """营业时间校验测试（08:00-22:00，半开区间）"""
+
+    def test_is_business_hour(self):
+        from app.services.booking_service import BookingService
+
+        assert BookingService.is_business_hour(8) is True    # 08:00 开门
+        assert BookingService.is_business_hour(21) is True   # 21:00-22:00 最后时段
+        assert BookingService.is_business_hour(22) is False  # 22:00 闭店
+        assert BookingService.is_business_hour(7) is False   # 未开门
+        assert BookingService.is_business_hour(0) is False
+
+    def test_valid_range_returns_none(self):
+        from app.services.booking_service import BookingService
+
+        assert BookingService.check_business_hours_range(10, 12) is None
+        assert BookingService.check_business_hours_range(8, 22) is None
+
+    def test_start_before_opening_rejected(self):
+        from app.services.booking_service import BookingService
+
+        reason = BookingService.check_business_hours_range(7, 10)
+        assert reason is not None
+        assert '营业时间' in reason
+
+    def test_end_after_closing_rejected(self):
+        from app.services.booking_service import BookingService
+
+        reason = BookingService.check_business_hours_range(20, 23)
+        assert reason is not None
+        assert '营业时间' in reason

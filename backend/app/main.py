@@ -20,8 +20,10 @@ app = FastAPI(
     title=settings.APP_NAME,
     description="场馆体育社交管理系统 API",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    # 生产环境（DEBUG=False）关闭交互式文档，避免暴露完整 API 结构
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None
 )
 
 # CORS 配置

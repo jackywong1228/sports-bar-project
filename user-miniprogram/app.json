@@ -41,7 +41,8 @@
     "pages/leaderboard/leaderboard",
     "pages/my-teams/my-teams",
     "pages/feedback/feedback",
-    "pages/agreement/agreement"
+    "pages/agreement/agreement",
+    "pages/webview/webview"
   ],
   "window": {
     "backgroundTextStyle": "dark",

@@ -107,19 +107,68 @@ Page({
     }
   },
 
-  // 去支付
+  // 去支付（重新拉起微信支付）
   payOrder() {
-    wx.showLoading({ title: '支付中...' })
+    const id = this.data.id
+    wx.showLoading({ title: '正在拉起支付...', mask: true })
     app.request({
-      url: `/member/reservations/${this.data.id}/pay`,
+      url: `/member/reservations/${id}/repay`,
       method: 'POST'
-    }).then(() => {
+    }).then((res) => {
       wx.hideLoading()
-      wx.showToast({ title: '支付成功', icon: 'success' })
-      this.loadDetail()
-    }).catch(() => {
+      const data = (res && res.data) || {}
+      if (!data.pay_params) {
+        wx.showToast({ title: '支付参数异常，请稍后再试', icon: 'none' })
+        return
+      }
+      wx.requestPayment({
+        ...data.pay_params,
+        success: () => {
+          wx.showLoading({ title: '支付确认中...', mask: true })
+          this.pollPaymentStatus(id, 0)
+        },
+        fail: (err) => {
+          if (err.errMsg && err.errMsg.includes('cancel')) {
+            wx.showToast({ title: '已取消支付', icon: 'none' })
+          } else {
+            wx.showToast({ title: '支付失败', icon: 'none' })
+          }
+        }
+      })
+    }).catch((err) => {
       wx.hideLoading()
-      wx.showToast({ title: '支付失败', icon: 'none' })
+      const msg = (err && err.data && err.data.detail) || '发起支付失败'
+      wx.showToast({ title: msg, icon: 'none', duration: 2500 })
     })
+  },
+
+  // 轮询支付状态
+  async pollPaymentStatus(reservationId, attempt) {
+    if (attempt >= 10) {
+      wx.hideLoading()
+      wx.showToast({ title: '支付处理中，请稍后查看', icon: 'none' })
+      this.loadDetail()
+      return
+    }
+
+    try {
+      const res = await app.request({
+        url: `/member/reservations/${reservationId}/pay-status`
+      })
+
+      if (res.data && res.data.status === 'pending') {
+        wx.hideLoading()
+        wx.showToast({ title: '支付成功', icon: 'success' })
+        this.loadDetail()
+        return
+      }
+    } catch (err) {
+      console.error('查询支付状态失败:', err)
+    }
+
+    // 1秒后重试
+    setTimeout(() => {
+      this.pollPaymentStatus(reservationId, attempt + 1)
+    }, 1000)
   }
 })

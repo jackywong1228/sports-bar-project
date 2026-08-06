@@ -95,6 +95,25 @@ Page({
     ]
   },
 
+  // tabBar 页面清单（与 app.json 一致）：navigateTo 跳转这些页面会静默失败，必须 switchTab
+  _tabBarPages: [
+    '/pages/index/index',
+    '/pages/venue/venue',
+    '/pages/activity/activity',
+    '/pages/profile/profile'
+  ],
+
+  // 智能跳转：自动识别 tabBar 页面，避免后台配置的链接指向 tab 页时点击无反应
+  navigateSmart(url) {
+    if (!url) return
+    const path = url.split('?')[0]
+    if (this._tabBarPages.includes(path)) {
+      wx.switchTab({ url: path })
+    } else {
+      wx.navigateTo({ url })
+    }
+  },
+
   // 处理快捷入口跳转
   handleQuickEntryNav(url, linkType) {
     if (!url) return
@@ -105,7 +124,7 @@ Page({
     } else if (linkType === 'webview') {
       wx.navigateTo({ url: `/pages/webview/webview?url=${encodeURIComponent(url)}` })
     } else {
-      wx.navigateTo({ url })
+      this.navigateSmart(url)
     }
   },
 
@@ -244,7 +263,7 @@ Page({
   onAnnouncementTap(e) {
     const item = e.currentTarget.dataset.item
     if (item && item.url) {
-      wx.navigateTo({ url: item.url })
+      this.navigateSmart(item.url)
     }
   },
 
@@ -252,7 +271,7 @@ Page({
   onBannerTap(e) {
     const url = e.currentTarget.dataset.url
     if (url) {
-      wx.navigateTo({ url })
+      this.navigateSmart(url)
     }
   },
 
