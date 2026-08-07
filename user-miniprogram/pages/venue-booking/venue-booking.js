@@ -43,6 +43,7 @@ Page({
     selectedPayType: 'coin',
     coinBalance: 0,
     estimatedPrice: 0,
+    freeDeductTip: '',  // SSS部分免费时的抵扣提示
     // 优惠券相关
     availableCoupons: [],
     selectedCouponIndex: -1,
@@ -385,19 +386,34 @@ Page({
     // 计算预估价格
     const estimatedPrice = this.data.selectedVenuePrice * this.data.selectedSlots.length
 
-    // SSS免费时段（尚有剩余免费分钟数）或价格为0，直接提交
+    // SSS免费时长：仅当免费分钟数完全覆盖预约时长（全免）时才直接提交；
+    // 部分免费或免费已用完 → 弹出支付方式选择（金币/微信），应付为抵扣后的部分
     const freeInfo = this.data.freeUsageInfo
-    const isSSSFree = this.data.memberLevel === 'SSS' && freeInfo && freeInfo.remaining_free_minutes > 0
-    if (estimatedPrice <= 0 || isSSSFree) {
+    const bookedMinutes = this.data.selectedSlots.length * 60
+    const isSSS = this.data.memberLevel === 'SSS'
+    const freeMinutes = (isSSS && freeInfo && freeInfo.remaining_free_minutes) || 0
+    const isFullyFree = freeMinutes >= bookedMinutes
+
+    if (estimatedPrice <= 0 || isFullyFree) {
       this.doSubmit('coin')
       return
     }
 
+    // 部分免费：按付费分钟比例折算预估应付（与后端 sss_discount 口径一致，最终以后端计算为准）
+    let actualEstimated = estimatedPrice
+    let freeDeductTip = ''
+    if (freeMinutes > 0) {
+      const paidMinutes = bookedMinutes - freeMinutes
+      actualEstimated = Math.round(estimatedPrice * (paidMinutes / bookedMinutes) * 100) / 100
+      freeDeductTip = `已抵扣 SSS 免费时长 ${freeMinutes} 分钟，应付为超出部分`
+    }
+
     // 加载优惠券并弹出支付弹窗
-    this.loadAvailableCoupons(estimatedPrice)
+    this.loadAvailableCoupons(actualEstimated)
     this.setData({
-      estimatedPrice,
-      actualPrice: estimatedPrice,
+      estimatedPrice: actualEstimated,
+      actualPrice: actualEstimated,
+      freeDeductTip,
       selectedPayType: 'coin',
       selectedCouponIndex: -1,
       couponDiscount: 0,

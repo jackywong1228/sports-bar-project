@@ -173,6 +173,7 @@
           <text class="coupon-discount-text">已优惠 {{couponDiscount}} 金币</text>
         </view>
       </view>
+      <view class="pay-free-tip" wx:if="{{freeDeductTip}}">✓ {{freeDeductTip}}</view>
       <!-- 优惠券选择 -->
       <view class="coupon-section">
         <view class="coupon-section-title">优惠券</view>
