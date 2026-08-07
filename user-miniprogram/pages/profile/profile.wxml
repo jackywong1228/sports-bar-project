@@ -70,11 +70,6 @@
       <text class="asset-value">{{memberInfo.point_balance || 0}}</text>
       <text class="asset-label">积分</text>
     </view>
-    <view class="asset-divider"></view>
-    <view class="asset-item" bindtap="goToRecharge">
-      <text class="asset-value recharge-btn">充值</text>
-      <text class="asset-label">金币充值</text>
-    </view>
   </view>
 
   <!-- 教练入口 -->

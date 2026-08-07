@@ -207,17 +207,6 @@ Page({
     })
   },
 
-  // 充值
-  goToRecharge() {
-    if (!this.data.isLoggedIn) {
-      this.goToLogin()
-      return
-    }
-    wx.navigateTo({
-      url: '/pages/recharge/recharge'
-    })
-  },
-
   // 跳转训练日历
   goToCalendar() {
     if (!this.data.isLoggedIn) {

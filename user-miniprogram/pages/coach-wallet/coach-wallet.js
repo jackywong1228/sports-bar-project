@@ -78,13 +78,5 @@ Page({
       console.error('加载收支记录失败:', err)
       this.setData({ loading: false })
     }
-  },
-
-  // 跳转充值
-  goToRecharge() {
-    wx.showToast({
-      title: '功能开发中',
-      icon: 'none'
-    })
   }
 })

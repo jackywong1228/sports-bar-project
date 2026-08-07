@@ -18,7 +18,7 @@
         <text class="balance-value">{{memberInfo.point_balance || 0}}</text>
         <text class="balance-unit">积分</text>
       </view>
-      <button class="btn-recharge" bindtap="goToRecharge" wx:if="{{currentTab === 'coin'}}">充值</button>
+      <view class="recharge-tip" wx:if="{{currentTab === 'coin'}}">金币充值请前往门店前台办理</view>
     </view>
   </view>
 

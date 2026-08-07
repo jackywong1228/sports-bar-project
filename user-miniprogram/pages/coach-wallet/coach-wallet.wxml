@@ -14,9 +14,6 @@
       <view class="balance-label">当前{{currentTab === 'coin' ? '金币' : '积分'}}余额</view>
       <view class="balance-value">{{currentTab === 'coin' ? walletData.coin_balance : walletData.point_balance}}</view>
     </view>
-    <view class="action-buttons" wx:if="{{currentTab === 'coin'}}">
-      <button class="action-btn" bindtap="goToRecharge">充值</button>
-    </view>
   </view>
 
   <!-- 规则说明 -->
@@ -24,7 +21,7 @@
     <view class="rules-title">{{currentTab === 'coin' ? '金币' : '积分'}}说明</view>
     <view class="rules-content" wx:if="{{currentTab === 'coin'}}">
       <text>• 金币可用于场馆消费、点餐等</text>
-      <text>• 教练享受专属充值优惠</text>
+      <text>• 金币充值请前往门店前台办理</text>
       <text>• 金币不可提现，不可转让</text>
     </view>
     <view class="rules-content" wx:else>

@@ -78,12 +78,5 @@ Page({
   loadMore() {
     this.setData({ page: this.data.page + 1 })
     this.loadRecords()
-  },
-
-  // 去充值
-  goToRecharge() {
-    wx.navigateTo({
-      url: '/pages/recharge/recharge'
-    })
   }
 })

@@ -654,7 +654,7 @@ def enroll_activity(
     if price > 0:
         current_balance = float(current_member.coin_balance or 0)
         if current_balance < price:
-            raise HTTPException(status_code=400, detail="金币余额不足")
+            raise HTTPException(status_code=400, detail="金币余额不足，请到店充值")
         current_member.coin_balance = current_balance - price
 
     reg = ActivityRegistration(
@@ -1234,7 +1234,7 @@ def create_reservation(
     # 6. 支付处理
     if actual_price > 0 and pay_type == "coin":
         if actual_price > float(current_member.coin_balance or 0):
-            raise HTTPException(status_code=400, detail="金币余额不足")
+            raise HTTPException(status_code=400, detail="金币余额不足，请到店充值")
     elif actual_price > 0 and pay_type == "wechat":
         if not current_member.openid:
             raise HTTPException(status_code=400, detail="请先完成微信授权")
@@ -2189,7 +2189,7 @@ def exchange_mall_goods(
 
     current_coins = float(current_member.coin_balance or 0)
     if total_coins > 0 and current_coins < total_coins:
-        raise HTTPException(status_code=400, detail="金币余额不足")
+        raise HTTPException(status_code=400, detail="金币余额不足，请到店充值")
 
     now = datetime.now()
     order_no = now.strftime("%Y%m%d%H%M%S") + f"{current_member.id:06d}"
