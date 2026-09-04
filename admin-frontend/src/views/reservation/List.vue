@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElTable } from 'element-plus'
 import request from '@/utils/request'
 
 interface Reservation {
@@ -55,6 +55,53 @@ const statusMap: Record<string, { text: string; type: string }> = {
 }
 
 const finalStatuses = new Set(['completed', 'cancelled'])
+
+const tableRef = ref<InstanceType<typeof ElTable>>()
+const selectedRows = ref<Reservation[]>([])
+
+const handleSelectionChange = (rows: Reservation[]) => {
+  selectedRows.value = rows
+}
+
+// 批量确认/取消：单个「确认」按钮也复用此逻辑（ids 只传一个）
+const batchUpdateStatus = async (ids: number[], action: 'confirm' | 'cancel') => {
+  const actionText = action === 'confirm' ? '确认' : '取消'
+  try {
+    await ElMessageBox.confirm(`确定要${actionText}选中的 ${ids.length} 条预约吗？`, '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+  try {
+    const res = await request.post('/reservations/batch-status', { ids, action })
+    const { success_count, fail_count, failures } = res.data
+    if (success_count > 0) {
+      ElMessage.success(`成功${actionText} ${success_count} 条`)
+    }
+    if (fail_count > 0) {
+      const detail = (failures as { id: number; reason: string }[])
+        .slice(0, 3)
+        .map(f => `ID ${f.id}：${f.reason}`)
+        .join('；')
+      ElMessage.warning(`${fail_count} 条失败：${detail}${fail_count > 3 ? ' 等' : ''}`)
+    }
+    tableRef.value?.clearSelection()
+    fetchData()
+  } catch {
+    // 请求错误（request 封装已提示）
+  }
+}
+
+const handleBatchConfirm = () => {
+  batchUpdateStatus(selectedRows.value.map(r => r.id), 'confirm')
+}
+
+const handleBatchCancel = () => {
+  batchUpdateStatus(selectedRows.value.map(r => r.id), 'cancel')
+}
+
+const handleConfirm = (row: Reservation) => {
+  batchUpdateStatus([row.id], 'confirm')
+}
 
 const fetchData = async () => {
   loading.value = true
@@ -129,10 +176,39 @@ onMounted(() => {
 
     <el-card>
       <template #header>
-        <span>预约记录</span>
+        <div class="card-header">
+          <span>预约记录</span>
+          <div class="batch-actions">
+            <el-button
+              type="primary"
+              :disabled="selectedRows.length === 0"
+              @click="handleBatchConfirm"
+            >
+              批量确认{{ selectedRows.length ? ` (${selectedRows.length})` : '' }}
+            </el-button>
+            <el-button
+              type="warning"
+              :disabled="selectedRows.length === 0"
+              @click="handleBatchCancel"
+            >
+              批量取消{{ selectedRows.length ? ` (${selectedRows.length})` : '' }}
+            </el-button>
+          </div>
+        </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
+      <el-table
+        ref="tableRef"
+        :data="tableData"
+        v-loading="loading"
+        stripe
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column
+          type="selection"
+          width="50"
+          :selectable="(row: Reservation) => !finalStatuses.has(row.status)"
+        />
         <el-table-column prop="reservation_no" label="预约编号" width="200" class-name="col-secondary" />
         <el-table-column prop="member_name" label="会员" width="100" />
         <el-table-column prop="member_phone" label="联系电话" width="120" />
@@ -167,8 +243,16 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" class-name="col-secondary" />
-        <el-table-column label="操作" fixed="right" width="150">
+        <el-table-column label="操作" fixed="right" width="200">
           <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'pending'"
+              type="primary"
+              link
+              @click="handleConfirm(row)"
+            >
+              确认
+            </el-button>
             <el-button
               v-if="!finalStatuses.has(row.status)"
               type="warning"
@@ -204,5 +288,16 @@ onMounted(() => {
 
 .search-card {
   margin-bottom: 0;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 8px;
 }
 </style>

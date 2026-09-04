@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -242,6 +242,72 @@ def cancel_reservation(
 
 class VerifyByNoRequest(BaseModel):
     reservation_no: str
+
+
+class BatchStatusRequest(BaseModel):
+    ids: List[int]
+    action: str  # confirm | cancel
+    reason: Optional[str] = None
+
+
+@router.post("/batch-status", response_model=ResponseModel)
+def batch_update_status(
+    data: BatchStatusRequest,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user)
+):
+    """批量确认/批量取消预约"""
+    if not data.ids:
+        raise HTTPException(status_code=400, detail="ids 不能为空")
+    if len(data.ids) > 100:
+        raise HTTPException(status_code=400, detail="单次批量操作不能超过 100 条")
+    if data.action not in ("confirm", "cancel"):
+        raise HTTPException(status_code=400, detail="action 仅支持 confirm 或 cancel")
+
+    reservations = db.query(Reservation).filter(Reservation.id.in_(data.ids)).all()
+    res_map = {res.id: res for res in reservations}
+
+    success_count = 0
+    failures = []
+
+    for rid in data.ids:
+        res = res_map.get(rid)
+        if not res:
+            failures.append({"id": rid, "reason": "预约不存在"})
+            continue
+
+        if data.action == "confirm":
+            if res.status != "pending":
+                failures.append({
+                    "id": rid,
+                    "reason": f"当前状态为{STATUS_TEXT.get(res.status, res.status)}，仅待确认状态可确认"
+                })
+                continue
+            res.status = "confirmed"
+        else:  # cancel
+            if res.status in ("completed", "cancelled"):
+                failures.append({
+                    "id": rid,
+                    "reason": f"当前状态为{STATUS_TEXT.get(res.status, res.status)}，不允许取消"
+                })
+                continue
+            res.status = "cancelled"
+            res.cancel_reason = data.reason
+            res.cancel_time = datetime.utcnow()
+
+        success_count += 1
+
+    db.commit()
+
+    action_text = "确认" if data.action == "confirm" else "取消"
+    return ResponseModel(
+        message=f"批量{action_text}完成：成功 {success_count} 条，失败 {len(failures)} 条",
+        data={
+            "success_count": success_count,
+            "fail_count": len(failures),
+            "failures": failures
+        }
+    )
 
 
 @router.post("/verify-by-no", response_model=ResponseModel)
