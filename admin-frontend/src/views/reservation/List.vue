@@ -63,11 +63,18 @@ const handleSelectionChange = (rows: Reservation[]) => {
   selectedRows.value = rows
 }
 
-// 批量确认/取消：单个「确认」按钮也复用此逻辑（ids 只传一个）
-const batchUpdateStatus = async (ids: number[], action: 'confirm' | 'cancel') => {
-  const actionText = action === 'confirm' ? '确认' : '取消'
+// 批量确认/取消/删除：单个「确认」按钮也复用此逻辑（ids 只传一个）
+const batchUpdateStatus = async (ids: number[], action: 'confirm' | 'cancel' | 'delete') => {
+  const actionTextMap = { confirm: '确认', cancel: '取消', delete: '删除' } as const
+  const actionText = actionTextMap[action]
   try {
-    await ElMessageBox.confirm(`确定要${actionText}选中的 ${ids.length} 条预约吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(
+      action === 'delete'
+        ? `确定要删除选中的 ${ids.length} 条预约记录吗？删除后不可恢复！`
+        : `确定要${actionText}选中的 ${ids.length} 条预约吗？`,
+      '提示',
+      { type: 'warning' }
+    )
   } catch {
     return
   }
@@ -97,6 +104,10 @@ const handleBatchConfirm = () => {
 
 const handleBatchCancel = () => {
   batchUpdateStatus(selectedRows.value.map(r => r.id), 'cancel')
+}
+
+const handleBatchDelete = () => {
+  batchUpdateStatus(selectedRows.value.map(r => r.id), 'delete')
 }
 
 const handleConfirm = (row: Reservation) => {
@@ -193,6 +204,13 @@ onMounted(() => {
             >
               批量取消{{ selectedRows.length ? ` (${selectedRows.length})` : '' }}
             </el-button>
+            <el-button
+              type="danger"
+              :disabled="selectedRows.length === 0"
+              @click="handleBatchDelete"
+            >
+              批量删除{{ selectedRows.length ? ` (${selectedRows.length})` : '' }}
+            </el-button>
           </div>
         </div>
       </template>
@@ -207,7 +225,6 @@ onMounted(() => {
         <el-table-column
           type="selection"
           width="50"
-          :selectable="(row: Reservation) => !finalStatuses.has(row.status)"
         />
         <el-table-column prop="reservation_no" label="预约编号" width="200" class-name="col-secondary" />
         <el-table-column prop="member_name" label="会员" width="100" />

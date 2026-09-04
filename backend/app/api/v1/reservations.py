@@ -246,7 +246,7 @@ class VerifyByNoRequest(BaseModel):
 
 class BatchStatusRequest(BaseModel):
     ids: List[int]
-    action: str  # confirm | cancel
+    action: str  # confirm | cancel | delete
     reason: Optional[str] = None
 
 
@@ -256,13 +256,13 @@ def batch_update_status(
     db: Session = Depends(get_db),
     current_user: SysUser = Depends(get_current_user)
 ):
-    """批量确认/批量取消预约"""
+    """批量确认/批量取消/批量删除预约"""
     if not data.ids:
         raise HTTPException(status_code=400, detail="ids 不能为空")
     if len(data.ids) > 100:
         raise HTTPException(status_code=400, detail="单次批量操作不能超过 100 条")
-    if data.action not in ("confirm", "cancel"):
-        raise HTTPException(status_code=400, detail="action 仅支持 confirm 或 cancel")
+    if data.action not in ("confirm", "cancel", "delete"):
+        raise HTTPException(status_code=400, detail="action 仅支持 confirm、cancel 或 delete")
 
     reservations = db.query(Reservation).filter(Reservation.id.in_(data.ids)).all()
     res_map = {res.id: res for res in reservations}
@@ -284,6 +284,8 @@ def batch_update_status(
                 })
                 continue
             res.status = "confirmed"
+        elif data.action == "delete":
+            db.delete(res)
         else:  # cancel
             if res.status in ("completed", "cancelled"):
                 failures.append({
@@ -299,7 +301,7 @@ def batch_update_status(
 
     db.commit()
 
-    action_text = "确认" if data.action == "confirm" else "取消"
+    action_text = {"confirm": "确认", "cancel": "取消", "delete": "删除"}.get(data.action, data.action)
     return ResponseModel(
         message=f"批量{action_text}完成：成功 {success_count} 条，失败 {len(failures)} 条",
         data={
