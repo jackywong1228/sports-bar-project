@@ -2,8 +2,8 @@ const app = getApp()
 const api = require('../../utils/api')
 const { drawQRCode } = require('../../utils/qrcode')
 
-const REFRESH_INTERVAL_MS = 25000  // 25s 提前刷新（后端 token 寿命 30s）
-const QR_LIFETIME_S = 30
+const REFRESH_INTERVAL_MS = 100000  // 100s 提前刷新（后端短码寿命 120s）
+const QR_LIFETIME_S = 120
 
 Page({
   data: {
@@ -14,7 +14,7 @@ Page({
     themeName: '会员',
     qrReady: false,
     countdownPercent: 100,
-    countdownText: '30秒',
+    countdownText: '120秒',
     errorMsg: '',
   },
 
@@ -91,8 +91,9 @@ Page({
     try {
       this.setData({ errorMsg: '' })
       const res = await api.getMemberQrToken()
-      const token = res && res.data && res.data.token
-      if (!token) {
+      // 新版后端返回 8 位短码 code；|| token 兜底兼容旧版 JWT 响应
+      const code = res && res.data && (res.data.code || res.data.token)
+      if (!code) {
         this.setData({ errorMsg: '获取二维码失败' })
         return
       }
@@ -101,7 +102,7 @@ Page({
         countdownPercent: 100,
         countdownText: QR_LIFETIME_S + '秒',
       })
-      this.drawQR('MEMBER:' + token)
+      this.drawQR('MEMBER:' + code)
     } catch (_err) {
       // 401 已由 app.request 统一处理（清除 token 并提示）
       this.reportError('qrcode_refresh_fail')
@@ -119,12 +120,14 @@ Page({
           return
         }
         const canvas = res[0].node
-        const canvasWidth = res[0].width || 240
+        const canvasWidth = res[0].width || 300
         try {
+          // 码本身强制纯黑保证对比度（会员等级主题色只用于卡片装饰），
+          // margin 32 ≈ 4 个模块宽度的安全留白
           drawQRCode(canvas, content, canvasWidth, {
-            foreground: this.data.themeColor || '#1A5D3A',
+            foreground: '#000000',
             background: '#FFFFFF',
-            margin: 8,
+            margin: 32,
           })
           this.setData({ qrReady: true })
         } catch (_err) {

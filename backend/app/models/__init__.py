@@ -18,6 +18,7 @@ from app.models.member_violation import MemberViolation
 from app.models.member_coupon_issuance import MemberCouponIssuance
 from app.models.review import ServiceReview, ReviewPointConfig
 from app.models.member_invitation import MemberInvitation
+from app.models.member_qrcode import MemberQrCode
 from app.models.feedback import Feedback
 
 __all__ = [
@@ -39,5 +40,6 @@ __all__ = [
     "MemberViolation", "MemberCouponIssuance",
     "ServiceReview", "ReviewPointConfig",
     "MemberInvitation",
+    "MemberQrCode",
     "Feedback",
 ]

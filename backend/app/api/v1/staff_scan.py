@@ -1,8 +1,9 @@
 """前台扫码核销 API
 
-四个接口：
-  GET  /api/v1/member/qrcode/token       会员请求自己的 30s 短期 QR token
+五个接口：
+  GET  /api/v1/member/qrcode/token       会员请求自己的 120s 短期二维码短码
   POST /api/v1/staff/scan-member         员工扫会员二维码 → 返回会员资料 + 今日待核销预约
+  POST /api/v1/staff/lookup-member       员工按手机号查找会员 → 同上返回结构
   POST /api/v1/staff/verify-with-checkin 核销预约 + 同步打卡（替代闸机数据源）
   POST /api/v1/staff/walk-in-checkin     散客到店：duration=0 + 可选扣邀请人配额
 """
@@ -30,9 +31,17 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/member/qrcode/token", response_model=ResponseModel)
-def get_my_qr_token(current_member: Member = Depends(get_current_member)):
-    """会员请求自己的 30 秒短期 QR token（小程序每 25 秒调一次以提前刷新）"""
-    data = staff_scan_service.generate_member_qr_token(current_member.id)
+def get_my_qr_token(
+    current_member: Member = Depends(get_current_member),
+    db: Session = Depends(get_db),
+):
+    """会员请求自己的 120 秒短期二维码短码（小程序每 100 秒调一次以提前刷新）
+
+    历史上这里返回 30 秒 JWT；短码方案上线后改为 8 位短码，
+    二维码内容从约 176 字节降到 15 字节，密度降约 5 倍。
+    """
+    data = staff_scan_service.generate_member_qr_code(db, current_member.id)
+    db.commit()
     return ResponseModel(data=data)
 
 
@@ -45,39 +54,22 @@ class ScanMemberRequest(BaseModel):
     current_venue_id: Optional[int] = None
 
 
-@router.post("/staff/scan-member", response_model=ResponseModel)
-def staff_scan_member(
-    payload: ScanMemberRequest,
-    current_user: SysUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """员工扫会员二维码 → 返回会员资料 + 今日待核销预约"""
-    try:
-        member_id = staff_scan_service.verify_member_qr_token(payload.token)
-    except ValueError as e:
-        raise HTTPException(status_code=410, detail=str(e))
-
-    member = db.query(Member).filter(
-        Member.id == member_id,
-        Member.is_deleted == False  # noqa: E712
-    ).first()
-    if not member:
-        raise HTTPException(status_code=404, detail="会员不存在")
-
+def _build_member_scan_payload(db: Session, member: Member) -> dict:
+    """组装「会员资料 + 今日待核销预约」返回结构（scan-member / lookup-member 共用）"""
     level = db.query(MemberLevel).filter(MemberLevel.id == member.level_id).first() if member.level_id else None
-    reservations = staff_scan_service.get_member_today_pending_reservations(db, member_id)
+    reservations = staff_scan_service.get_member_today_pending_reservations(db, member.id)
 
     # 仅 SS/SSS 才有邀请配额
     invite_remaining = 0
     if level and level.level_code in ("SS", "SSS"):
         try:
-            stats = InvitationService(db).get_monthly_stats(member_id)
+            stats = InvitationService(db).get_monthly_stats(member.id)
             invite_remaining = stats.get("remaining", 0)
         except Exception:
-            logger.exception("获取邀请配额失败: member_id=%s", member_id)
+            logger.exception("获取邀请配额失败: member_id=%s", member.id)
             invite_remaining = 0
 
-    return ResponseModel(data={
+    return {
         "member": {
             "id": member.id,
             "nickname": member.nickname or "",
@@ -107,7 +99,58 @@ def staff_scan_member(
             }
             for r in reservations
         ],
-    })
+    }
+
+
+@router.post("/staff/scan-member", response_model=ResponseModel)
+def staff_scan_member(
+    payload: ScanMemberRequest,
+    current_user: SysUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """员工扫会员二维码 → 返回会员资料 + 今日待核销预约
+
+    token 向后兼容：8 位短码（新版小程序）走 member_qr_code 表验证，
+    其他按旧 JWT 验签，旧版小程序发布更新前仍可用。
+    """
+    token = payload.token.strip()
+    if staff_scan_service.QR_CODE_PATTERN.match(token):
+        member_id = staff_scan_service.verify_member_qr_code(db, token)
+    else:
+        try:
+            member_id = staff_scan_service.verify_member_qr_token(token)
+        except ValueError as e:
+            raise HTTPException(status_code=410, detail=str(e))
+
+    member = db.query(Member).filter(
+        Member.id == member_id,
+        Member.is_deleted == False  # noqa: E712
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="会员不存在")
+
+    return ResponseModel(data=_build_member_scan_payload(db, member))
+
+
+class LookupMemberRequest(BaseModel):
+    phone: str
+
+
+@router.post("/staff/lookup-member", response_model=ResponseModel)
+def staff_lookup_member(
+    payload: LookupMemberRequest,
+    current_user: SysUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """员工按手机号查找会员 → 返回结构与 scan-member 完全一致"""
+    member = db.query(Member).filter(
+        Member.phone == payload.phone.strip(),
+        Member.is_deleted == False  # noqa: E712
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="该手机号未注册会员")
+
+    return ResponseModel(data=_build_member_scan_payload(db, member))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -206,10 +249,16 @@ def staff_walk_in_checkin(
 
     inviter_remaining: Optional[int] = None
     if payload.inviter_token:
+        inviter_token = payload.inviter_token.strip()
         try:
-            inviter_id = staff_scan_service.verify_member_qr_token(payload.inviter_token)
-        except ValueError as e:
-            raise HTTPException(status_code=410, detail=f"邀请人二维码无效: {str(e)}")
+            # 与 scan-member 一致：短码 / 旧 JWT 双通道兼容
+            if staff_scan_service.QR_CODE_PATTERN.match(inviter_token):
+                inviter_id = staff_scan_service.verify_member_qr_code(db, inviter_token)
+            else:
+                inviter_id = staff_scan_service.verify_member_qr_token(inviter_token)
+        except (ValueError, HTTPException) as e:
+            detail = e.detail if isinstance(e, HTTPException) else str(e)
+            raise HTTPException(status_code=410, detail=f"邀请人二维码无效: {detail}")
         try:
             inviter_remaining = InvitationService(db).use_quota_for_walkin(inviter_id, payload.member_id)
         except ValueError as e:

@@ -72,8 +72,8 @@
 }
 
 .qr-canvas-box {
-  width: 480rpx;
-  height: 480rpx;
+  width: 600rpx;
+  height: 600rpx;
   position: relative;
   display: flex;
   align-items: center;
@@ -81,8 +81,8 @@
 }
 
 .qr-canvas {
-  width: 480rpx;
-  height: 480rpx;
+  width: 600rpx;
+  height: 600rpx;
 }
 
 .qr-loading {

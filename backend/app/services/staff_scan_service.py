@@ -3,10 +3,13 @@
 复用 backend/app/core/security.py 的 JWT 配置（SECRET_KEY/ALGORITHM）
 复用 backend/app/api/v1/gate_api.py 的 calculate_points()
 """
+import re
+import secrets
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Optional
 
+from fastapi import HTTPException
 from jose import JWTError, jwt
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -16,15 +19,24 @@ from app.core.config import settings
 from app.models import (
     GateCheckRecord,
     Member,
+    MemberQrCode,
     PointRecord,
     Reservation,
     Venue,
 )
 from app.models.venue import VenueType
 
-# JWT 短期 token 设计
+# JWT 短期 token 设计（旧版小程序兼容用，短码上线后逐步淘汰）
 QR_TOKEN_EXPIRE_SECONDS = 30
 QR_TOKEN_TYPE = "member_qr"
+
+# 会员二维码 8 位短码设计：
+# 字符集去掉 0/O/1/I 等易混淆字符，配合 MEMBER: 前缀整个码内容仅 15 字节，
+# QR 版本从 Version 10（57×57）降到 Version 2（25×25），扫码识别率大幅提升
+QR_CODE_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+QR_CODE_LENGTH = 8
+QR_CODE_EXPIRE_SECONDS = 120
+QR_CODE_PATTERN = re.compile(r"^[A-Z2-9]{8}$")
 
 # 散客接待虚拟场馆名称（用于无场地的散客到店记录）
 RECEPTION_VENUE_NAME = "散客接待"
@@ -61,6 +73,44 @@ def verify_member_qr_token(token: str) -> int:
     if not member_id:
         raise ValueError("二维码缺少会员信息")
     return int(member_id)
+
+
+def generate_member_qr_code(db: Session, member_id: int) -> dict:
+    """生成 8 位会员二维码短码（120 秒有效）
+
+    生成前删除该会员的旧码，并顺带清理全表已过期码。
+    调用方负责 db.commit()。
+    """
+    now = datetime.now()
+
+    # 清理：该会员的旧码 + 全表已过期码（一张小表，顺带清扫即可）
+    db.query(MemberQrCode).filter(
+        (MemberQrCode.member_id == member_id) | (MemberQrCode.expires_at < now)
+    ).delete(synchronize_session=False)
+
+    # 短码有唯一索引，撞码概率极低（32^8），重试几次兜底
+    for _ in range(5):
+        code = "".join(secrets.choice(QR_CODE_CHARSET) for _ in range(QR_CODE_LENGTH))
+        exists = db.query(MemberQrCode).filter(MemberQrCode.code == code).first()
+        if exists:
+            continue
+        db.add(MemberQrCode(
+            code=code,
+            member_id=int(member_id),
+            expires_at=now + timedelta(seconds=QR_CODE_EXPIRE_SECONDS),
+        ))
+        return {"code": code, "expires_in": QR_CODE_EXPIRE_SECONDS}
+    raise RuntimeError("生成二维码短码失败，请重试")
+
+
+def verify_member_qr_code(db: Session, code: str) -> int:
+    """校验 8 位短码并返回 member_id；无效/过期抛 HTTPException(410)"""
+    row = db.query(MemberQrCode).filter(MemberQrCode.code == code).first()
+    if not row:
+        raise HTTPException(status_code=410, detail="无效的二维码")
+    if row.expires_at < datetime.now():
+        raise HTTPException(status_code=410, detail="二维码已过期，请刷新后重试")
+    return int(row.member_id)
 
 
 def get_member_today_pending_reservations(db: Session, member_id: int) -> List[Reservation]:
