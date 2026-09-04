@@ -24,6 +24,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // 关键：/staff/ 是独立的员工端应用，/api/ 与 /uploads/ 是后端资源，
+        // 均不得被本 PWA 的 SPA 回退（返回 admin 的 index.html）劫持
+        navigateFallbackDenylist: [/^\/staff\//, /^\/api\//, /^\/uploads\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\/api\//,
