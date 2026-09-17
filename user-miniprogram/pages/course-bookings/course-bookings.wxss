@@ -1,0 +1,273 @@
+.page {
+  min-height: 100vh;
+  background: #F5F7F5;
+}
+
+/* 状态筛选 Tab */
+.tabs {
+  display: flex;
+  background: #fff;
+  padding: 0 12rpx;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 28rpx 0 24rpx;
+  font-size: 28rpx;
+  color: #666;
+  position: relative;
+}
+
+.tab-active {
+  color: #1A5D3A;
+  font-weight: bold;
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: 8rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: #1A5D3A;
+}
+
+/* 约课卡片 */
+.booking-list {
+  padding: 24rpx;
+}
+
+.booking-card {
+  display: flex;
+  background: #fff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.booking-cover {
+  width: 180rpx;
+  min-height: 200rpx;
+  flex-shrink: 0;
+}
+
+.booking-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  color: #fff;
+  font-size: 56rpx;
+  font-weight: bold;
+}
+
+.booking-body {
+  flex: 1;
+  min-width: 0;
+  padding: 20rpx 24rpx;
+}
+
+.booking-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.booking-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #1A1A1A;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-status {
+  font-size: 24rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.booking-meta {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.booking-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+}
+
+.booking-price {
+  font-size: 24rpx;
+  color: #E6A23C;
+  font-weight: 600;
+}
+
+.booking-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.action-btn {
+  font-size: 24rpx;
+  padding: 10rpx 28rpx;
+  border-radius: 28rpx;
+}
+
+.action-pay {
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  color: #fff;
+}
+
+.action-cancel {
+  border: 2rpx solid #F56C6C;
+  color: #F56C6C;
+}
+
+/* 空态 / 加载态 */
+.empty-box {
+  padding: 120rpx 0;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+}
+
+.empty-text {
+  margin-top: 24rpx;
+  font-size: 30rpx;
+  color: #666;
+}
+
+.loading-box {
+  padding: 40rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: #999;
+}
+
+/* 详情弹层 */
+.detail-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+}
+
+.detail-modal {
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
+}
+
+.detail-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1A1A1A;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+/* 核销编号 */
+.verify-box {
+  margin-top: 24rpx;
+  background: rgba(26, 93, 58, 0.06);
+  border: 2rpx dashed #1A5D3A;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  text-align: center;
+}
+
+.verify-label {
+  font-size: 22rpx;
+  color: #666;
+}
+
+.verify-no {
+  margin-top: 8rpx;
+  font-size: 44rpx;
+  font-weight: bold;
+  color: #1A5D3A;
+  letter-spacing: 4rpx;
+}
+
+.detail-rows {
+  margin-top: 24rpx;
+}
+
+.detail-row {
+  display: flex;
+  padding: 14rpx 0;
+  font-size: 26rpx;
+  color: #333;
+  border-bottom: 1rpx solid #F5F5F5;
+}
+
+.row-label {
+  width: 160rpx;
+  flex-shrink: 0;
+  color: #999;
+  font-size: 24rpx;
+}
+
+.detail-desc {
+  margin-top: 24rpx;
+  font-size: 26rpx;
+  color: #444;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.detail-btns {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+}
+
+.detail-btn {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  border-radius: 44rpx;
+  font-size: 28rpx;
+}
+
+.detail-btn-primary {
+  background: linear-gradient(135deg, #1A5D3A 0%, #2E7D52 100%);
+  color: #fff;
+  font-weight: bold;
+}
+
+.detail-btn-danger {
+  border: 2rpx solid #F56C6C;
+  color: #F56C6C;
+}
+
+.detail-btn-plain {
+  background: #F0F0F0;
+  color: #666;
+}

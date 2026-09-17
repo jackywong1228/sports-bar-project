@@ -5,10 +5,11 @@ import os
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.v1 import auth, staff, members, venues, reservations, coaches, coach_api, member_api
+from app.api.v1 import auth, staff, members, venues, reservations, coaches, coach_api, member_api, member_courses
 from app.api.v1 import activities, coupons, mall, payment, finance, dashboard, messages, member_cards, wechat, upload, ui_assets, ui_editor
 from app.api.v1 import gate_api, checkin
 from app.api.v1 import coupon_packs, reviews
+from app.api.v1 import course_admin
 from app.api.v1 import feedback as feedback_router
 from app.api.v1 import staff_scan
 from app.api.v1 import internal_api
@@ -57,8 +58,12 @@ app.include_router(members.router, prefix=f"{settings.API_V1_PREFIX}/members", t
 app.include_router(venues.router, prefix=f"{settings.API_V1_PREFIX}/venues", tags=["场地管理"])
 app.include_router(reservations.router, prefix=f"{settings.API_V1_PREFIX}/reservations", tags=["预约管理"])
 app.include_router(coaches.router, prefix=f"{settings.API_V1_PREFIX}/coaches", tags=["教练管理"])
+# 教练约课新链路（阶段 1）：课程/课次管理，与旧 /coaches、/reservations 链路分离
+app.include_router(course_admin.router, prefix=f"{settings.API_V1_PREFIX}/courses", tags=["教练约课管理"])
 app.include_router(coach_api.router, prefix=f"{settings.API_V1_PREFIX}/coach", tags=["教练端API"])
 app.include_router(member_api.router, prefix=f"{settings.API_V1_PREFIX}/member", tags=["会员端API"])
+# 会员端教练约课（阶段 2 新链路，与 member_api 同 /member 前缀共存，路径 /courses、/course-bookings 不冲突）
+app.include_router(member_courses.router, prefix=f"{settings.API_V1_PREFIX}/member", tags=["会员端教练约课"])
 app.include_router(activities.router, prefix=f"{settings.API_V1_PREFIX}/activities", tags=["活动管理"])
 app.include_router(coupons.router, prefix=f"{settings.API_V1_PREFIX}/coupons", tags=["票券管理"])
 app.include_router(mall.router, prefix=f"{settings.API_V1_PREFIX}/mall", tags=["商城管理"])

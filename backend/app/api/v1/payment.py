@@ -12,7 +12,7 @@ from app.core.wechat_pay import wechat_pay
 from app.api.deps import get_current_member
 from app.models.finance import RechargeOrder, RechargePackage
 from app.models.member import Member, CoinRecord, PointRecord, MemberCardOrder, MemberCard
-from app.models import Reservation
+from app.models import Reservation, CoachBooking, CoachCourseSession
 from app.models.coupon import MemberCoupon
 from app.schemas.response import ResponseModel
 
@@ -214,6 +214,9 @@ async def payment_notify(
         elif out_trade_no.startswith("RV"):
             # 场馆预约订单
             return _handle_reservation_notify(out_trade_no, transaction_id, trade_state, attach, db)
+        elif out_trade_no.startswith("CB"):
+            # 教练约课订单（CoachBooking，阶段 2 新链路）
+            return _handle_coach_booking_notify(out_trade_no, transaction_id, trade_state, db)
         elif out_trade_no.startswith("FD"):
             # 餐饮订单(已迁移至美团，兼容历史未支付订单回调)
             logger.warning(f"收到已废弃的餐饮订单回调: {out_trade_no}")
@@ -380,6 +383,44 @@ def _handle_reservation_notify(out_trade_no: str, transaction_id: str, trade_sta
                     coupon.status = 'unused'
             db.commit()
 
+        return {"code": "SUCCESS", "message": "成功"}
+    except Exception as e:
+        db.rollback()
+        return {"code": "FAIL", "message": f"处理失败: {str(e)}"}
+
+
+def _handle_coach_booking_notify(out_trade_no: str, transaction_id: str, trade_state: str, db: Session):
+    """处理教练约课订单支付回调（CoachBooking，CB 前缀商户单号）"""
+    try:
+        booking = db.query(CoachBooking).filter(
+            CoachBooking.out_trade_no == out_trade_no
+        ).with_for_update().first()
+
+        if not booking:
+            db.rollback()
+            return {"code": "FAIL", "message": "约课订单不存在"}
+
+        # 幂等性检查：只有 pending（待支付）才处理
+        if booking.status != "pending":
+            db.rollback()
+            return {"code": "SUCCESS", "message": "成功"}
+
+        if trade_state == "SUCCESS":
+            booking.status = "confirmed"
+            booking.transaction_id = transaction_id
+        else:
+            # 支付失败/关闭：取消订单并释放座位
+            booking.status = "cancelled"
+            booking.cancel_reason = "微信支付未完成"
+            booking.cancel_time = datetime.now()
+            db.execute(
+                CoachCourseSession.__table__.update()
+                .where(CoachCourseSession.id == booking.session_id)
+                .where(CoachCourseSession.booked_count > 0)
+                .values(booked_count=CoachCourseSession.booked_count - 1)
+            )
+
+        db.commit()
         return {"code": "SUCCESS", "message": "成功"}
     except Exception as e:
         db.rollback()

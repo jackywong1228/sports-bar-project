@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import SysUser, Reservation, Member, Venue, Coach
+from app.models import SysUser, Reservation, Member, Venue, Coach, CoachBooking
 from app.schemas import (
     ResponseModel, PageResult,
     ReservationCreate, ReservationUpdate, ReservationResponse,
@@ -318,13 +318,15 @@ def verify_reservation_by_no(
     db: Session = Depends(get_db),
     current_user: SysUser = Depends(get_current_user)
 ):
-    """员工扫码核销预约"""
+    """员工扫码核销预约（支持场馆预约 reservation_no 与教练约课 booking_no）"""
     res = db.query(Reservation).filter(
         Reservation.reservation_no == data.reservation_no,
         Reservation.is_deleted == False
     ).first()
+
+    # 场馆预约查不到 → 尝试按教练约课编号（CB 前缀）查 CoachBooking
     if not res:
-        raise HTTPException(status_code=404, detail="预约不存在")
+        return _verify_coach_booking_by_no(data.reservation_no, db, current_user)
 
     if res.is_verified:
         raise HTTPException(status_code=400, detail="该预约已核销")
@@ -345,6 +347,7 @@ def verify_reservation_by_no(
     member = res.member
     venue = res.venue
     return ResponseModel(data={
+        "biz_type": "reservation",
         "reservation_no": res.reservation_no,
         "member_nickname": member.nickname if member else None,
         "member_name": member.real_name if member else None,
@@ -354,4 +357,55 @@ def verify_reservation_by_no(
         "end_time": str(res.end_time) if res.end_time else None,
         "status": res.status,
         "verified_at": str(res.verified_at) if res.verified_at else None
+    })
+
+
+def _verify_coach_booking_by_no(booking_no: str, db: Session, current_user: SysUser):
+    """按 CoachBooking.booking_no 核销教练约课（verify-by-no 的扩展分支）
+
+    CoachBooking 没有 in_progress 状态：核销后保持 confirmed，
+    若课次已结束则置 completed。
+    """
+    booking = db.query(CoachBooking).filter(
+        CoachBooking.booking_no == booking_no,
+        CoachBooking.is_deleted == False
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="预约不存在")
+
+    if booking.is_verified:
+        raise HTTPException(status_code=400, detail="该预约已核销")
+
+    # 仅已支付（confirmed）的约课可核销：pending 为微信待支付订单，防止未付款核销
+    if booking.status == "pending":
+        raise HTTPException(status_code=400, detail="该课程未支付，无法核销")
+
+    if booking.status in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail=f"预约状态为{booking.status}，无法核销")
+
+    # 核销
+    booking.is_verified = True
+    booking.verified_at = datetime.utcnow()
+    booking.verified_by = f"staff_{current_user.id}"
+    session = booking.session
+    if session:
+        session_end = datetime.combine(session.session_date, session.end_time)
+        if session_end <= datetime.now():
+            booking.status = "completed"
+    db.commit()
+    db.refresh(booking)
+
+    member = booking.member
+    course = booking.course
+    return ResponseModel(data={
+        "biz_type": "coach_booking",
+        "reservation_no": booking.booking_no,
+        "member_nickname": member.nickname if member else None,
+        "member_name": member.real_name if member else None,
+        "venue_name": course.title if course else None,  # 复用字段位展示课程名
+        "booking_date": str(session.session_date) if session else None,
+        "start_time": str(session.start_time) if session and session.start_time else None,
+        "end_time": str(session.end_time) if session and session.end_time else None,
+        "status": booking.status,
+        "verified_at": str(booking.verified_at) if booking.verified_at else None
     })

@@ -1,0 +1,71 @@
+<view class="page">
+  <!-- 分类 Tab -->
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab-item {{activeTab === item.key ? 'tab-active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="onTabChange"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <!-- 课程卡片列表 -->
+  <view class="course-list">
+    <view
+      wx:for="{{courses}}"
+      wx:key="id"
+      class="course-card"
+      data-id="{{item.id}}"
+      bindtap="goDetail"
+    >
+      <image
+        wx:if="{{item.cover_image}}"
+        class="course-cover"
+        src="{{item.cover_image}}"
+        mode="aspectFill"
+      />
+      <view wx:else class="course-cover course-cover-placeholder">
+        <text>{{item.category_text}}</text>
+      </view>
+
+      <view class="course-body">
+        <view class="course-title">{{item.title}}</view>
+        <view class="course-subtitle" wx:if="{{item.subtitle}}">{{item.subtitle}}</view>
+
+        <view class="coach-row">
+          <image
+            wx:if="{{item.coach_avatar}}"
+            class="coach-avatar"
+            src="{{item.coach_avatar}}"
+            mode="aspectFill"
+          />
+          <view wx:else class="coach-avatar coach-avatar-placeholder">{{item.coach_initial}}</view>
+          <text class="coach-name">{{item.coach_name}}</text>
+          <text class="coach-level" wx:if="{{item.coach_level}}">★{{item.coach_level}}</text>
+        </view>
+
+        <view class="course-footer">
+          <view class="time-info">
+            <text class="time-icon">🕐</text>
+            <text class="time-text">{{item.nearest_time_text}}</text>
+            <text class="session-count" wx:if="{{item.upcoming_session_count > 0}}">· {{item.upcoming_session_count}} 节可约</text>
+          </view>
+          <view class="price">{{item.price}}<text class="price-unit">金币</text></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空态 -->
+    <view wx:if="{{loaded && courses.length === 0}}" class="empty-box">
+      <view class="empty-icon">🏸</view>
+      <view class="empty-text">该分类暂无课程</view>
+      <view class="empty-sub">看看其他分类吧</view>
+    </view>
+
+    <!-- 加载态 -->
+    <view wx:if="{{loading && courses.length === 0}}" class="loading-box">加载中...</view>
+  </view>
+</view>

@@ -1,3 +1,8 @@
+/**
+ * @deprecated 旧版按教练约课页（教练约课重构前的链路）。
+ * 首页「私教课程」入口已改跳 pages/course-list/course-list（课程/课次新链路），
+ * 本页面仅为兼容线上旧版本保留，新版小程序发布稳定后可随后端旧接口一并清理。
+ */
 const app = getApp()
 const util = require('../../utils/util.js')
 

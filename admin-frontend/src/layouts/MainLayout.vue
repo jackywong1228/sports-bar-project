@@ -71,6 +71,14 @@ const menuList = [
     ]
   },
   {
+    path: '/course',
+    title: '课程管理',
+    icon: 'Reading',
+    children: [
+      { path: '/course/list', title: '课程列表' }
+    ]
+  },
+  {
     path: '/activity',
     title: '活动管理',
     icon: 'Flag',

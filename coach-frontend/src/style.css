@@ -1,0 +1,30 @@
+:root {
+  --coach-primary: #1A5D3A;
+  --coach-primary-light: #2E7D52;
+  --coach-gold: #C9A962;
+  --coach-bg: #F5F7F5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--coach-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 覆盖 Vant 主题色 */
+:root:root {
+  --van-primary-color: #1A5D3A;
+  --van-primary-color-dark: #145030;
+  --van-primary-color-light: #2E7D52;
+}
+
+/* 页面容器通用样式 */
+.page-container {
+  min-height: 100vh;
+  background-color: var(--coach-bg);
+  padding-bottom: 16px;
+}

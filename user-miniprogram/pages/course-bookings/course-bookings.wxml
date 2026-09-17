@@ -1,0 +1,120 @@
+<view class="page">
+  <!-- 状态筛选 Tab -->
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab-item {{activeTab === item.key ? 'tab-active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="onTabChange"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <!-- 约课卡片列表 -->
+  <view class="booking-list">
+    <view
+      wx:for="{{bookings}}"
+      wx:key="id"
+      class="booking-card"
+      data-id="{{item.id}}"
+      bindtap="openDetail"
+    >
+      <image
+        wx:if="{{item.cover_image}}"
+        class="booking-cover"
+        src="{{item.cover_image}}"
+        mode="aspectFill"
+      />
+      <view wx:else class="booking-cover booking-cover-placeholder">{{item.coach_initial}}</view>
+
+      <view class="booking-body">
+        <view class="booking-top">
+          <text class="booking-title">{{item.course_title}}</text>
+          <text class="booking-status" style="color: {{item.status_color}};">{{item.status_text_display}}</text>
+        </view>
+        <view class="booking-meta">教练：{{item.coach_name || '-'}}</view>
+        <view class="booking-meta">{{item.session_date}} {{item.weekday}} {{item.start_time}} - {{item.end_time}}</view>
+        <view class="booking-bottom">
+          <text class="booking-price">{{item.price}} 金币 · {{item.pay_type === 'coin' ? '金币支付' : '微信支付'}}</text>
+          <view class="booking-actions">
+            <view
+              wx:if="{{item.status === 'pending'}}"
+              class="action-btn action-pay"
+              data-id="{{item.id}}"
+              catchtap="handleRepay"
+            >去支付</view>
+            <view
+              wx:if="{{item.can_cancel}}"
+              class="action-btn action-cancel"
+              data-id="{{item.id}}"
+              data-pay-type="{{item.pay_type}}"
+              catchtap="handleCancel"
+            >取消</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空态 -->
+    <view wx:if="{{loaded && bookings.length === 0}}" class="empty-box">
+      <view class="empty-icon">📅</view>
+      <view class="empty-text">暂无约课记录</view>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-box">加载中...</view>
+    <view wx:elif="{{loaded && bookings.length > 0 && page * pageSize >= total}}" class="loading-box">没有更多了</view>
+  </view>
+
+  <!-- 详情弹层 -->
+  <view class="detail-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
+    <view class="detail-modal" catchtap="noop">
+      <view wx:if="{{detailLoading}}" class="loading-box">加载中...</view>
+      <block wx:elif="{{detail}}">
+        <view class="detail-title">
+          {{detail.course_title}}
+          <text class="booking-status" style="color: {{detail.status_color}};">{{detail.status_text_display}}</text>
+        </view>
+
+        <!-- 核销编号（员工核销时出示） -->
+        <view class="verify-box" wx:if="{{detail.status === 'confirmed' && !detail.is_verified}}" bindtap="copyBookingNo">
+          <view class="verify-label">核销编号（点击复制）</view>
+          <view class="verify-no">{{detail.booking_no}}</view>
+        </view>
+
+        <view class="detail-rows">
+          <view class="detail-row"><text class="row-label">约课编号</text><text>{{detail.booking_no}}</text></view>
+          <view class="detail-row"><text class="row-label">教练</text><text>{{detail.coach.name || detail.coach_name || '-'}}</text></view>
+          <view class="detail-row"><text class="row-label">课次时间</text><text>{{detail.session_date}} {{detail.weekday}} {{detail.start_time}} - {{detail.end_time}}</text></view>
+          <view class="detail-row"><text class="row-label">时长</text><text>{{detail.duration_minutes}} 分钟</text></view>
+          <view class="detail-row"><text class="row-label">价格</text><text>{{detail.price}} 金币（{{detail.pay_type === 'coin' ? '金币支付' : '微信支付'}}）</text></view>
+          <view class="detail-row" wx:if="{{detail.is_verified}}"><text class="row-label">核销时间</text><text>{{detail.verified_at || '-'}}</text></view>
+          <view class="detail-row" wx:if="{{detail.status === 'cancelled'}}"><text class="row-label">取消原因</text><text>{{detail.cancel_reason || '-'}}</text></view>
+        </view>
+
+        <view class="detail-desc" wx:if="{{detail.description}}">
+          <view class="row-label" style="margin-bottom: 8rpx;">课程介绍</view>
+          {{detail.description}}
+        </view>
+
+        <view class="detail-btns">
+          <view
+            wx:if="{{detail.status === 'pending'}}"
+            class="detail-btn detail-btn-primary"
+            data-id="{{detail.id}}"
+            bindtap="handleRepay"
+          >去支付</view>
+          <view
+            wx:if="{{detail.can_cancel}}"
+            class="detail-btn detail-btn-danger"
+            data-id="{{detail.id}}"
+            data-pay-type="{{detail.pay_type}}"
+            bindtap="handleCancel"
+          >取消预约</view>
+          <view class="detail-btn detail-btn-plain" bindtap="closeDetail">关闭</view>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

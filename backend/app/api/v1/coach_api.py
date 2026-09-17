@@ -10,8 +10,9 @@ from sqlalchemy import and_, func
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token
 from app.core.config import settings
-from app.core.wechat import coach_wechat_service, WeChatAPIError
-from app.models import Coach, Reservation, CoachSchedule, Member
+from app.core.wechat import user_wechat_service, coach_wechat_service, WeChatAPIError
+from app.models import Coach, Reservation, CoachSchedule, Member, CoachCourse, CoachCourseSession, CoachBooking
+from app.models.coach_course import COURSE_CATEGORY_TEXT, COURSE_STATUS_TEXT, SESSION_STATUS_TEXT, BOOKING_STATUS_TEXT
 from app.schemas.common import ResponseModel, PageResult
 from app.api.deps import get_current_coach
 
@@ -108,13 +109,25 @@ async def coach_wx_login(
     db: Session = Depends(get_db)
 ):
     """微信登录（code换取openid）"""
-    try:
-        # 调用微信API获取openid
-        wx_result = await coach_wechat_service.code2session(data.code)
-        openid = wx_result.get("openid")
-        unionid = wx_result.get("unionid")
-    except WeChatAPIError as e:
-        raise HTTPException(status_code=400, detail=f"微信登录失败: {e.errmsg}")
+    # 注意：本接口的实际调用方是用户端小程序（user-miniprogram），
+    # code 由用户端 AppID 生成，因此优先使用用户端服务做 code2session；
+    # 独立教练端 AppID（WECHAT_COACH_APP_ID）仅作兜底，
+    # 在未配置用户端 AppID 或未来确有独立教练端小程序调用时生效。
+    wx_result = None
+    last_error: Optional[WeChatAPIError] = None
+    for service in (user_wechat_service, coach_wechat_service):
+        try:
+            wx_result = await service.code2session(data.code)
+            break
+        except WeChatAPIError as e:
+            last_error = e
+
+    if wx_result is None:
+        errmsg = last_error.errmsg if last_error else "未知错误"
+        raise HTTPException(status_code=400, detail=f"微信登录失败: {errmsg}")
+
+    openid = wx_result.get("openid")
+    unionid = wx_result.get("unionid")
 
     if not openid:
         raise HTTPException(status_code=400, detail="获取用户信息失败")
@@ -179,8 +192,21 @@ async def get_coach_phone(
     db: Session = Depends(get_db)
 ):
     """获取教练手机号（通过button的getPhoneNumber获取的code）"""
+    # 与 wx-login 同理：getPhoneNumber 的 code 由用户端小程序生成，
+    # 优先使用用户端服务换取手机号，教练端 AppID 兜底。
+    phone_info = None
+    last_error: Optional[WeChatAPIError] = None
+    for service in (user_wechat_service, coach_wechat_service):
+        try:
+            phone_info = await service.get_phone_number(data.code)
+            break
+        except WeChatAPIError as e:
+            last_error = e
+
     try:
-        phone_info = await coach_wechat_service.get_phone_number(data.code)
+        if phone_info is None:
+            errmsg = last_error.errmsg if last_error else "未知错误"
+            raise HTTPException(status_code=400, detail=f"获取手机号失败: {errmsg}")
         phone = phone_info.get("purePhoneNumber") or phone_info.get("phoneNumber")
 
         if not phone:
@@ -687,6 +713,130 @@ def get_orders(
     """获取订单列表"""
     # TODO: 从订单表获取
     return ResponseModel(data=[])
+
+
+# ==================== 约课新链路（阶段 1：教练端只读查看） ====================
+# 新链路使用 coach_course / coach_course_session / coach_booking 三表，
+# 与上方旧的 Reservation/CoachSchedule 排期链路并行存在；
+# 旧链路保留到新版小程序发布后再清理（旧版小程序审核中仍依赖）。
+
+@router.get("/courses", response_model=ResponseModel)
+def get_my_courses(
+    current_coach: Coach = Depends(get_current_coach),
+    db: Session = Depends(get_db)
+):
+    """我的课程列表（含每个课程的未来课次数）"""
+    courses = db.query(CoachCourse).filter(
+        CoachCourse.coach_id == current_coach.id,
+        CoachCourse.is_deleted == False
+    ).order_by(CoachCourse.created_at.desc()).all()
+
+    today = date.today()
+    result = []
+    for c in courses:
+        upcoming_count = db.query(CoachCourseSession).filter(
+            CoachCourseSession.course_id == c.id,
+            CoachCourseSession.session_date >= today,
+            CoachCourseSession.status == "scheduled",
+            CoachCourseSession.is_deleted == False
+        ).count()
+        result.append({
+            "id": c.id,
+            "category": c.category,
+            "category_text": COURSE_CATEGORY_TEXT.get(c.category, c.category),
+            "title": c.title,
+            "subtitle": c.subtitle,
+            "cover_image": c.cover_image,
+            "duration_minutes": c.duration_minutes,
+            "price": float(c.price or 0),
+            "status": c.status,
+            "status_text": COURSE_STATUS_TEXT.get(c.status, c.status),
+            "upcoming_session_count": upcoming_count,
+        })
+    return ResponseModel(data=result)
+
+
+@router.get("/sessions", response_model=ResponseModel)
+def get_my_course_sessions(
+    start_date: Optional[date] = Query(None, description="开始日期，默认今天"),
+    end_date: Optional[date] = Query(None, description="结束日期，默认今天起 7 天"),
+    current_coach: Coach = Depends(get_current_coach),
+    db: Session = Depends(get_db)
+):
+    """我的排课（默认今天起 7 天，按日期时间排序，含已约/容量）"""
+    if not start_date:
+        start_date = date.today()
+    if not end_date:
+        end_date = start_date + timedelta(days=7)
+
+    sessions = db.query(CoachCourseSession).options(
+        joinedload(CoachCourseSession.course)
+    ).filter(
+        CoachCourseSession.coach_id == current_coach.id,
+        CoachCourseSession.session_date >= start_date,
+        CoachCourseSession.session_date <= end_date,
+        CoachCourseSession.is_deleted == False
+    ).order_by(CoachCourseSession.session_date, CoachCourseSession.start_time).all()
+
+    result = []
+    for s in sessions:
+        course = s.course
+        result.append({
+            "id": s.id,
+            "course_id": s.course_id,
+            "course_title": course.title if course else None,
+            "category": course.category if course else None,
+            "category_text": COURSE_CATEGORY_TEXT.get(course.category, course.category) if course else None,
+            "session_date": str(s.session_date),
+            "start_time": s.start_time.strftime("%H:%M") if s.start_time else None,
+            "end_time": s.end_time.strftime("%H:%M") if s.end_time else None,
+            "capacity": s.capacity,
+            "booked_count": s.booked_count or 0,
+            "status": s.status,
+            "status_text": SESSION_STATUS_TEXT.get(s.status, s.status),
+            "remark": s.remark,
+        })
+    return ResponseModel(data=result)
+
+
+@router.get("/sessions/{session_id}/bookings", response_model=ResponseModel)
+def get_my_session_bookings(
+    session_id: int,
+    current_coach: Coach = Depends(get_current_coach),
+    db: Session = Depends(get_db)
+):
+    """某课次的报名名单（仅可查自己的课次）"""
+    session = db.query(CoachCourseSession).filter(
+        CoachCourseSession.id == session_id,
+        CoachCourseSession.coach_id == current_coach.id,
+        CoachCourseSession.is_deleted == False
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="课次不存在")
+
+    bookings = db.query(CoachBooking).options(
+        joinedload(CoachBooking.member)
+    ).filter(
+        CoachBooking.session_id == session_id,
+        CoachBooking.is_deleted == False
+    ).order_by(CoachBooking.created_at.asc()).all()
+
+    result = []
+    for b in bookings:
+        member = b.member
+        result.append({
+            "id": b.id,
+            "booking_no": b.booking_no,
+            "member_name": (member.nickname or member.real_name) if member else "未知",
+            "member_phone": member.phone if member else "",
+            "price": float(b.price or 0),
+            "pay_type": b.pay_type,
+            "status": b.status,
+            "status_text": BOOKING_STATUS_TEXT.get(b.status, b.status),
+            "is_verified": bool(b.is_verified),
+            "created_at": b.created_at.strftime("%Y-%m-%d %H:%M:%S") if b.created_at else None,
+        })
+    return ResponseModel(data=result)
 
 
 # ==================== 推广 ====================

@@ -56,9 +56,8 @@ class CoachResponse(CoachBase):
 class CoachScheduleBase(BaseModel):
     coach_id: int
     date: date
-    start_time: str
-    end_time: str
-    status: int = 1
+    time_slot: str
+    status: str = "available"
 
 
 class CoachScheduleCreate(CoachScheduleBase):
@@ -66,9 +65,8 @@ class CoachScheduleCreate(CoachScheduleBase):
 
 
 class CoachScheduleUpdate(BaseModel):
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    status: Optional[int] = None
+    time_slot: Optional[str] = None
+    status: Optional[str] = None
 
 
 class CoachScheduleResponse(CoachScheduleBase):

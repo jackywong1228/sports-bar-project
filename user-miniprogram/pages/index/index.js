@@ -318,10 +318,10 @@ Page({
     })
   },
 
-  // 查看更多教练
+  // 私教课程（新链路：课程列表，四分类 Tab）
   viewMoreCoaches() {
     wx.navigateTo({
-      url: '/pages/coach-list/coach-list'
+      url: '/pages/course-list/course-list'
     })
   },
 

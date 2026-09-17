@@ -542,6 +542,67 @@ const getMemberQrToken = () => {
   return get('/member/qrcode/token')
 }
 
+// ==================== 教练约课（新链路：课程/课次/约课） ====================
+
+/**
+ * 课程列表（四分类：group团课/golf高尔夫/squash壁球/pickleball匹克球）
+ * @param {Object} params { category? }
+ */
+const getCourseList = (params = {}) => {
+  return get('/member/courses', params)
+}
+
+/**
+ * 课程详情（含课次列表）
+ */
+const getCourseDetail = (id) => {
+  return get(`/member/courses/${id}`)
+}
+
+/**
+ * 报名课次
+ * @param {Object} data { session_id, pay_type: 'coin'|'wechat' }
+ */
+const createCourseBooking = (data) => {
+  return post('/member/course-bookings', data, { showLoading: true })
+}
+
+/**
+ * 我的约课列表
+ * @param {Object} params { status?, page?, page_size? }
+ */
+const getCourseBookings = (params = {}) => {
+  return get('/member/course-bookings', params)
+}
+
+/**
+ * 约课详情
+ */
+const getCourseBookingDetail = (id) => {
+  return get(`/member/course-bookings/${id}`)
+}
+
+/**
+ * 取消约课（金币自动退款，微信自动原路退款）
+ */
+const cancelCourseBooking = (id, reason = '') => {
+  return post(`/member/course-bookings/${id}/cancel`, { reason }, { showLoading: true })
+}
+
+/**
+ * 查询约课支付状态（微信支付后轮询）
+ */
+const getCourseBookingPayStatus = (id) => {
+  return get(`/member/course-bookings/${id}/pay-status`)
+}
+
+/**
+ * 重新拉起微信支付
+ */
+const repayCourseBooking = (id) => {
+  return post(`/member/course-bookings/${id}/repay`, {}, { showLoading: true })
+}
+
 module.exports = {
   // 认证
   loginByPhone,
@@ -654,5 +715,15 @@ module.exports = {
   getMyFeedback,
 
   // 会员动态二维码
-  getMemberQrToken
+  getMemberQrToken,
+
+  // 教练约课（新链路）
+  getCourseList,
+  getCourseDetail,
+  createCourseBooking,
+  getCourseBookings,
+  getCourseBookingDetail,
+  cancelCourseBooking,
+  getCourseBookingPayStatus,
+  repayCourseBooking
 }

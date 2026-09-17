@@ -257,7 +257,7 @@ def get_coach_schedules(
     """获取教练排期"""
     schedules = db.query(CoachSchedule).filter(
         CoachSchedule.coach_id == coach_id
-    ).order_by(CoachSchedule.date, CoachSchedule.start_time).all()
+    ).order_by(CoachSchedule.date, CoachSchedule.time_slot).all()
 
     return ResponseModel(data=[CoachScheduleResponse.model_validate(s) for s in schedules])
 

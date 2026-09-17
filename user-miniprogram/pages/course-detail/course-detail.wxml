@@ -1,0 +1,136 @@
+<view class="page" wx:if="{{course}}">
+  <!-- 课程封面头图 -->
+  <view class="hero">
+    <image wx:if="{{course.cover_image}}" class="hero-image" src="{{course.cover_image}}" mode="aspectFill" />
+    <view wx:else class="hero-image hero-placeholder">
+      <text>{{course.category_text}}</text>
+    </view>
+    <view class="hero-mask">
+      <view class="hero-title">{{course.title}}</view>
+      <view class="hero-sub" wx:if="{{course.subtitle}}">{{course.subtitle}}</view>
+    </view>
+  </view>
+
+  <!-- 教练信息卡 -->
+  <view class="card coach-card" wx:if="{{course.coach}}">
+    <image
+      wx:if="{{course.coach.avatar}}"
+      class="coach-avatar"
+      src="{{course.coach.avatar}}"
+      mode="aspectFill"
+    />
+    <view wx:else class="coach-avatar coach-avatar-placeholder">
+      {{course.coach_initial}}
+    </view>
+    <view class="coach-info">
+      <view class="coach-name">
+        {{course.coach.name}}
+        <text class="coach-level" wx:if="{{course.coach.level}}">★ {{course.coach.level}} 星教练</text>
+      </view>
+      <view class="coach-intro" wx:if="{{course.coach.introduction}}">{{course.coach.introduction}}</view>
+    </view>
+  </view>
+
+  <!-- 课程介绍 -->
+  <view class="card" wx:if="{{course.description}}">
+    <view class="card-title">课程介绍</view>
+    <view class="desc">{{course.description}}</view>
+    <view class="meta-row">
+      <text>时长 {{course.duration_minutes}} 分钟</text>
+      <text>分类 {{course.category_text}}</text>
+    </view>
+  </view>
+
+  <!-- 课次选择 -->
+  <view class="card sessions-card">
+    <view class="card-title">选择课次</view>
+    <view wx:if="{{sessions.length === 0}}" class="empty-sessions">近期暂无排课，敬请期待</view>
+    <view
+      wx:for="{{sessions}}"
+      wx:key="id"
+      class="session-item {{selectedSessionId === item.id ? 'session-selected' : ''}} {{!item.bookable ? 'session-disabled' : ''}}"
+      data-id="{{item.id}}"
+      data-bookable="{{item.bookable}}"
+      bindtap="selectSession"
+    >
+      <view class="session-left">
+        <view class="session-date">{{item.date_text}}</view>
+        <view class="session-time">{{item.start_time}} - {{item.end_time}}</view>
+      </view>
+      <view class="session-right">
+        <block wx:if="{{item.bookable}}">
+          <text class="remaining">剩 {{item.remaining}} 名额</text>
+        </block>
+        <text wx:else class="unavailable">{{item.unavailable_reason || '不可约'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部固定操作栏 -->
+  <view class="bottom-bar">
+    <view class="bar-price">
+      <text class="bar-price-value">{{course.price}}</text>
+      <text class="bar-price-unit">金币/人</text>
+    </view>
+    <view
+      class="bar-btn {{!selectedSessionId ? 'bar-btn-disabled' : ''}}"
+      bindtap="openPayModal"
+    >
+      立即预约
+    </view>
+  </view>
+
+  <!-- 支付弹层 -->
+  <view class="pay-mask" wx:if="{{showPayModal}}" bindtap="closePayModal">
+    <view class="pay-modal" catchtap="noop">
+      <view class="pay-title">确认预约</view>
+
+      <view class="pay-session" wx:if="{{selectedSessionId}}">
+        <block wx:for="{{sessions}}" wx:key="id" wx:if="{{item.id === selectedSessionId}}">
+          <view class="pay-course-name">{{course.title}}</view>
+          <view class="pay-session-time">{{item.date_text}} {{item.start_time}} - {{item.end_time}}</view>
+        </block>
+      </view>
+
+      <view class="pay-amount">
+        应付 <text class="pay-amount-value">{{course.price}}</text> 金币
+      </view>
+
+      <!-- 金币支付 -->
+      <view
+        class="pay-type {{selectedPayType === 'coin' ? 'pay-type-active' : ''}}"
+        data-type="coin"
+        bindtap="selectPayType"
+      >
+        <view class="pay-type-left">
+          <text class="pay-type-icon">🪙</text>
+          <text>金币支付</text>
+        </view>
+        <view class="pay-type-right">
+          <text class="balance {{coinBalance < course.price ? 'balance-low' : ''}}">余额 {{coinBalance}}</text>
+          <view class="radio {{selectedPayType === 'coin' ? 'radio-on' : ''}}"></view>
+        </view>
+      </view>
+
+      <!-- 微信支付 -->
+      <view
+        class="pay-type {{selectedPayType === 'wechat' ? 'pay-type-active' : ''}}"
+        data-type="wechat"
+        bindtap="selectPayType"
+      >
+        <view class="pay-type-left">
+          <text class="pay-type-icon">💳</text>
+          <text>微信支付</text>
+        </view>
+        <view class="radio {{selectedPayType === 'wechat' ? 'radio-on' : ''}}"></view>
+      </view>
+
+      <view class="pay-btns">
+        <view class="pay-cancel" bindtap="closePayModal">取消</view>
+        <view class="pay-confirm" bindtap="confirmPay">确认支付</view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view wx:elif="{{loading}}" class="page-loading">加载中...</view>

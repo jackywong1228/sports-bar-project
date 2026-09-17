@@ -169,6 +169,27 @@ const routes: RouteRecordRaw[] = [
           }
         ]
       },
+      // 课程管理（教练约课新链路）
+      {
+        path: 'course',
+        name: 'Course',
+        redirect: '/course/list',
+        meta: { title: '课程管理', icon: 'Reading' },
+        children: [
+          {
+            path: 'list',
+            name: 'CourseList',
+            component: () => import('@/views/course/List.vue'),
+            meta: { title: '课程列表' }
+          },
+          {
+            path: 'sessions/:id',
+            name: 'CourseSessions',
+            component: () => import('@/views/course/Sessions.vue'),
+            meta: { title: '课次管理' }
+          }
+        ]
+      },
       // 活动管理
       {
         path: 'activity',
