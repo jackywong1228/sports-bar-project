@@ -50,6 +50,9 @@ module.exports = {
         <text class="shortcut-text-en">VENUE</text>
       </view>
       <view class="shortcut-item" bindtap="viewMoreCoaches">
+        <view class="shortcut-icon-wrap">
+          <image class="shortcut-icon-img" src="/assets/icons/svg/coach-entry-white.svg" mode="aspectFit"></image>
+        </view>
         <text class="shortcut-text">私教课程</text>
         <text class="shortcut-text-en">COACH</text>
       </view>
