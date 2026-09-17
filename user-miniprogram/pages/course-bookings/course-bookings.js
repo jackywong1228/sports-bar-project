@@ -1,3 +1,4 @@
+const app = getApp()
 const api = require('../../utils/api')
 
 const TABS = [
@@ -82,6 +83,7 @@ Page({
       const body = res.data || {}
       const items = (body.items || []).map(item => ({
         ...item,
+        cover_image: app.resolveImageUrl(item.cover_image),
         status_text_display: (STATUS_STYLE[item.status] || {}).text || item.status_text,
         status_color: (STATUS_STYLE[item.status] || {}).color || '#666',
         weekday: weekdayOf(item.session_date),

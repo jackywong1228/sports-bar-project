@@ -52,6 +52,9 @@ Page({
       const course = res.data
       // WXML 不支持方法调用，头像兜底首字符在 JS 预计算
       course.coach_initial = course.coach && course.coach.name ? course.coach.name.charAt(0) : '教'
+      // 后端返回相对路径，需拼接域名才能在小程序渲染
+      course.cover_image = app.resolveImageUrl(course.cover_image)
+      if (course.coach) course.coach.avatar = app.resolveImageUrl(course.coach.avatar)
       const sessions = (course.sessions || []).map(s => ({
         ...s,
         date_text: formatSessionDate(s.session_date),

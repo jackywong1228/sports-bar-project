@@ -1,3 +1,4 @@
+const app = getApp()
 const api = require('../../utils/api')
 
 // 分类 Tab（对应后端 category 四选一）
@@ -63,6 +64,8 @@ Page({
       const res = await api.getCourseList({ category: this.data.activeTab })
       const list = (res.data || []).map(item => ({
         ...item,
+        cover_image: app.resolveImageUrl(item.cover_image),
+        coach_avatar: app.resolveImageUrl(item.coach_avatar),
         nearest_time_text: item.nearest_session_time
           ? formatSessionTime(item.nearest_session_time)
           : '近期开课',
