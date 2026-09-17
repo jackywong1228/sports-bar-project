@@ -60,7 +60,6 @@
 
     <!-- 空态 -->
     <view wx:if="{{loaded && courses.length === 0}}" class="empty-box">
-      <view class="empty-icon">🏸</view>
       <view class="empty-text">该分类暂无课程</view>
       <view class="empty-sub">看看其他分类吧</view>
     </view>
