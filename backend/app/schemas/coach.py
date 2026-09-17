@@ -1,7 +1,7 @@
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ============ 教练 ============
@@ -22,6 +22,8 @@ class CoachBase(BaseModel):
 
 class CoachCreate(CoachBase):
     member_id: Optional[int] = None
+    # 登录密码（明文，仅入参；可选，不填则教练暂无法密码登录）
+    password: Optional[str] = Field(None, min_length=6)
 
 
 class CoachUpdate(BaseModel):
@@ -37,6 +39,8 @@ class CoachUpdate(BaseModel):
     certificates: Optional[str] = None
     photos: Optional[str] = None
     status: Optional[int] = None
+    # 登录密码（明文，仅入参；提供则重置，不提供则不改动）
+    password: Optional[str] = Field(None, min_length=6)
 
 
 class CoachResponse(CoachBase):

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import get_password_hash
 from app.models import SysUser, Coach, CoachSchedule, CoachApplication, Member
 from app.schemas import (
     ResponseModel, PageResult,
@@ -175,11 +176,15 @@ def create_coach(
     db: Session = Depends(get_db),
     current_user: SysUser = Depends(get_current_user)
 ):
-    """创建教练"""
+    """创建教练（可选设置登录密码，明文入参哈希后存储）"""
+    coach_data = data.model_dump()
+    raw_password = coach_data.pop("password", None)
     coach = Coach(
         coach_no=generate_coach_no(),
-        **data.model_dump()
+        **coach_data
     )
+    if raw_password:
+        coach.password = get_password_hash(raw_password)
     db.add(coach)
     db.commit()
     db.refresh(coach)
@@ -202,7 +207,12 @@ def update_coach(
         raise HTTPException(status_code=404, detail="教练不存在")
 
     for key, value in data.model_dump(exclude_unset=True).items():
-        setattr(coach, key, value)
+        # 密码字段特殊处理：提供（非空）则重置为哈希，不提供则不改动
+        if key == "password":
+            if value:
+                coach.password = get_password_hash(value)
+        else:
+            setattr(coach, key, value)
     db.commit()
     db.refresh(coach)
     return ResponseModel(data=CoachResponse.model_validate(coach))

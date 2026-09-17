@@ -51,6 +51,7 @@ const form = reactive({
   id: 0,
   name: '',
   phone: '',
+  password: '',
   gender: 0,
   type: 'technical',
   level: 1,
@@ -61,7 +62,17 @@ const form = reactive({
 
 const rules = {
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  phone: [{ required: true, message: '请输入电话', trigger: 'blur' }]
+  phone: [{ required: true, message: '请输入电话', trigger: 'blur' }],
+  password: [{
+    validator: (_rule: any, value: string, callback: any) => {
+      if (value && value.length < 6) {
+        callback(new Error('密码至少 6 位'))
+      } else {
+        callback()
+      }
+    },
+    trigger: 'blur'
+  }]
 }
 
 const fetchData = async () => {
@@ -94,6 +105,7 @@ const handleAdd = () => {
     id: 0,
     name: '',
     phone: '',
+    password: '',
     gender: 0,
     type: 'technical',
     level: 1,
@@ -107,6 +119,8 @@ const handleAdd = () => {
 const handleEdit = (row: Coach) => {
   dialogTitle.value = '编辑教练'
   Object.assign(form, row)
+  // 密码不回填：留空表示不修改
+  form.password = ''
   dialogVisible.value = true
 }
 
@@ -114,12 +128,18 @@ const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
+  // 空密码不提交（后端 min_length=6 会拒绝空串；创建时不填=不设置，编辑时不填=不修改）
+  const payload: Record<string, any> = { ...form }
+  if (!payload.password) {
+    delete payload.password
+  }
+
   try {
     if (form.id) {
-      await request.put(`/coaches/${form.id}`, form)
+      await request.put(`/coaches/${form.id}`, payload)
       ElMessage.success('更新成功')
     } else {
-      await request.post('/coaches', form)
+      await request.post('/coaches', payload)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -240,6 +260,14 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="电话" prop="phone">
           <el-input v-model="form.phone" />
+        </el-form-item>
+        <el-form-item label="登录密码" prop="password">
+          <el-input
+            v-model="form.password"
+            type="password"
+            show-password
+            :placeholder="form.id ? '留空表示不修改密码' : '可选，不填则教练暂无法密码登录'"
+          />
         </el-form-item>
         <el-form-item label="性别">
           <el-radio-group v-model="form.gender">

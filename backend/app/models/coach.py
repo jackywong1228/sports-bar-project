@@ -15,6 +15,7 @@ class Coach(Base, TimestampMixin, SoftDeleteMixin):
     coach_no = Column(String(50), nullable=False, unique=True, comment="教练编号")
     name = Column(String(50), nullable=False, comment="教练姓名")
     phone = Column(String(20), nullable=False, comment="联系电话")
+    password = Column(String(255), nullable=True, comment="登录密码(哈希)")
     avatar = Column(String(255), nullable=True, comment="头像")
     gender = Column(Integer, default=0, comment="性别: 0未知 1男 2女")
 
