@@ -49,6 +49,7 @@ FOOD_PAY_TYPE_TEXT = {
     "coin": "金币",
     "wechat": "微信",
     "cash": "现金",
+    "wechat_code": "微信付款码",  # 收银台扫顾客付款码（V2 micropay）
 }
 
 FOOD_ORDER_TYPE_TEXT = {
@@ -392,7 +393,9 @@ def refund_order(
                 remark=f"餐饮订单退款: {order.order_no}",
             ))
         refund_desc = f"已退还 {pay_amount:g} 金币"
-    elif pay_amount > 0 and order.pay_type == "wechat":
+    elif pay_amount > 0 and order.pay_type in ("wechat", "wechat_code"):
+        # wechat_code（V2 付款码）创建的交易同样支持 V3 退款：
+        # 同一商户号下 out_trade_no/transaction_id 通用，v3 refund 可直接原路退回
         if not order.out_trade_no:
             raise HTTPException(status_code=500, detail="微信订单号缺失，无法退款，请线下处理")
         amount_fen = round(pay_amount * 100)
@@ -463,7 +466,32 @@ def close_expired_unpaid_orders(db: Session, member_id: Optional[int] = None) ->
         query = query.filter(FoodOrder.member_id == member_id)
 
     expired = query.all()
+    printed_order_ids: List[int] = []
     for order in expired:
+        # 微信付款码单：顾客可能仍在输密码（USERPAYING 最长可达 2 小时），
+        # 关单前必须主动查单确认，绝不能直接关闭（防顾客已扣款而本地关单）
+        if order.pay_type == "wechat_code" and order.out_trade_no:
+            from app.core.wechat_pay import wechat_pay_v2, WechatPayV2Error
+            try:
+                result = wechat_pay_v2.query_order_v2(order.out_trade_no)
+            except WechatPayV2Error:
+                continue  # 查单失败本轮跳过，下轮惰性调用时再试
+            if result.get("return_code") == "SUCCESS" and result.get("result_code") == "SUCCESS":
+                state = result.get("trade_state")
+                if state == "SUCCESS":
+                    # 实际已支付：改为落账而不是关单
+                    mark_order_paid(db, order, transaction_id=result.get("transaction_id"))
+                    printed_order_ids.append(order.id)
+                    continue
+                if state in ("USERPAYING", "NOTPAY"):
+                    # 确认未支付：先撤销（防之后顾客端完成支付），失败下轮再试
+                    try:
+                        rev = wechat_pay_v2.reverse(order.out_trade_no)
+                        if rev.get("return_code") != "SUCCESS" or rev.get("result_code") != "SUCCESS":
+                            if rev.get("recall") == "Y":
+                                continue  # 微信要求继续撤销，下轮重试
+                    except WechatPayV2Error:
+                        continue
         order.status = STATUS_CANCELLED
         order.handled_by = "system_timeout"
         restore_stock(db, order.id)
@@ -474,6 +502,10 @@ def close_expired_unpaid_orders(db: Session, member_id: Optional[int] = None) ->
                 coupon.order_type = None
     if expired:
         db.commit()
+        # 查单补偿为已支付的订单补触发打印
+        from app.services import printer_service
+        for oid in printed_order_ids:
+            printer_service.trigger_print(oid)
     return len(expired)
 
 

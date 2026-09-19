@@ -5,13 +5,15 @@
 """
 from datetime import datetime
 from typing import Dict, List, Optional
+import re
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.wechat_pay import wechat_pay_v2, WechatPayV2Error
 from app.models import SysUser, Member, FoodOrder, FoodOrderItem
 from app.schemas import ResponseModel, PageResult
 from app.api.deps import get_current_user
@@ -161,7 +163,8 @@ class WalkInItemIn(BaseModel):
 
 class WalkInOrderRequest(BaseModel):
     items: List[WalkInItemIn]
-    pay_type: str = "cash"  # 现金记账（微信付款码场景后续 Phase 再做）
+    pay_type: str = "cash"  # cash 现金记账 / wechat_code 微信付款码收款
+    auth_code: Optional[str] = None  # 微信付款码（pay_type=wechat_code 时必填，18 位数字、10-15 开头）
     order_type: str = "dine_in"  # dine_in 堂食 / pickup 预约取餐
     table_no: Optional[str] = None
     pickup_time: Optional[str] = None
@@ -171,15 +174,137 @@ class WalkInOrderRequest(BaseModel):
     remark: Optional[str] = None
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 微信付款码收款（V2 micropay）辅助
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 付款码支付【明确失败】的错误码 → 中文可读提示（关单回补库存后返回 400）
+MICROPAY_FAIL_MESSAGES = {
+    "NOTENOUGH": "顾客微信支付余额不足，请更换支付方式",
+    "AUTHCODEEXPIRE": "付款码已过期，请顾客刷新付款码后重新扫码",
+    "AUTH_CODE_ERROR": "付款码错误，请重新扫描顾客付款码",
+    "AUTHCODEINVALID": "付款码无效，请重新扫描顾客付款码",
+    "RISKCONTROL": "微信支付风控拦截，请顾客更换支付方式",
+    "NOTSUPORTCARD": "顾客当前卡种不支持付款码支付，请更换支付方式",
+}
+
+# 付款码支付【状态不确定】的错误码：必须查单确认，不能当失败处理
+MICROPAY_UNCERTAIN_ERR_CODES = {"SYSTEMERROR", "BANKERROR", "USERPAYING"}
+
+
+def _pay_status_payload(order: FoodOrder, status: str) -> dict:
+    return {
+        "order_id": order.id,
+        "order_no": order.order_no,
+        "pay_amount": float(order.pay_amount or 0),
+        "pay_type": order.pay_type,
+        "status": status,
+        "status_text": food_service.FOOD_STATUS_TEXT.get(status, status),
+    }
+
+
+def _mark_wechat_code_paid(db: Session, order: FoodOrder, transaction_id: Optional[str]) -> ResponseModel:
+    """付款码扣款成功：行锁 + 幂等（防止查单补偿与回调并发双落账）"""
+    locked = db.query(FoodOrder).filter(FoodOrder.id == order.id).with_for_update().first()
+    if locked and locked.status == "unpaid":
+        food_service.mark_order_paid(db, locked, transaction_id=transaction_id)
+        db.commit()
+        db.refresh(locked)
+        # 支付成功后触发云打印（异步线程，失败不影响收银）
+        printer_service.trigger_print(locked.id)
+        return ResponseModel(message="收款成功", data=_pay_status_payload(locked, "paid"))
+    # 已支付（幂等重入）直接返回当前状态
+    db.refresh(order)
+    return ResponseModel(message="收款成功", data=_pay_status_payload(order, order.status))
+
+
+def _fail_wechat_code_order(db: Session, order: FoodOrder, message: str):
+    """付款码明确失败：关单回补库存，HTTP 400 返回中文可读错误"""
+    locked = db.query(FoodOrder).filter(FoodOrder.id == order.id).with_for_update().first()
+    if locked and locked.status == "unpaid":
+        locked.status = "cancelled"
+        locked.handled_by = "system_pay_fail"
+        food_service.restore_stock(db, locked.id)
+        db.commit()
+    raise HTTPException(status_code=400, detail=message)
+
+
+def _resolve_uncertain_micropay(db: Session, order: FoodOrder, reason: str) -> ResponseModel:
+    """付款码状态不确定（网络异常/SYSTEMERROR/BANKERROR）：立即查单确认
+
+    仍不确定则返回 paying 让前端轮询（绝不贸然撤销/关单，防顾客已扣款）。
+    """
+    try:
+        result = wechat_pay_v2.query_order_v2(order.out_trade_no)
+    except WechatPayV2Error:
+        result = {}
+    if result.get("return_code") == "SUCCESS" and result.get("result_code") == "SUCCESS":
+        state = result.get("trade_state")
+        if state == "SUCCESS":
+            return _mark_wechat_code_paid(db, order, result.get("transaction_id"))
+        if state in ("CLOSED", "REVOKED", "PAYERROR"):
+            _fail_wechat_code_order(db, order, f"微信支付失败（{state}），请重新收款")
+    # 未支付/支付中/查单失败：返回 paying，前端轮询 pay-status（最长 60s）
+    return ResponseModel(
+        message=f"支付结果确认中（{reason}），请等待顾客完成支付",
+        data=_pay_status_payload(order, "paying"),
+    )
+
+
+def _do_micropay(db: Session, order: FoodOrder, auth_code: str, client_ip: str) -> ResponseModel:
+    """调用 V2 micropay 扣款并按返回码分流"""
+    amount_fen = round(float(order.pay_amount or 0) * 100)
+    try:
+        result = wechat_pay_v2.micropay(
+            out_trade_no=order.out_trade_no,
+            auth_code=auth_code,
+            total_fee=amount_fen,
+            body=f"餐饮消费-{order.order_no}",
+            spbill_create_ip=client_ip,
+        )
+    except WechatPayV2Error as e:
+        # 网络/协议异常：交易状态不确定，主动查单确认（不贸然撤销）
+        return _resolve_uncertain_micropay(db, order, str(e))
+
+    if result.get("return_code") != "SUCCESS":
+        # 通信层面失败（如签名错误），未产生交易，可安全关单
+        _fail_wechat_code_order(db, order, result.get("return_msg") or "微信支付通信失败")
+
+    if result.get("result_code") == "SUCCESS":
+        return _mark_wechat_code_paid(db, order, result.get("transaction_id"))
+
+    err_code = result.get("err_code", "")
+    err_des = result.get("err_code_des") or "微信支付失败"
+    if err_code == "USERPAYING":
+        # 顾客需要输入密码：返回 paying，前端轮询 pay-status（最长 60s）
+        return ResponseModel(
+            message="等待顾客输入支付密码",
+            data=_pay_status_payload(order, "paying"),
+        )
+    if err_code in MICROPAY_FAIL_MESSAGES:
+        _fail_wechat_code_order(db, order, MICROPAY_FAIL_MESSAGES[err_code])
+    # SYSTEMERROR/BANKERROR 及未知错误码：状态不确定，查单确认
+    return _resolve_uncertain_micropay(db, order, f"{err_code}: {err_des}")
+
+
 @router.post("/walk-in-orders", response_model=ResponseModel)
 def create_walk_in_order(
     data: WalkInOrderRequest,
+    request: Request,
     current_user: SysUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """代客下单（收银台）：现金收款直接记账为已支付"""
-    if data.pay_type != "cash":
-        raise HTTPException(status_code=400, detail="收银台暂仅支持现金收款（微信付款码后续开放）")
+    """代客下单（收银台）：现金收款直接记账；微信付款码收款同步扣款"""
+    if data.pay_type not in ("cash", "wechat_code"):
+        raise HTTPException(status_code=400, detail="支付方式仅支持 cash(现金)/wechat_code(微信付款码)")
+
+    auth_code = None
+    if data.pay_type == "wechat_code":
+        auth_code = (data.auth_code or "").strip()
+        # 微信付款码：18 位纯数字，10-15 开头
+        if not re.fullmatch(r"1[0-5]\d{16}", auth_code):
+            raise HTTPException(status_code=400, detail="付款码格式不正确（18 位数字、10-15 开头），请重新扫码")
+
     if data.order_type not in ("dine_in", "pickup"):
         raise HTTPException(status_code=400, detail="订单类型仅支持 dine_in(堂食)/pickup(预约取餐)")
     if data.order_type == "dine_in" and not (data.table_no or "").strip():
@@ -228,7 +353,9 @@ def create_walk_in_order(
         table_no=(data.table_no or "").strip() or None,
         order_type=data.order_type,
         pickup_time=pickup_time,
-        pay_type="cash",
+        pay_type=data.pay_type,
+        # 微信付款码：商户单号即用 FD 前缀订单号（退款/查单/撤销均按此号）
+        out_trade_no=order_no if data.pay_type == "wechat_code" else None,
         staff_id=current_user.id,
         handled_by=f"staff_{current_user.id}",
         items_text="\n".join(
@@ -253,21 +380,136 @@ def create_walk_in_order(
             specs_text=line["specs_text"],
         ))
 
-    # 现金收款：直接记为已支付（写销量/消费记录/日统计）
-    food_service.mark_order_paid(db, order)
+    if data.pay_type == "cash":
+        # 现金收款：直接记为已支付（写销量/消费记录/日统计）
+        food_service.mark_order_paid(db, order)
+        db.commit()
+        db.refresh(order)
+
+        # 现金收款成功后触发云打印（异步线程，失败不影响收银）
+        printer_service.trigger_print(order.id)
+
+        return ResponseModel(message="现金收款成功", data={
+            "order_id": order.id,
+            "order_no": order_no,
+            "pay_amount": float(order.pay_amount),
+            "pay_type": "cash",
+            "status": order.status,
+        })
+
+    # 微信付款码收款：先落库 unpaid 订单（扣款成功后本地事务失败会造成不一致），再同步扣款
     db.commit()
-    db.refresh(order)
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    return _do_micropay(db, order, auth_code, client_ip)
 
-    # 现金收款成功后触发云打印（异步线程，失败不影响收银）
-    printer_service.trigger_print(order.id)
 
-    return ResponseModel(message="现金收款成功", data={
-        "order_id": order.id,
-        "order_no": order_no,
-        "pay_amount": float(order.pay_amount),
-        "pay_type": "cash",
-        "status": order.status,
-    })
+@router.get("/orders/{order_id}/pay-status", response_model=ResponseModel)
+def staff_order_pay_status(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user),
+):
+    """付款码收款状态轮询（前端最长轮询 60s）
+
+    订单仍 unpaid 时主动 query_order_v2 补偿确认：
+    - 支付成功 → mark_order_paid 落账 + 触发打印，返回 paid
+    - 已关闭/已撤销/支付失败 → 关单回补库存，返回 cancelled
+    - 未支付/支付中/查单失败 → 返回 paying（继续轮询）
+    """
+    order = db.query(FoodOrder).filter(FoodOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+
+    if order.status != "unpaid":
+        return ResponseModel(data=_pay_status_payload(order, order.status))
+
+    if order.pay_type == "wechat_code" and order.out_trade_no:
+        locked = db.query(FoodOrder).filter(FoodOrder.id == order_id).with_for_update().first()
+        if locked and locked.status == "unpaid":
+            try:
+                result = wechat_pay_v2.query_order_v2(locked.out_trade_no)
+            except WechatPayV2Error:
+                result = {}
+            if result.get("return_code") == "SUCCESS" and result.get("result_code") == "SUCCESS":
+                state = result.get("trade_state")
+                if state == "SUCCESS":
+                    food_service.mark_order_paid(db, locked, transaction_id=result.get("transaction_id"))
+                    db.commit()
+                    db.refresh(locked)
+                    printer_service.trigger_print(locked.id)
+                    return ResponseModel(message="收款成功", data=_pay_status_payload(locked, "paid"))
+                if state in ("CLOSED", "REVOKED", "PAYERROR"):
+                    locked.status = "cancelled"
+                    locked.handled_by = "system_pay_fail"
+                    food_service.restore_stock(db, locked.id)
+                    db.commit()
+                    return ResponseModel(message="支付已失败/关闭", data=_pay_status_payload(locked, "cancelled"))
+            db.rollback()  # 释放行锁（未变更）
+            db.refresh(order)
+            if order.status != "unpaid":
+                # 查单期间已被其他路径落账（如回调/惰性关单补偿）
+                return ResponseModel(data=_pay_status_payload(order, order.status))
+
+    return ResponseModel(data=_pay_status_payload(order, "paying"))
+
+
+@router.post("/orders/{order_id}/cancel-pay", response_model=ResponseModel)
+def staff_cancel_pay(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user),
+):
+    """取消付款码收款（轮询超时后调用，防悬空单）
+
+    流程：查单确认未支付 → reverse 撤销 → 关单回补库存。
+    若顾客恰在此时完成支付（查单返回 SUCCESS），则转为正常落账，绝不撤销成功交易。
+    """
+    order = db.query(FoodOrder).filter(FoodOrder.id == order_id).with_for_update().first()
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    if order.status != "unpaid":
+        # 已支付/已取消：幂等返回当前状态
+        return ResponseModel(message="订单已非待支付状态", data=_pay_status_payload(order, order.status))
+    if order.pay_type != "wechat_code" or not order.out_trade_no:
+        raise HTTPException(status_code=400, detail="仅微信付款码待支付订单支持取消收款")
+
+    # 1. 查单确认真实支付状态
+    try:
+        result = wechat_pay_v2.query_order_v2(order.out_trade_no)
+    except WechatPayV2Error as e:
+        raise HTTPException(status_code=400, detail=f"查单失败，无法确认支付状态，请稍后重试: {e}")
+    if result.get("return_code") == "SUCCESS" and result.get("result_code") == "SUCCESS":
+        state = result.get("trade_state")
+        if state == "SUCCESS":
+            # 顾客已完成支付：落账而不是取消
+            food_service.mark_order_paid(db, order, transaction_id=result.get("transaction_id"))
+            db.commit()
+            db.refresh(order)
+            printer_service.trigger_print(order.id)
+            return ResponseModel(message="顾客已完成支付，订单已入账", data=_pay_status_payload(order, "paid"))
+        if state in ("CLOSED", "REVOKED", "PAYERROR"):
+            pass  # 已关闭/已撤销：无需再撤销，直接关单
+        else:
+            # 2. NOTPAY/USERPAYING：撤销（防顾客稍后输密码完成支付造成悬空单）
+            # 微信要求撤销失败（recall=Y 或异常）时以相同单号重试；此处失败返回提示，由员工再次点击取消
+            try:
+                rev = wechat_pay_v2.reverse(order.out_trade_no)
+            except WechatPayV2Error as e:
+                raise HTTPException(status_code=400, detail=f"微信撤销失败，请稍后再次点击取消收款: {e}")
+            if rev.get("return_code") != "SUCCESS" or rev.get("result_code") != "SUCCESS":
+                if rev.get("recall") == "Y":
+                    raise HTTPException(status_code=400, detail="微信撤销处理中，请稍后再次点击取消收款")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"微信撤销失败: {rev.get('err_code_des') or rev.get('return_msg') or '未知错误'}，请再次尝试",
+                )
+
+    # 3. 关单回补库存
+    order.status = "cancelled"
+    order.handled_by = f"staff_{current_user.id}_cancel_pay"
+    food_service.restore_stock(db, order.id)
+    db.commit()
+    return ResponseModel(message="已取消收款并关闭订单", data=_pay_status_payload(order, "cancelled"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

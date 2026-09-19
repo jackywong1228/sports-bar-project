@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     WECHAT_PAY_PUBLIC_KEY_ID: str = ""  # 微信支付公钥ID
     WECHAT_PAY_PUBLIC_KEY_PATH: str = "certs/wechatpay_public_key.pem"  # 微信支付公钥路径
 
+    # 微信支付 V2（付款码支付 micropay，收银台扫顾客付款码扣款用；仅 V2 接口，XML+MD5 签名）
+    WECHAT_PAY_V2_KEY: str = ""  # 商户平台 账户中心→API安全 设置的 APIv2 密钥（32位），空则付款码收款不可用
+    WECHAT_APICLIENT_CERT_PATH: str = "certs/apiclient_cert.pem"  # 商户 API 证书（V2 撤销接口 reverse 需双向 TLS）
+
     # 订阅消息模板ID
     WECHAT_TEMPLATE_RESERVATION_SUCCESS: str = ""  # 预约成功通知
     WECHAT_TEMPLATE_RESERVATION_CANCEL: str = ""  # 预约取消通知
