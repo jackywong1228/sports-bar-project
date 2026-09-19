@@ -398,7 +398,7 @@ const onBeforeUnload = (e: BeforeUnloadEvent) => {
 
 /** 尽力撤销（路由跳走/页面卸载场景，不等响应） */
 function wxFireAndForgetCancel(orderId: number) {
-  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+  const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
   const token = localStorage.getItem('staff_token')
   try {
     fetch(`${baseURL}/staff/food/orders/${orderId}/cancel-pay`, {
