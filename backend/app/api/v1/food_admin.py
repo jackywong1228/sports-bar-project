@@ -562,6 +562,32 @@ def refund_order(
     return ResponseModel(message=f"退款处理完成：{result['desc']}", data=result)
 
 
+@router.post("/orders/{order_id}/reprint", response_model=ResponseModel)
+def reprint_order(
+    order_id: int,
+    ticket_type: str = Query("cashier", description="票型: cashier收银票/kitchen制作单/all两者"),
+    db: Session = Depends(get_db),
+    current_user: SysUser = Depends(get_current_user),
+):
+    """订单重打小票（同步调用厂商接口；打印失败返回 500 但不改订单状态）"""
+    from app.services import printer_service
+    order = db.query(FoodOrder).filter(FoodOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    types = [printer_service.TICKET_CASHIER, printer_service.TICKET_KITCHEN] if ticket_type == "all" else [ticket_type]
+    if any(t not in (printer_service.TICKET_CASHIER, printer_service.TICKET_KITCHEN) for t in types):
+        raise HTTPException(status_code=400, detail="ticket_type 仅支持 cashier/kitchen/all")
+    results = {}
+    for t in types:
+        results.update(printer_service.print_order(db, order, t))
+    if not results:
+        return ResponseModel(message="没有启用的对应角色打印机", data={"printed": 0})
+    failed = {pid: msg for pid, (ok, msg) in results.items() if not ok}
+    if failed:
+        raise HTTPException(status_code=500, detail=f"部分打印机失败: {failed}")
+    return ResponseModel(message="重打已发送", data={"printed": len(results)})
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 营业统计（日结 / 时间段对账）
 # ─────────────────────────────────────────────────────────────────────────────

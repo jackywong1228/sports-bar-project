@@ -21,6 +21,7 @@ from app.models import (
 from app.schemas import ResponseModel, PageResult
 from app.api.deps import get_current_member
 from app.services import food_service
+from app.services import printer_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -233,6 +234,8 @@ def create_food_order(
         food_service.mark_order_paid(db, order)
         db.commit()
         db.refresh(order)
+        # 支付成功后触发云打印（异步线程，失败不影响下单）
+        printer_service.trigger_print(order.id)
         return ResponseModel(message="下单成功", data={
             "order_id": order.id,
             "order_no": order_no,
@@ -349,6 +352,8 @@ def query_food_order_pay_status(
                 )
                 db.commit()
                 db.refresh(order)
+                # 补偿确认支付成功后触发云打印
+                printer_service.trigger_print(order.id)
 
     return ResponseModel(data={
         "id": order.id,

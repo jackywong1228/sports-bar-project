@@ -295,6 +295,12 @@ const routes: RouteRecordRaw[] = [
             name: 'FoodStats',
             component: () => import('@/views/food/Stats.vue'),
             meta: { title: '营业统计' }
+          },
+          {
+            path: 'printers',
+            name: 'FoodPrinters',
+            component: () => import('@/views/food/Printer.vue'),
+            meta: { title: '打印机管理' }
           }
         ]
       },

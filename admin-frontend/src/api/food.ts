@@ -217,3 +217,54 @@ export function getFoodRangeStats(startTime: string, endTime: string) {
     params: { start_time: startTime, end_time: endTime }
   })
 }
+
+// ──────────────────────────────────────────────
+// 云打印机管理（Phase 5）
+// ──────────────────────────────────────────────
+
+export interface PrinterConfig {
+  id: number
+  provider: 'feie' | 'yilianyun'
+  provider_text: string
+  name: string
+  sn: string
+  printer_key: string | null
+  role: 'cashier' | 'kitchen' | 'both'
+  role_text: string
+  enabled: boolean
+  remark: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export function getPrinters() {
+  return request.get('/food-admin/printers')
+}
+
+export function createPrinter(data: Partial<PrinterConfig>) {
+  return request.post('/food-admin/printers', data)
+}
+
+export function updatePrinter(id: number, data: Partial<PrinterConfig>) {
+  return request.put(`/food-admin/printers/${id}`, data)
+}
+
+export function deletePrinter(id: number) {
+  return request.delete(`/food-admin/printers/${id}`)
+}
+
+export function togglePrinter(id: number, enabled: boolean) {
+  return request.put(`/food-admin/printers/${id}/toggle`, { enabled })
+}
+
+export function testPrint(id: number, ticketType: 'cashier' | 'kitchen') {
+  return request.post(`/food-admin/printers/${id}/test-print`, null, { params: { ticket_type: ticketType } })
+}
+
+export function getPrinterStatus(id: number) {
+  return request.get(`/food-admin/printers/${id}/status`)
+}
+
+export function reprintFoodOrder(id: number, ticketType: 'cashier' | 'kitchen' | 'all') {
+  return request.post(`/food-admin/orders/${id}/reprint`, null, { params: { ticket_type: ticketType } })
+}

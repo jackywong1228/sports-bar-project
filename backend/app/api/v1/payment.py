@@ -15,6 +15,7 @@ from app.models.member import Member, CoinRecord, PointRecord, MemberCardOrder, 
 from app.models import Reservation, CoachBooking, CoachCourseSession, FoodOrder
 from app.models.coupon import MemberCoupon
 from app.services import food_service
+from app.services import printer_service
 from app.schemas.response import ResponseModel
 
 import logging
@@ -464,6 +465,9 @@ def _handle_food_order_notify(out_trade_no: str, transaction_id: str, trade_stat
                     coupon.order_type = None
 
         db.commit()
+        if trade_state == "SUCCESS":
+            # 微信支付回调成功后触发云打印（异步线程，失败不影响回调应答）
+            printer_service.trigger_print(order.id)
         return {"code": "SUCCESS", "message": "成功"}
     except Exception as e:
         db.rollback()

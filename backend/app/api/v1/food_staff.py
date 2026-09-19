@@ -16,6 +16,7 @@ from app.models import SysUser, Member, FoodOrder, FoodOrderItem
 from app.schemas import ResponseModel, PageResult
 from app.api.deps import get_current_user
 from app.services import food_service
+from app.services import printer_service
 
 router = APIRouter()
 
@@ -256,6 +257,9 @@ def create_walk_in_order(
     food_service.mark_order_paid(db, order)
     db.commit()
     db.refresh(order)
+
+    # 现金收款成功后触发云打印（异步线程，失败不影响收银）
+    printer_service.trigger_print(order.id)
 
     return ResponseModel(message="现金收款成功", data={
         "order_id": order.id,

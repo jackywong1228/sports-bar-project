@@ -172,6 +172,19 @@
         </template>
 
         <div class="drawer-footer">
+          <el-dropdown
+            trigger="click"
+            style="margin-right: 10px"
+            @command="(t: 'cashier' | 'kitchen') => handleReprint(detail, t)"
+          >
+            <el-button :loading="reprinting">重打小票</el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="cashier">收银票</el-dropdown-item>
+                <el-dropdown-item command="kitchen">制作单</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-button
             v-if="canRefund(detail)"
             type="danger"
@@ -216,6 +229,7 @@ import {
   getFoodOrders,
   getFoodOrderDetail,
   refundFoodOrder,
+  reprintFoodOrder,
   type FoodOrder
 } from '@/api/food'
 
@@ -243,6 +257,7 @@ const refundVisible = ref(false)
 const refunding = ref(false)
 const refundOrder = ref<FoodOrder | null>(null)
 const refundReason = ref('')
+const reprinting = ref(false)
 
 const payTypeTagType = (payType: string): string => {
   const map: Record<string, string> = { wechat: 'success', coin: 'warning', cash: 'info' }
@@ -310,6 +325,20 @@ const handleRefund = (row: FoodOrder) => {
   refundOrder.value = row
   refundReason.value = ''
   refundVisible.value = true
+}
+
+// 重打小票（收银票/制作单，按打印机角色分发）
+const handleReprint = async (row: FoodOrder, ticketType: 'cashier' | 'kitchen') => {
+  if (!row.id) return
+  reprinting.value = true
+  try {
+    await reprintFoodOrder(row.id, ticketType)
+    ElMessage.success(`${ticketType === 'cashier' ? '收银票' : '制作单'}重打已发送`)
+  } catch {
+    // 报错提示由拦截器统一处理
+  } finally {
+    reprinting.value = false
+  }
 }
 
 const handleRefundSubmit = async () => {

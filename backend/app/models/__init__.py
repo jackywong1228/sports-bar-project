@@ -21,6 +21,7 @@ from app.models.review import ServiceReview, ReviewPointConfig
 from app.models.member_invitation import MemberInvitation
 from app.models.member_qrcode import MemberQrCode
 from app.models.feedback import Feedback
+from app.models.printer import PrinterConfig  # 云打印机（餐饮点单收银 Phase 5）
 
 __all__ = [
     "SysUser", "SysRole", "SysDepartment", "SysPermission",
@@ -44,4 +45,5 @@ __all__ = [
     "MemberInvitation",
     "MemberQrCode",
     "Feedback",
+    "PrinterConfig",
 ]

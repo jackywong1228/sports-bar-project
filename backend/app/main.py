@@ -10,7 +10,7 @@ from app.api.v1 import activities, coupons, mall, payment, finance, dashboard, m
 from app.api.v1 import gate_api, checkin
 from app.api.v1 import coupon_packs, reviews
 from app.api.v1 import course_admin
-from app.api.v1 import food_admin, food_member, food_staff
+from app.api.v1 import food_admin, food_member, food_staff, printer_admin
 from app.api.v1 import feedback as feedback_router
 from app.api.v1 import staff_scan
 from app.api.v1 import internal_api
@@ -69,6 +69,8 @@ app.include_router(member_courses.router, prefix=f"{settings.API_V1_PREFIX}/memb
 app.include_router(food_admin.router, prefix=f"{settings.API_V1_PREFIX}/food-admin", tags=["餐饮管理"])
 app.include_router(food_member.router, prefix=f"{settings.API_V1_PREFIX}/member/food", tags=["会员端餐饮点单"])
 app.include_router(food_staff.router, prefix=f"{settings.API_V1_PREFIX}/staff/food", tags=["员工端餐饮收银"])
+# 云打印机管理（Phase 5）：/food-admin/printers
+app.include_router(printer_admin.router, prefix=f"{settings.API_V1_PREFIX}/food-admin/printers", tags=["云打印机管理"])
 app.include_router(activities.router, prefix=f"{settings.API_V1_PREFIX}/activities", tags=["活动管理"])
 app.include_router(coupons.router, prefix=f"{settings.API_V1_PREFIX}/coupons", tags=["票券管理"])
 app.include_router(mall.router, prefix=f"{settings.API_V1_PREFIX}/mall", tags=["商城管理"])

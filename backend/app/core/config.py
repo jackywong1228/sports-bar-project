@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
 
+    # 云打印机配置（餐饮点单收银 Phase 5，账号级凭据；设备 SN/KEY 存 printer_config 表）
+    FEIE_USER: str = ""       # 飞鹅开放平台账号 USER
+    FEIE_UKEY: str = ""       # 飞鹅开放平台 UKEY
+    YLY_CLIENT_ID: str = ""       # 易联云 client_id
+    YLY_CLIENT_SECRET: str = ""   # 易联云 client_secret
+    PRINTER_ENABLED: bool = True     # 硬件未到货可全局关闭打印
+    PRINTER_HTTP_TIMEOUT: int = 5    # 调用厂商 API 的超时（秒）
+
     class Config:
         env_file = ".env"
         case_sensitive = True
