@@ -8,10 +8,10 @@
 -- ========================================
 
 ALTER TABLE food_item
-ADD COLUMN IF NOT EXISTS coupon_enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否可用优惠券（酒水类设为0）';
+ADD COLUMN coupon_enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否可用优惠券（酒水类设为0）';
 
 ALTER TABLE food_item
-ADD COLUMN IF NOT EXISTS has_specs TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否有规格';
+ADD COLUMN has_specs TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否有规格';
 
 -- ========================================
 -- 2. 规格表（新建）
@@ -52,47 +52,47 @@ ALTER TABLE food_order
 MODIFY COLUMN member_id INT NULL COMMENT '会员ID（现金散客单可为空）';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS coupon_id INT NULL COMMENT '使用的会员优惠券ID';
+ADD COLUMN coupon_id INT NULL COMMENT '使用的会员优惠券ID';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS coupon_amount DECIMAL(10,2) DEFAULT 0 COMMENT '优惠券抵扣金额';
+ADD COLUMN coupon_amount DECIMAL(10,2) DEFAULT 0 COMMENT '优惠券抵扣金额';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '优惠总金额';
+ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '优惠总金额';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS refund_amount DECIMAL(10,2) DEFAULT 0 COMMENT '退款金额';
+ADD COLUMN refund_amount DECIMAL(10,2) DEFAULT 0 COMMENT '退款金额';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS refund_reason VARCHAR(500) NULL COMMENT '退款原因';
+ADD COLUMN refund_reason VARCHAR(500) NULL COMMENT '退款原因';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS refund_time DATETIME NULL COMMENT '退款时间';
+ADD COLUMN refund_time DATETIME NULL COMMENT '退款时间';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS refund_by VARCHAR(50) NULL COMMENT '退款操作人标识（admin_N/staff_N）';
+ADD COLUMN refund_by VARCHAR(50) NULL COMMENT '退款操作人标识（admin_N/staff_N）';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS staff_id INT NULL COMMENT '代客下单的收银员ID';
+ADD COLUMN staff_id INT NULL COMMENT '代客下单的收银员ID';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS handled_by VARCHAR(50) NULL COMMENT '最近操作员工标识（staff_N）';
+ADD COLUMN handled_by VARCHAR(50) NULL COMMENT '最近操作员工标识（staff_N）';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS member_name VARCHAR(100) NULL COMMENT '会员/顾客姓名快照';
+ADD COLUMN member_name VARCHAR(100) NULL COMMENT '会员/顾客姓名快照';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS member_phone VARCHAR(20) NULL COMMENT '会员/顾客手机号快照';
+ADD COLUMN member_phone VARCHAR(20) NULL COMMENT '会员/顾客手机号快照';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS pickup_time VARCHAR(50) NULL COMMENT '预约取餐时间，格式：YYYY-MM-DD HH:MM';
+ADD COLUMN pickup_time VARCHAR(50) NULL COMMENT '预约取餐时间，格式：YYYY-MM-DD HH:MM';
 
 ALTER TABLE food_order
-ADD COLUMN IF NOT EXISTS items_text TEXT NULL COMMENT '小票用明细快照文本';
+ADD COLUMN items_text TEXT NULL COMMENT '小票用明细快照文本';
 
 -- ========================================
 -- 4. food_order_item 明细表：规格快照
 -- ========================================
 
 ALTER TABLE food_order_item
-ADD COLUMN IF NOT EXISTS specs_text VARCHAR(200) NULL COMMENT '规格快照，如「大杯/加珍珠」';
+ADD COLUMN specs_text VARCHAR(200) NULL COMMENT '规格快照，如「大杯/加珍珠」';
