@@ -90,6 +90,7 @@ Page({
       { icon: '/assets/icons/activity-entry.png', text: '活动报名', url: '/pages/activity/activity', linkType: 'tab' },
       { icon: '/assets/icons/team-entry.png', text: '组队广场', url: '/pages/team/team', linkType: 'page' },
       { icon: '/assets/icons/mall-entry.png', text: '积分商城', url: '/pages/mall/mall', linkType: 'page' },
+      { icon: '/assets/icons/mall-entry.png', text: '餐饮点单', url: '/pages/food-menu/food-menu', linkType: 'page' },
       { icon: '/assets/icons/member-entry.png', text: '会员中心', url: '/pages/member/member', linkType: 'page' },
       { icon: '/assets/icons/coupon-entry.png', text: '我的券包', url: '/pages/coupons/coupons', linkType: 'page' }
     ]
@@ -281,7 +282,7 @@ Page({
     if (!url) return
 
     // 需要登录的页面
-    const loginRequiredPages = ['/pages/profile/', '/pages/member/', '/pages/coupons/', '/pages/wallet/', '/pages/orders/']
+    const loginRequiredPages = ['/pages/profile/', '/pages/member/', '/pages/coupons/', '/pages/wallet/', '/pages/orders/', '/pages/food-']
     if (loginRequiredPages.some(page => url.includes(page))) {
       if (!app.checkLogin()) return
     }

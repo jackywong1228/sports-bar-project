@@ -1,0 +1,198 @@
+<wxs module="spec">
+module.exports = {
+  // 判断某规格选项是否被选中
+  has: function(selections, gid, oid) {
+    if (!selections) return false
+    var ids = selections[gid + ''] || []
+    for (var i = 0; i < ids.length; i++) {
+      if (ids[i] === oid) return true
+    }
+    return false
+  }
+}
+</wxs>
+
+<view class="page">
+  <!-- 顶部：点单模式 -->
+  <view class="mode-bar">
+    <view class="mode-info" bindtap="switchMode">
+      <text class="mode-tag">{{mode === 'dine_in' ? '堂食' : '自取'}}</text>
+      <text class="mode-detail" wx:if="{{mode === 'dine_in'}}" catchtap="onTableTap">{{tableNo ? '桌号 ' + tableNo : '点击填写桌号'}}</text>
+      <text class="mode-detail" wx:else>预约取餐，先付后做</text>
+      <text class="mode-switch">切换</text>
+    </view>
+    <view class="mode-orders" bindtap="goOrders">我的订单</view>
+  </view>
+
+  <!-- 加载态 / 失败态 -->
+  <view wx:if="{{loading}}" class="loading-box">菜单加载中...</view>
+  <view wx:elif="{{loadFailed}}" class="empty-box">
+    <view class="empty-icon">🍽</view>
+    <view class="empty-text">菜单加载失败</view>
+    <view class="empty-sub" bindtap="loadMenu">点击重试</view>
+  </view>
+  <view wx:elif="{{categories.length === 0}}" class="empty-box">
+    <view class="empty-icon">🍽</view>
+    <view class="empty-text">暂无可点商品</view>
+  </view>
+
+  <!-- 分类 + 商品 -->
+  <view wx:else class="menu-body">
+    <scroll-view class="cat-sidebar" scroll-y>
+      <view
+        wx:for="{{categories}}"
+        wx:key="id"
+        class="cat-item {{activeCatIndex === index ? 'cat-active' : ''}}"
+        data-index="{{index}}"
+        bindtap="onCatTap"
+      >{{item.name}}</view>
+    </scroll-view>
+
+    <scroll-view class="item-list" scroll-y>
+      <view class="cat-title">{{categories[activeCatIndex].name}}</view>
+      <view
+        wx:for="{{categories[activeCatIndex].items}}"
+        wx:key="id"
+        wx:for-item="food"
+        class="food-item {{food.sold_out ? 'food-soldout' : ''}}"
+      >
+        <image wx:if="{{food.image}}" class="food-img" src="{{food.image}}" mode="aspectFill" />
+        <view wx:else class="food-img food-img-placeholder">🍴</view>
+        <view class="food-info">
+          <view class="food-name">{{food.name}}</view>
+          <view class="food-desc" wx:if="{{food.description}}">{{food.description}}</view>
+          <view class="food-tags" wx:if="{{food.tags.length > 0}}">
+            <text class="food-tag" wx:for="{{food.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+          </view>
+          <view class="food-bottom">
+            <view class="food-price-box">
+              <text class="food-price">¥{{food.price_text}}</text>
+              <text class="food-orig-price" wx:if="{{food.original_price > food.price}}">¥{{food.original_price}}</text>
+            </view>
+            <!-- 售罄 -->
+            <view wx:if="{{food.sold_out}}" class="soldout-tag">已售罄</view>
+            <!-- 规格商品：选规格按钮 -->
+            <view
+              wx:elif="{{food.has_specs}}"
+              class="spec-btn"
+              data-catindex="{{activeCatIndex}}"
+              data-itemindex="{{index}}"
+              catchtap="onAddTap"
+            >
+              <text>选规格</text>
+              <view class="qty-badge" wx:if="{{itemQtyMap[food.id] > 0}}">{{itemQtyMap[food.id]}}</view>
+            </view>
+            <!-- 无规格商品：加减步进器 -->
+            <view wx:else class="stepper">
+              <view
+                wx:if="{{itemQtyMap[food.id] > 0}}"
+                class="stepper-btn stepper-minus"
+                data-catindex="{{activeCatIndex}}"
+                data-itemindex="{{index}}"
+                catchtap="onMinusTap"
+              >−</view>
+              <text wx:if="{{itemQtyMap[food.id] > 0}}" class="stepper-qty">{{itemQtyMap[food.id]}}</text>
+              <view
+                class="stepper-btn stepper-plus"
+                data-catindex="{{activeCatIndex}}"
+                data-itemindex="{{index}}"
+                catchtap="onAddTap"
+              >+</view>
+            </view>
+          </view>
+        </view>
+      </view>
+      <!-- 底部留出购物车栏高度 -->
+      <view class="list-bottom-space"></view>
+    </scroll-view>
+  </view>
+
+  <!-- 购物车浮层 -->
+  <view class="cart-mask" wx:if="{{showCart}}" bindtap="closeCart">
+    <view class="cart-panel" catchtap="noop">
+      <view class="cart-panel-header">
+        <text class="cart-panel-title">购物车</text>
+        <text class="cart-clear" bindtap="clearCart">清空</text>
+      </view>
+      <scroll-view class="cart-lines" scroll-y>
+        <view class="cart-line" wx:for="{{cartList}}" wx:key="key">
+          <view class="cart-line-info">
+            <view class="cart-line-name">{{item.name}}</view>
+            <view class="cart-line-specs" wx:if="{{item.specs_text}}">{{item.specs_text}}</view>
+          </view>
+          <text class="cart-line-price">¥{{item.subtotal_text}}</text>
+          <view class="stepper">
+            <view class="stepper-btn stepper-minus" data-key="{{item.key}}" catchtap="cartDec">−</view>
+            <text class="stepper-qty">{{item.quantity}}</text>
+            <view class="stepper-btn stepper-plus" data-key="{{item.key}}" catchtap="cartInc">+</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- 底部购物车栏 -->
+  <view class="cart-bar" wx:if="{{!loading && categories.length > 0}}">
+    <view class="cart-left" bindtap="toggleCart">
+      <view class="cart-icon-wrap">
+        <text class="cart-icon">🛒</text>
+        <view class="cart-badge" wx:if="{{cartCount > 0}}">{{cartCount}}</view>
+      </view>
+      <view class="cart-total-box">
+        <text class="cart-total" wx:if="{{cartCount > 0}}">¥{{cartTotalText}}</text>
+        <text class="cart-empty-tip" wx:else>购物车是空的</text>
+      </view>
+    </view>
+    <view class="cart-checkout {{cartCount === 0 ? 'cart-checkout-disabled' : ''}}" bindtap="goCheckout">去结算</view>
+  </view>
+
+  <!-- 规格选择弹层 -->
+  <view class="spec-mask" wx:if="{{showSpecModal}}" bindtap="closeSpecModal">
+    <view class="spec-modal" catchtap="noop">
+      <view class="spec-header" wx:if="{{specItem}}">
+        <image wx:if="{{specItem.image}}" class="spec-img" src="{{specItem.image}}" mode="aspectFill" />
+        <view wx:else class="spec-img food-img-placeholder">🍴</view>
+        <view class="spec-header-info">
+          <view class="spec-name">{{specItem.name}}</view>
+          <view class="spec-base-price">¥{{specItem.price_text}} 起</view>
+        </view>
+        <view class="spec-close" bindtap="closeSpecModal">✕</view>
+      </view>
+
+      <scroll-view class="spec-groups" scroll-y wx:if="{{specItem}}">
+        <view class="spec-group" wx:for="{{specItem.spec_groups}}" wx:for-item="group" wx:key="id">
+          <view class="spec-group-name">
+            {{group.name}}
+            <text class="spec-group-tip">{{group.required ? '（必选）' : '（可不选）'}}{{group.select_type === 'multi' ? '可多选' : ''}}</text>
+          </view>
+          <view class="spec-options">
+            <view
+              wx:for="{{group.options}}"
+              wx:for-item="opt"
+              wx:key="id"
+              class="spec-option {{spec.has(specSelections, group.id, opt.id) ? 'spec-option-active' : ''}}"
+              data-gid="{{group.id}}"
+              data-oid="{{opt.id}}"
+              data-type="{{group.select_type}}"
+              catchtap="toggleSpecOption"
+            >
+              <text>{{opt.name}}</text>
+              <text class="spec-option-price" wx:if="{{opt.price_delta > 0}}">+¥{{opt.price_delta}}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="spec-footer">
+        <view class="stepper">
+          <view class="stepper-btn stepper-minus" bindtap="specQtyMinus">−</view>
+          <text class="stepper-qty">{{specQty}}</text>
+          <view class="stepper-btn stepper-plus" bindtap="specQtyPlus">+</view>
+        </view>
+        <view class="spec-confirm {{specValid ? '' : 'spec-confirm-disabled'}}" bindtap="specConfirm">
+          加入购物车 ¥{{specPriceText}}
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

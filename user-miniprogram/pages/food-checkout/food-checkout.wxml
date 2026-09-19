@@ -1,0 +1,192 @@
+<view class="page">
+  <!-- 订单类型 -->
+  <view class="card">
+    <view class="type-tabs">
+      <view
+        class="type-tab {{orderType === 'dine_in' ? 'type-tab-active' : ''}}"
+        data-type="dine_in"
+        bindtap="selectOrderType"
+      >堂食</view>
+      <view
+        class="type-tab {{orderType === 'pickup' ? 'type-tab-active' : ''}}"
+        data-type="pickup"
+        bindtap="selectOrderType"
+      >预约取餐</view>
+    </view>
+
+    <!-- 堂食：桌号 -->
+    <view class="form-row" wx:if="{{orderType === 'dine_in'}}">
+      <text class="form-label">桌号</text>
+      <input
+        class="form-input"
+        placeholder="请输入桌号"
+        value="{{tableNo}}"
+        bindinput="onTableInput"
+      />
+    </view>
+
+    <!-- 预约取餐：时间选择 -->
+    <block wx:else>
+      <view class="form-row">
+        <text class="form-label">取餐日期</text>
+        <view class="day-tabs">
+          <view
+            class="day-tab {{pickupDay === 'today' ? 'day-tab-active' : ''}} {{todaySlots.length === 0 ? 'day-tab-disabled' : ''}}"
+            data-day="today"
+            bindtap="selectPickupDay"
+          >今天</view>
+          <view
+            class="day-tab {{pickupDay === 'tomorrow' ? 'day-tab-active' : ''}}"
+            data-day="tomorrow"
+            bindtap="selectPickupDay"
+          >明天</view>
+        </view>
+      </view>
+      <view class="slot-wrap">
+        <view class="slot-tip" wx:if="{{(pickupDay === 'today' ? todaySlots : tomorrowSlots).length === 0}}">今日取餐时间已过，请选择明天</view>
+        <view
+          wx:for="{{pickupDay === 'today' ? todaySlots : tomorrowSlots}}"
+          wx:key="*this"
+          class="slot-chip {{selectedSlot === item ? 'slot-chip-active' : ''}}"
+          data-slot="{{item}}"
+          bindtap="selectSlot"
+        >{{item}}</view>
+      </view>
+      <view class="form-hint">取餐时间需至少 30 分钟后，先付后做</view>
+    </block>
+  </view>
+
+  <!-- 商品明细 -->
+  <view class="card">
+    <view class="card-title">商品明细</view>
+    <view class="goods-line" wx:for="{{cart}}" wx:key="key">
+      <image wx:if="{{item.image}}" class="goods-img" src="{{item.image}}" mode="aspectFill" />
+      <view wx:else class="goods-img goods-img-placeholder">🍴</view>
+      <view class="goods-info">
+        <view class="goods-name">{{item.name}}</view>
+        <view class="goods-specs" wx:if="{{item.specs_text}}">{{item.specs_text}}</view>
+      </view>
+      <view class="goods-right">
+        <text class="goods-price">¥{{item.unit_price_text}}</text>
+        <text class="goods-qty">x{{item.quantity}}</text>
+      </view>
+    </view>
+    <view class="form-row remark-row">
+      <text class="form-label">备注</text>
+      <input
+        class="form-input"
+        placeholder="口味偏好等，可选"
+        value="{{remark}}"
+        bindinput="onRemarkInput"
+      />
+    </view>
+  </view>
+
+  <!-- 优惠券 -->
+  <view class="card">
+    <view class="coupon-row" bindtap="openCouponPanel">
+      <text class="form-label">优惠券</text>
+      <view class="coupon-value">
+        <text wx:if="{{selectedCouponId}}" class="coupon-selected">-{{selectedCouponLabel}}</text>
+        <text wx:else class="coupon-placeholder">{{coupons.length > 0 ? '选择优惠券' : '暂无可用券'}}</text>
+        <text class="coupon-arrow">></text>
+      </view>
+    </view>
+    <view class="form-hint" wx:if="{{hasIneligible}}">酒水类商品不参与优惠券抵扣</view>
+  </view>
+
+  <!-- 金额明细 -->
+  <view class="card">
+    <view class="amount-row">
+      <text class="amount-label">商品总额</text>
+      <text class="amount-value">¥{{totalText}}</text>
+    </view>
+    <view class="amount-row">
+      <text class="amount-label">优惠券抵扣</text>
+      <text class="amount-value amount-discount">-¥{{discountText}}</text>
+    </view>
+    <view class="amount-row amount-pay-row">
+      <text class="amount-label">应付</text>
+      <text class="amount-pay">¥{{payText}}</text>
+    </view>
+  </view>
+
+  <!-- 支付方式 -->
+  <view class="card">
+    <view class="card-title">支付方式</view>
+    <view
+      class="pay-row {{payType === 'coin' ? 'pay-row-active' : ''}} {{coinEnough ? '' : 'pay-row-disabled'}}"
+      data-type="coin"
+      bindtap="selectPayType"
+    >
+      <view class="pay-left">
+        <text class="pay-icon">🪙</text>
+        <text class="pay-name">金币余额</text>
+        <text class="pay-balance">（余额 {{coinBalance}}）</text>
+      </view>
+      <text wx:if="{{!coinEnough}}" class="pay-lack">余额不足</text>
+      <view wx:else class="pay-radio {{payType === 'coin' ? 'pay-radio-on' : ''}}"></view>
+    </view>
+    <view
+      class="pay-row {{payType === 'wechat' ? 'pay-row-active' : ''}}"
+      data-type="wechat"
+      bindtap="selectPayType"
+    >
+      <view class="pay-left">
+        <text class="pay-icon">💳</text>
+        <text class="pay-name">微信支付</text>
+      </view>
+      <view class="pay-radio {{payType === 'wechat' ? 'pay-radio-on' : ''}}"></view>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+
+  <!-- 底部提交栏 -->
+  <view class="submit-bar">
+    <view class="submit-total">
+      <text class="submit-total-label">应付</text>
+      <text class="submit-total-value">¥{{payText}}</text>
+    </view>
+    <view class="submit-btn {{submitting ? 'submit-btn-disabled' : ''}}" bindtap="submit">
+      {{submitting ? '提交中...' : '提交订单'}}
+    </view>
+  </view>
+
+  <!-- 优惠券选择弹层 -->
+  <view class="coupon-mask" wx:if="{{showCouponPanel}}" bindtap="closeCouponPanel">
+    <view class="coupon-panel" catchtap="noop">
+      <view class="coupon-panel-header">
+        <text class="coupon-panel-title">选择优惠券</text>
+        <text class="coupon-panel-close" bindtap="closeCouponPanel">✕</text>
+      </view>
+      <view class="coupon-panel-tip">仅展示餐饮可用券，酒水类商品不参与抵扣；具体抵扣金额以订单为准</view>
+      <scroll-view class="coupon-list" scroll-y>
+        <view
+          wx:for="{{coupons}}"
+          wx:key="id"
+          class="coupon-item {{selectedCouponId === item.id ? 'coupon-item-active' : ''}} {{item.usable ? '' : 'coupon-item-disabled'}}"
+          data-id="{{item.id}}"
+          data-usable="{{item.usable}}"
+          bindtap="selectCoupon"
+        >
+          <view class="coupon-left">
+            <text class="coupon-label">{{item.label}}</text>
+            <text class="coupon-min" wx:if="{{item.min_amount > 0}}">满{{item.min_amount}}可用</text>
+          </view>
+          <view class="coupon-right">
+            <view class="coupon-name">{{item.name}}</view>
+            <view class="coupon-expire" wx:if="{{item.end_time}}">{{item.end_time}} 到期</view>
+            <view class="coupon-reason" wx:if="{{!item.usable}}">{{item.unusable_reason}}</view>
+          </view>
+          <view class="pay-radio {{selectedCouponId === item.id ? 'pay-radio-on' : ''}}" wx:if="{{item.usable}}"></view>
+        </view>
+        <view class="empty-box" wx:if="{{coupons.length === 0}}">
+          <view class="empty-icon">🎟</view>
+          <view class="empty-text">暂无餐饮可用优惠券</view>
+        </view>
+      </scroll-view>
+      <view class="coupon-done" bindtap="closeCouponPanel">完成</view>
+    </view>
+  </view>
+</view>

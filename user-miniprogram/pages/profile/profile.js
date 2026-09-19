@@ -22,6 +22,7 @@ Page({
       { icon: '/assets/icons/member-card.png', text: '我的会员码', url: '/pages/my-qrcode/my-qrcode' },
       { icon: '/assets/icons/order.png', text: '我的订单', url: '/pages/orders/orders?type=venue' },
       { icon: '/assets/icons/reservation.png', text: '我的预约', url: '/pages/course-bookings/course-bookings' },
+      { icon: '/assets/icons/mall-entry.png', text: '餐饮订单', url: '/pages/food-orders/food-orders' },
       { icon: '/assets/icons/coupon.png', text: '我的优惠券', url: '/pages/coupons/coupons' },
       { icon: '/assets/icons/team-entry.png', text: '我的组队', url: '/pages/my-teams/my-teams' },
       { icon: '/assets/icons/member-card.png', text: '会员中心', url: '/pages/member/member' }

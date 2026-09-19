@@ -603,6 +603,58 @@ const repayCourseBooking = (id) => {
   return post(`/member/course-bookings/${id}/repay`, {}, { showLoading: true })
 }
 
+// ==================== 餐饮点单 ====================
+
+/**
+ * 餐饮菜单（分类 + 菜品 + 规格一次返回，售罄带 sold_out 标记）
+ */
+const getFoodMenu = () => {
+  return get('/member/food/menu')
+}
+
+/**
+ * 创建餐饮订单
+ * @param {Object} data {
+ *   items: [{ item_id, specs: { 规格组ID: [选项ID...] }, quantity }],
+ *   order_type: 'dine_in'|'pickup', table_no?, pickup_time?: 'YYYY-MM-DD HH:MM',
+ *   coupon_id?, pay_type: 'coin'|'wechat', remark?
+ * }
+ * 金币支付直接成功；微信支付返回 pay_params 供 wx.requestPayment 拉起
+ */
+const createFoodOrder = (data) => {
+  return post('/member/food/orders', data, { showLoading: true, loadingText: '提交订单...' })
+}
+
+/**
+ * 我的餐饮订单列表
+ * @param {Object} params { status?, page?, page_size? }
+ *   status: unpaid/paid/preparing/ready/completed/cancelled
+ */
+const getFoodOrders = (params = {}) => {
+  return get('/member/food/orders', params)
+}
+
+/**
+ * 餐饮订单详情（含 refund_tip：如需退款请联系店员处理）
+ */
+const getFoodOrderDetail = (id) => {
+  return get(`/member/food/orders/${id}`)
+}
+
+/**
+ * 查询餐饮订单支付状态（微信支付后轮询）
+ */
+const getFoodOrderPayStatus = (id) => {
+  return get(`/member/food/orders/${id}/pay-status`)
+}
+
+/**
+ * 待支付餐饮订单重新拉起微信支付
+ */
+const repayFoodOrder = (id) => {
+  return post(`/member/food/orders/${id}/repay`, {}, { showLoading: true })
+}
+
 module.exports = {
   // 认证
   loginByPhone,
@@ -725,5 +777,13 @@ module.exports = {
   getCourseBookingDetail,
   cancelCourseBooking,
   getCourseBookingPayStatus,
-  repayCourseBooking
+  repayCourseBooking,
+
+  // 餐饮点单
+  getFoodMenu,
+  createFoodOrder,
+  getFoodOrders,
+  getFoodOrderDetail,
+  getFoodOrderPayStatus,
+  repayFoodOrder
 }

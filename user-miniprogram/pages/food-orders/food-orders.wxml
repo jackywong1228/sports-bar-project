@@ -1,0 +1,47 @@
+<view class="page">
+  <!-- 状态筛选 Tab -->
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab-item {{activeTab === item.key ? 'tab-active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="onTabChange"
+    >{{item.label}}</view>
+  </view>
+
+  <!-- 订单卡片列表 -->
+  <view class="order-list">
+    <view
+      wx:for="{{orders}}"
+      wx:key="id"
+      class="order-card"
+      data-id="{{item.id}}"
+      bindtap="goDetail"
+    >
+      <view class="order-top">
+        <text class="order-no">{{item.order_no}}</text>
+        <text class="order-status" style="color: {{item.status_color}};">{{item.status_text_display}}</text>
+      </view>
+      <view class="order-type">{{item.type_line}}</view>
+      <view class="order-summary" wx:if="{{item.summary}}">{{item.summary}}</view>
+      <view class="order-bottom">
+        <text class="order-time">{{item.created_at}}</text>
+        <view class="order-amount-box">
+          <text class="order-qty">共{{item.total_qty}}件</text>
+          <text class="order-amount">¥{{item.pay_amount_text}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空态 -->
+    <view wx:if="{{loaded && orders.length === 0}}" class="empty-box">
+      <view class="empty-icon">🍽</view>
+      <view class="empty-text">暂无餐饮订单</view>
+      <view class="empty-action" bindtap="goMenu">去点单</view>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-box">加载中...</view>
+    <view wx:elif="{{loaded && orders.length > 0 && page * pageSize >= total}}" class="loading-box">没有更多了</view>
+  </view>
+</view>
