@@ -69,6 +69,8 @@ Page({
     pickupDay: 'today',     // today / tomorrow
     todaySlots: [],
     tomorrowSlots: [],
+    currentSlots: [],
+    tomorrowSlots: [],
     selectedSlot: '',
     // 金额
     totalText: '0.00',
@@ -106,6 +108,7 @@ Page({
 
     const todaySlots = buildSlots(0)
     const tomorrowSlots = buildSlots(1)
+    const pickupDay = todaySlots.length > 0 ? 'today' : 'tomorrow'
 
     this.setData({
       cart,
@@ -113,7 +116,8 @@ Page({
       tableNo: ctx.tableNo || '',
       todaySlots,
       tomorrowSlots,
-      pickupDay: todaySlots.length > 0 ? 'today' : 'tomorrow',
+      pickupDay,
+      currentSlots: pickupDay === 'today' ? todaySlots : tomorrowSlots,
       selectedSlot: '',
     })
     this.recalc()
@@ -185,7 +189,7 @@ Page({
       wx.showToast({ title: '今日取餐时间已过，请选择明天', icon: 'none' })
       return
     }
-    this.setData({ pickupDay: day, selectedSlot: '' })
+    this.setData({ pickupDay: day, selectedSlot: '', currentSlots: slots })
   },
 
   selectSlot(e) {

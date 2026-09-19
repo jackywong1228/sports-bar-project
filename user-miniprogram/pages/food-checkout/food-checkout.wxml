@@ -43,9 +43,9 @@
         </view>
       </view>
       <view class="slot-wrap">
-        <view class="slot-tip" wx:if="{{(pickupDay === 'today' ? todaySlots : tomorrowSlots).length === 0}}">今日取餐时间已过，请选择明天</view>
+        <view class="slot-tip" wx:if="{{currentSlots.length === 0}}">今日取餐时间已过，请选择明天</view>
         <view
-          wx:for="{{pickupDay === 'today' ? todaySlots : tomorrowSlots}}"
+          wx:for="{{currentSlots}}"
           wx:key="*this"
           class="slot-chip {{selectedSlot === item ? 'slot-chip-active' : ''}}"
           data-slot="{{item}}"
