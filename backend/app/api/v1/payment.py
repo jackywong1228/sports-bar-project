@@ -12,8 +12,9 @@ from app.core.wechat_pay import wechat_pay
 from app.api.deps import get_current_member
 from app.models.finance import RechargeOrder, RechargePackage
 from app.models.member import Member, CoinRecord, PointRecord, MemberCardOrder, MemberCard
-from app.models import Reservation, CoachBooking, CoachCourseSession
+from app.models import Reservation, CoachBooking, CoachCourseSession, FoodOrder
 from app.models.coupon import MemberCoupon
+from app.services import food_service
 from app.schemas.response import ResponseModel
 
 import logging
@@ -218,9 +219,8 @@ async def payment_notify(
             # 教练约课订单（CoachBooking，阶段 2 新链路）
             return _handle_coach_booking_notify(out_trade_no, transaction_id, trade_state, db)
         elif out_trade_no.startswith("FD"):
-            # 餐饮订单(已迁移至美团，兼容历史未支付订单回调)
-            logger.warning(f"收到已废弃的餐饮订单回调: {out_trade_no}")
-            return {"code": "SUCCESS", "message": "成功"}
+            # 餐饮订单（FoodOrder，餐饮点单收银 Phase 1 新链路）
+            return _handle_food_order_notify(out_trade_no, transaction_id, trade_state, db)
         elif out_trade_no.startswith("CZ"):
             # 充值订单
             return _handle_recharge_notify(out_trade_no, transaction_id, trade_state, db)
@@ -419,6 +419,49 @@ def _handle_coach_booking_notify(out_trade_no: str, transaction_id: str, trade_s
                 .where(CoachCourseSession.booked_count > 0)
                 .values(booked_count=CoachCourseSession.booked_count - 1)
             )
+
+        db.commit()
+        return {"code": "SUCCESS", "message": "成功"}
+    except Exception as e:
+        db.rollback()
+        return {"code": "FAIL", "message": f"处理失败: {str(e)}"}
+
+
+def _handle_food_order_notify(out_trade_no: str, transaction_id: str, trade_state: str, db: Session):
+    """处理餐饮订单支付回调（FoodOrder，FD 前缀商户单号）
+
+    行锁 + 幂等写法与 CB（教练约课）handler 一致：
+    仅 unpaid 状态处理；成功走 mark_order_paid 统一落账（核销券/销量/统计）；
+    非成功则取消订单、回补库存、解锁优惠券。
+    注意：惰性超时关单与回调存在竞态——若回调到达时订单已被超时关闭，
+    幂等分支直接返回成功（款项已收，需人工退款，属极小概率边界）。
+    """
+    try:
+        order = db.query(FoodOrder).filter(
+            FoodOrder.out_trade_no == out_trade_no
+        ).with_for_update().first()
+
+        if not order:
+            db.rollback()
+            return {"code": "FAIL", "message": "餐饮订单不存在"}
+
+        # 幂等性检查：只有 unpaid（待支付）才处理
+        if order.status != "unpaid":
+            db.rollback()
+            return {"code": "SUCCESS", "message": "成功"}
+
+        if trade_state == "SUCCESS":
+            food_service.mark_order_paid(db, order, transaction_id=transaction_id)
+        else:
+            # 支付失败/关闭：取消订单、回补库存、解锁优惠券
+            order.status = "cancelled"
+            order.handled_by = "system_pay_fail"
+            food_service.restore_stock(db, order.id)
+            if order.coupon_id:
+                coupon = db.query(MemberCoupon).filter(MemberCoupon.id == order.coupon_id).first()
+                if coupon and coupon.status == "locked":
+                    coupon.status = "unused"
+                    coupon.order_type = None
 
         db.commit()
         return {"code": "SUCCESS", "message": "成功"}

@@ -6,7 +6,7 @@ from app.models.reservation import Reservation
 from app.models.coach import Coach, CoachSchedule, CoachApplication
 from app.models.coach_course import CoachCourse, CoachCourseSession, CoachBooking
 from app.models.activity import Activity, ActivityRegistration
-from app.models.food import FoodCategory, FoodItem, FoodOrder, FoodOrderItem  # 保留: 数据库表映射(点餐已迁移至美团)
+from app.models.food import FoodCategory, FoodItem, FoodOrder, FoodOrderItem, FoodSpecGroup, FoodSpecOption  # 餐饮点单收银（Phase 1 重构）
 from app.models.coupon import CouponTemplate, MemberCoupon, CouponPack, CouponPackItem
 from app.models.mall import ProductCategory, Product, ProductOrder
 from app.models.finance import RechargeOrder, ConsumeRecord, CoachSettlement, FinanceStat, RechargePackage
@@ -30,7 +30,7 @@ __all__ = [
     "Coach", "CoachSchedule", "CoachApplication",
     "CoachCourse", "CoachCourseSession", "CoachBooking",
     "Activity", "ActivityRegistration",
-    "FoodCategory", "FoodItem", "FoodOrder", "FoodOrderItem",  # 保留: 数据库表映射(点餐已迁移至美团)
+    "FoodCategory", "FoodItem", "FoodOrder", "FoodOrderItem", "FoodSpecGroup", "FoodSpecOption",  # 餐饮点单收银（Phase 1 重构）
     "CouponTemplate", "MemberCoupon", "CouponPack", "CouponPackItem",
     "ProductCategory", "Product", "ProductOrder",
     "RechargeOrder", "ConsumeRecord", "CoachSettlement", "FinanceStat", "RechargePackage",

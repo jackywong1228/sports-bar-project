@@ -10,6 +10,7 @@ from app.api.v1 import activities, coupons, mall, payment, finance, dashboard, m
 from app.api.v1 import gate_api, checkin
 from app.api.v1 import coupon_packs, reviews
 from app.api.v1 import course_admin
+from app.api.v1 import food_admin, food_member, food_staff
 from app.api.v1 import feedback as feedback_router
 from app.api.v1 import staff_scan
 from app.api.v1 import internal_api
@@ -64,6 +65,10 @@ app.include_router(coach_api.router, prefix=f"{settings.API_V1_PREFIX}/coach", t
 app.include_router(member_api.router, prefix=f"{settings.API_V1_PREFIX}/member", tags=["会员端API"])
 # 会员端教练约课（阶段 2 新链路，与 member_api 同 /member 前缀共存，路径 /courses、/course-bookings 不冲突）
 app.include_router(member_courses.router, prefix=f"{settings.API_V1_PREFIX}/member", tags=["会员端教练约课"])
+# 餐饮点单收银（Phase 1）：管理端 /food-admin、会员端 /member/food、员工端 /staff/food
+app.include_router(food_admin.router, prefix=f"{settings.API_V1_PREFIX}/food-admin", tags=["餐饮管理"])
+app.include_router(food_member.router, prefix=f"{settings.API_V1_PREFIX}/member/food", tags=["会员端餐饮点单"])
+app.include_router(food_staff.router, prefix=f"{settings.API_V1_PREFIX}/staff/food", tags=["员工端餐饮收银"])
 app.include_router(activities.router, prefix=f"{settings.API_V1_PREFIX}/activities", tags=["活动管理"])
 app.include_router(coupons.router, prefix=f"{settings.API_V1_PREFIX}/coupons", tags=["票券管理"])
 app.include_router(mall.router, prefix=f"{settings.API_V1_PREFIX}/mall", tags=["商城管理"])
