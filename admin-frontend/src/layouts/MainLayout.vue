@@ -125,6 +125,17 @@ const menuList = [
     ]
   },
   {
+    path: '/food',
+    title: '餐饮管理',
+    icon: 'Food',
+    children: [
+      { path: '/food/category', title: '菜品分类' },
+      { path: '/food/items', title: '菜品管理' },
+      { path: '/food/orders', title: '餐饮订单' },
+      { path: '/food/stats', title: '营业统计' }
+    ]
+  },
+  {
     path: '/finance',
     title: '财务管理',
     icon: 'Wallet',

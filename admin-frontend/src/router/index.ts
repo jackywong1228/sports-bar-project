@@ -265,6 +265,39 @@ const routes: RouteRecordRaw[] = [
           }
         ]
       },
+      // 餐饮管理
+      {
+        path: 'food',
+        name: 'Food',
+        redirect: '/food/items',
+        meta: { title: '餐饮管理', icon: 'Food' },
+        children: [
+          {
+            path: 'category',
+            name: 'FoodCategory',
+            component: () => import('@/views/food/Category.vue'),
+            meta: { title: '菜品分类' }
+          },
+          {
+            path: 'items',
+            name: 'FoodItems',
+            component: () => import('@/views/food/Items.vue'),
+            meta: { title: '菜品管理' }
+          },
+          {
+            path: 'orders',
+            name: 'FoodOrders',
+            component: () => import('@/views/food/Orders.vue'),
+            meta: { title: '餐饮订单' }
+          },
+          {
+            path: 'stats',
+            name: 'FoodStats',
+            component: () => import('@/views/food/Stats.vue'),
+            meta: { title: '营业统计' }
+          }
+        ]
+      },
       // 财务管理
       {
         path: 'finance',
