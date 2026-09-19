@@ -58,6 +58,7 @@ Page({
       const res = await app.request({ url })
       const activities = (res.data || []).map(item => ({
         ...item,
+        image: app.resolveImageUrl(item.image),
         statusInfo: this.getActivityStatus(item),
         timeDisplay: this.formatTimeRange(item)
       }))

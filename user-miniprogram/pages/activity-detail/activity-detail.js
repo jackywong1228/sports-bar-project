@@ -22,6 +22,7 @@ Page({
       })
 
       const activity = res.data || {}
+      activity.image = app.resolveImageUrl(activity.image)
       activity.statusInfo = this.getActivityStatus(activity)
       activity.timeDisplay = this.formatTimeRange(activity)
 
