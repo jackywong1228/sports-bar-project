@@ -22,7 +22,19 @@ const routes: RouteRecordRaw[] = [
     path: '/food/orders',
     name: 'FoodOrderList',
     component: () => import('@/views/food/OrderList.vue'),
-    meta: { title: '餐饮订单' }
+    meta: { title: '餐饮接单' }
+  },
+  {
+    path: '/food/cashier',
+    name: 'FoodCashier',
+    component: () => import('@/views/food/Cashier.vue'),
+    meta: { title: '收银台' }
+  },
+  {
+    path: '/food/shift-report',
+    name: 'FoodShiftReport',
+    component: () => import('@/views/food/ShiftReport.vue'),
+    meta: { title: '交班对账' }
   },
   {
     path: '/food/orders/:id',

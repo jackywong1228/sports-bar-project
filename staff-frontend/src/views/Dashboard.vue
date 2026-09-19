@@ -15,7 +15,9 @@ const stats = ref({
 })
 
 const menuItems = [
-  { icon: 'orders-o', text: '餐饮订单', path: '/food/orders', color: '#ee6723' },
+  { icon: 'orders-o', text: '餐饮接单', path: '/food/orders', color: '#ee6723' },
+  { icon: 'cashier-o', text: '收银台', path: '/food/cashier', color: '#ff976a' },
+  { icon: 'balance-list-o', text: '交班对账', path: '/food/shift-report', color: '#ed6a0c' },
   { icon: 'calendar-o', text: '预约管理', path: '/reservation/list', color: '#1989fa' },
   { icon: 'scan', text: '扫码核销', path: '/scan', color: '#07c160' },
   { icon: 'fire-o', text: '活动管理', path: '/activity/list', color: '#ff6034' },
