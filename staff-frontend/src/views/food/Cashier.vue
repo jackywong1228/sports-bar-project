@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { showToast, showConfirmDialog } from 'vant'
 import {
   getFoodMenu,
   createWalkInOrder,
+  getFoodOrderPayStatus,
+  cancelFoodOrderPay,
   type MenuCategory,
   type MenuItem
 } from '@/api/food'
+import PayCodeScanner from '@/components/PayCodeScanner.vue'
 
 const router = useRouter()
 
@@ -160,6 +163,7 @@ const confirmSpec = () => {
 // ── 结算 ──
 const checkoutVisible = ref(false)
 const checkoutLoading = ref(false)
+const payMethod = ref<'cash' | 'wechat_code'>('cash')
 const orderType = ref<'dine_in' | 'pickup'>('dine_in')
 const tableNo = ref('')
 const remark = ref('')
@@ -175,38 +179,59 @@ const openCheckout = () => {
     showToast('购物车为空')
     return
   }
+  payMethod.value = 'cash'
   checkoutVisible.value = true
+}
+
+function buildOrderPayload(payType: 'cash' | 'wechat_code', authCode?: string) {
+  return {
+    items: cart.value.map((l) => ({
+      item_id: l.item.id,
+      quantity: l.quantity,
+      ...(Object.keys(l.specs).length > 0 ? { specs: l.specs } : {})
+    })),
+    pay_type: payType,
+    ...(payType === 'wechat_code' && authCode ? { auth_code: authCode } : {}),
+    order_type: orderType.value,
+    ...(orderType.value === 'dine_in'
+      ? { table_no: tableNo.value.trim() }
+      : { pickup_time: fmtPickupTime(new Date()) }),
+    ...(remark.value.trim() ? { remark: remark.value.trim() } : {})
+  }
+}
+
+function validateCheckoutForm(): boolean {
+  if (orderType.value === 'dine_in' && !tableNo.value.trim()) {
+    showToast('堂食订单请填写桌号')
+    return false
+  }
+  return true
+}
+
+/** 收款成功后的公共收尾（现金 / 微信共用）：清空购物车、重置表单、刷新菜单库存 */
+function afterPaySuccess() {
+  checkoutVisible.value = false
+  wxPayVisible.value = false
+  clearCart()
+  tableNo.value = ''
+  remark.value = ''
+  // 刷新菜单（库存/售罄状态可能变化）
+  loadMenu()
 }
 
 const submitOrder = async () => {
   if (checkoutLoading.value) return
-  if (orderType.value === 'dine_in' && !tableNo.value.trim()) {
-    showToast('堂食订单请填写桌号')
+  if (!validateCheckoutForm()) return
+  if (payMethod.value === 'wechat_code') {
+    // 微信收款：进入金额确认 → 扫码收款流程
+    wxStartFlow()
     return
   }
   checkoutLoading.value = true
   try {
-    const payload = {
-      items: cart.value.map((l) => ({
-        item_id: l.item.id,
-        quantity: l.quantity,
-        ...(Object.keys(l.specs).length > 0 ? { specs: l.specs } : {})
-      })),
-      pay_type: 'cash' as const,
-      order_type: orderType.value,
-      ...(orderType.value === 'dine_in'
-        ? { table_no: tableNo.value.trim() }
-        : { pickup_time: fmtPickupTime(new Date()) }),
-      ...(remark.value.trim() ? { remark: remark.value.trim() } : {})
-    }
-    const res = await createWalkInOrder(payload)
+    const res = await createWalkInOrder(buildOrderPayload('cash'))
     showToast({ message: `收款成功 ${fmtAmount(res.data.pay_amount)}`, type: 'success' })
-    checkoutVisible.value = false
-    clearCart()
-    tableNo.value = ''
-    remark.value = ''
-    // 刷新菜单（库存/售罄状态可能变化）
-    loadMenu()
+    afterPaySuccess()
   } catch (_e) {
     // 拦截器已 toast
   } finally {
@@ -214,12 +239,202 @@ const submitOrder = async () => {
   }
 }
 
+// ── 微信付款码收款流程 ──
+type WxStep = 'confirm' | 'scan' | 'submitting' | 'paying' | 'success'
+
+const wxPayVisible = ref(false)
+const wxStep = ref<WxStep>('confirm')
+const wxScanRound = ref(0) // 每次进入扫码页递增，强制重挂载扫码组件
+const wxOrderId = ref<number | null>(null)
+const wxPayAmount = ref(0)
+const wxCountdown = ref(60)
+const wxCancelling = ref(false)
+const WX_PAY_TIMEOUT = 60 // 轮询上限（秒）
+
+let wxPollTimer: ReturnType<typeof setTimeout> | null = null
+let wxTickTimer: ReturnType<typeof setInterval> | null = null
+let wxSuccessTimer: ReturnType<typeof setTimeout> | null = null
+let wxPollDeadline = 0
+let wxPolling = false
+
+const wxStartFlow = () => {
+  wxStep.value = 'confirm'
+  wxOrderId.value = null
+  wxPayAmount.value = cartTotal.value
+  wxPayVisible.value = true
+}
+
+const wxGoScan = () => {
+  wxScanRound.value += 1
+  wxStep.value = 'scan'
+}
+
+/** 拿到付款码 → 提交扣款 */
+const wxSubmit = async (authCode: string) => {
+  if (wxStep.value !== 'scan') return // 防重复提交
+  wxStep.value = 'submitting'
+  try {
+    const res = await createWalkInOrder(buildOrderPayload('wechat_code', authCode))
+    wxOrderId.value = res.data.order_id
+    wxPayAmount.value = res.data.pay_amount
+    if (res.data.status === 'paid') {
+      wxShowSuccess()
+    } else {
+      // paying：等待顾客在手机上确认/输入密码，开始轮询
+      wxStartPolling()
+    }
+  } catch (_e) {
+    // HTTP 400 等失败：拦截器已 toast 中文原因，返回扫码页可重扫
+    wxGoScan()
+  }
+}
+
+const wxShowSuccess = () => {
+  wxStopPolling()
+  wxStep.value = 'success'
+  wxSuccessTimer = setTimeout(() => {
+    wxSuccessTimer = null
+    wxStep.value = 'confirm'
+    afterPaySuccess()
+  }, 2500)
+}
+
+const wxStopPolling = () => {
+  wxPolling = false
+  if (wxPollTimer) { clearTimeout(wxPollTimer); wxPollTimer = null }
+  if (wxTickTimer) { clearInterval(wxTickTimer); wxTickTimer = null }
+}
+
+const wxStartPolling = () => {
+  wxStep.value = 'paying'
+  wxPollDeadline = Date.now() + WX_PAY_TIMEOUT * 1000
+  wxCountdown.value = WX_PAY_TIMEOUT
+  wxPolling = true
+  wxTickTimer = setInterval(() => {
+    wxCountdown.value = Math.max(0, Math.ceil((wxPollDeadline - Date.now()) / 1000))
+  }, 500)
+  wxPollOnce()
+}
+
+const wxPollOnce = async () => {
+  if (!wxPolling || wxOrderId.value == null) return
+  if (Date.now() >= wxPollDeadline) {
+    // 60s 超时：自动撤销并关单
+    await wxCancelPay(true)
+    return
+  }
+  try {
+    const res = await getFoodOrderPayStatus(wxOrderId.value)
+    const status = res.data.status
+    if (status === 'paid') {
+      wxShowSuccess()
+      return
+    }
+    if (status === 'cancelled' || status === 'closed' || status === 'refunded') {
+      wxStopPolling()
+      showToast('支付已取消')
+      wxGoScan()
+      return
+    }
+  } catch (_e) {
+    // 单次轮询失败（网络抖动）：继续，直到超时
+  }
+  wxPollTimer = setTimeout(wxPollOnce, 2000)
+}
+
+/** 取消收款（员工主动 / 超时自动） */
+const wxCancelPay = async (auto = false) => {
+  const orderId = wxOrderId.value
+  if (orderId == null || wxCancelling.value) return
+  if (!auto) {
+    try {
+      await showConfirmDialog({
+        title: '取消收款',
+        message: '确认取消这笔微信收款吗？订单将关闭。'
+      })
+    } catch (_e) {
+      return // 员工点了「取消」
+    }
+  }
+  wxCancelling.value = true
+  wxStopPolling()
+  try {
+    await cancelFoodOrderPay(orderId)
+  } catch (_e) {
+    // 尽力撤销，失败也放行返回
+  } finally {
+    wxCancelling.value = false
+  }
+  wxOrderId.value = null
+  if (auto) {
+    showToast('收款超时已取消')
+  }
+  wxGoScan()
+}
+
+/** 关闭微信收款弹窗（paying 状态下需先取消收款） */
+const wxClosePopup = () => {
+  if (wxStep.value === 'submitting') return // 提交中禁止关闭
+  if (wxStep.value === 'paying') {
+    wxCancelPay()
+    return
+  }
+  if (wxStep.value === 'success') return // 成功页自动关闭
+  if (wxSuccessTimer) { clearTimeout(wxSuccessTimer); wxSuccessTimer = null }
+  wxStopPolling()
+  wxPayVisible.value = false
+}
+
+// 页面关闭/刷新时若仍在等待顾客输密码：浏览器提示 + 尽力撤销
+const onBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (wxStep.value === 'paying' || wxStep.value === 'submitting') {
+    e.preventDefault()
+    e.returnValue = ''
+    if (wxStep.value === 'paying' && wxOrderId.value != null) {
+      wxFireAndForgetCancel(wxOrderId.value)
+    }
+  }
+}
+
+/** 尽力撤销（路由跳走/页面卸载场景，不等响应） */
+function wxFireAndForgetCancel(orderId: number) {
+  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+  const token = localStorage.getItem('staff_token')
+  try {
+    fetch(`${baseURL}/staff/food/orders/${orderId}/cancel-pay`, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    }).catch(() => { /* 尽力而为 */ })
+  } catch (_e) { /* 忽略 */ }
+}
+
+onBeforeRouteLeave(() => {
+  if (wxStep.value === 'paying' && wxOrderId.value != null) {
+    wxFireAndForgetCancel(wxOrderId.value)
+  }
+  wxStopPolling()
+})
+
 function fmtAmount(n: number): string {
   return `¥${(n || 0).toFixed(2)}`
 }
 
 onMounted(() => {
   loadMenu()
+  window.addEventListener('beforeunload', onBeforeUnload)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  wxStopPolling()
+  if (wxSuccessTimer) { clearTimeout(wxSuccessTimer); wxSuccessTimer = null }
+  if (wxStep.value === 'paying' && wxOrderId.value != null) {
+    wxFireAndForgetCancel(wxOrderId.value)
+  }
 })
 </script>
 
@@ -351,7 +566,10 @@ onMounted(() => {
         <van-cell-group inset>
           <van-cell title="支付方式">
             <template #value>
-              <van-tag type="success" size="large">现金</van-tag>
+              <van-radio-group v-model="payMethod" direction="horizontal">
+                <van-radio name="cash">现金</van-radio>
+                <van-radio name="wechat_code">微信收款</van-radio>
+              </van-radio-group>
             </template>
           </van-cell>
           <van-cell title="订单类型">
@@ -386,7 +604,76 @@ onMounted(() => {
           :loading="checkoutLoading"
           :disabled="cart.length === 0"
           @click="submitOrder"
-        >现金收款 {{ fmtAmount(cartTotal) }}</van-button>
+        >{{ payMethod === 'cash' ? `现金收款 ${fmtAmount(cartTotal)}` : `微信收款 ${fmtAmount(cartTotal)}` }}</van-button>
+      </div>
+    </van-popup>
+
+    <!-- 微信付款码收款流程弹窗 -->
+    <van-popup
+      v-model:show="wxPayVisible"
+      round
+      position="bottom"
+      :style="{ maxHeight: '88%' }"
+      :close-on-click-overlay="false"
+      @close="wxClosePopup"
+      @closed="wxStep = 'confirm'"
+    >
+      <div class="wx-popup">
+        <!-- 金额确认页 -->
+        <template v-if="wxStep === 'confirm'">
+          <div class="wx-title">微信收款</div>
+          <div class="wx-confirm-amount">{{ fmtAmount(wxPayAmount) }}</div>
+          <div class="wx-confirm-hint">请与顾客核对金额，确认无误后扫码收款</div>
+          <van-button type="primary" block round size="large" @click="wxGoScan">扫码收款</van-button>
+          <van-button block round size="large" class="wx-back-btn" @click="wxPayVisible = false">返回修改</van-button>
+        </template>
+
+        <!-- 扫码页 -->
+        <template v-else-if="wxStep === 'scan'">
+          <div class="wx-title">扫顾客付款码 · {{ fmtAmount(wxPayAmount) }}</div>
+          <PayCodeScanner :key="wxScanRound" @scan="wxSubmit" />
+          <van-button block round size="large" class="wx-back-btn" @click="wxStep = 'confirm'">返回</van-button>
+        </template>
+
+        <!-- 提交中 -->
+        <template v-else-if="wxStep === 'submitting'">
+          <div class="wx-state">
+            <van-loading size="40" color="#1989fa" />
+            <div class="wx-state-title">收款中，请勿关闭</div>
+            <div class="wx-state-amount">{{ fmtAmount(wxPayAmount) }}</div>
+          </div>
+        </template>
+
+        <!-- 等待顾客输入密码 -->
+        <template v-else-if="wxStep === 'paying'">
+          <div class="wx-state">
+            <van-loading size="40" color="#ff976a" />
+            <div class="wx-state-title">等待顾客输入密码…</div>
+            <div class="wx-state-amount">{{ fmtAmount(wxPayAmount) }}</div>
+            <div class="wx-countdown">{{ wxCountdown }}s 后自动取消</div>
+            <van-button
+              type="danger"
+              plain
+              round
+              size="large"
+              block
+              :loading="wxCancelling"
+              @click="wxCancelPay()"
+            >取消收款</van-button>
+          </div>
+        </template>
+
+        <!-- 收款成功 -->
+        <template v-else-if="wxStep === 'success'">
+          <div class="wx-state">
+            <div class="wx-success-check">
+              <van-icon name="checked" size="56" color="#07c160" />
+            </div>
+            <div class="wx-state-title success">收款成功</div>
+            <div class="wx-state-amount">{{ fmtAmount(wxPayAmount) }}</div>
+            <div class="wx-success-hint">小票打印中，即将返回收银台…</div>
+          </div>
+        </template>
       </div>
     </van-popup>
   </div>
@@ -723,5 +1010,83 @@ onMounted(() => {
 .checkout-popup .van-button {
   width: calc(100% - 32px);
   margin: 0 16px;
+}
+
+/* ── 微信收款流程弹窗 ── */
+.wx-popup {
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+}
+
+.wx-title {
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.wx-confirm-amount {
+  text-align: center;
+  font-size: 42px;
+  font-weight: 700;
+  color: #ee6723;
+  margin: 18px 0 6px;
+}
+
+.wx-confirm-hint {
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 22px;
+}
+
+.wx-back-btn {
+  margin-top: 10px;
+  background: #f2f3f5;
+  color: #666;
+  border: none;
+}
+
+.wx-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 8px 8px;
+}
+
+.wx-state-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #333;
+}
+
+.wx-state-title.success {
+  color: #07c160;
+}
+
+.wx-state-amount {
+  font-size: 30px;
+  font-weight: 700;
+  color: #ee6723;
+}
+
+.wx-countdown {
+  font-size: 13px;
+  color: #999;
+}
+
+.wx-success-check {
+  animation: wx-pop 0.35s ease-out;
+}
+
+.wx-success-hint {
+  font-size: 13px;
+  color: #888;
+}
+
+@keyframes wx-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>

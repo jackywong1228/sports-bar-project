@@ -114,7 +114,9 @@ export interface WalkInItem {
 
 export interface WalkInOrderPayload {
   items: WalkInItem[]
-  pay_type: 'cash'
+  pay_type: 'cash' | 'wechat_code'
+  /** 微信付款码收款：顾客出示的 18 位数字付款码（Code128，10-15 开头） */
+  auth_code?: string
   order_type: 'dine_in' | 'pickup'
   table_no?: string
   pickup_time?: string
@@ -161,12 +163,22 @@ export function refundFoodOrder(id: number, reason: string) {
   return request.post(`/staff/food/orders/${id}/refund`, { reason })
 }
 
-/** 代客下单（收银台现金收款） */
+/** 代客下单（收银台收款：现金 / 微信付款码） */
 export function createWalkInOrder(data: WalkInOrderPayload) {
   return request.post<any, { data: { order_id: number; order_no: string; pay_amount: number; status: string } }>(
     '/staff/food/walk-in-orders',
     data
   )
+}
+
+/** 查询订单支付状态（微信付款码收款 paying 时轮询用） */
+export function getFoodOrderPayStatus(id: number) {
+  return request.get<any, { data: { status: string } }>(`/staff/food/orders/${id}/pay-status`)
+}
+
+/** 撤销支付并关单（顾客超时未输密码 / 员工主动取消时调用） */
+export function cancelFoodOrderPay(id: number) {
+  return request.post(`/staff/food/orders/${id}/cancel-pay`)
 }
 
 /** 交班对账 */
