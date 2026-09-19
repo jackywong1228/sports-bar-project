@@ -182,7 +182,8 @@ def create_walk_in_order(
     if data.order_type not in ("dine_in", "pickup"):
         raise HTTPException(status_code=400, detail="订单类型仅支持 dine_in(堂食)/pickup(预约取餐)")
     if data.order_type == "dine_in" and not (data.table_no or "").strip():
-        raise HTTPException(status_code=400, detail="堂食订单需要桌号")
+        # 收银台散客堂食可不填桌号，统一记「吧台」
+        data.table_no = "吧台"
 
     pickup_time = None
     if data.order_type == "pickup":

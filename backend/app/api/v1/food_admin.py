@@ -13,7 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
-from app.models import SysUser, FoodCategory, FoodItem, FoodOrder, FoodOrderItem, FoodSpecGroup
+from app.models import SysUser, FoodCategory, FoodItem, FoodOrder, FoodOrderItem, FoodSpecGroup, FoodSpecOption
 from app.schemas import ResponseModel, PageResult
 from app.api.deps import get_current_user
 from app.services import food_service

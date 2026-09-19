@@ -64,6 +64,7 @@ def get_menu(db: Session = Depends(get_db)):
                 "price": float(i.price or 0),
                 "original_price": float(i.original_price) if i.original_price else None,
                 "sold_out": (i.stock or 0) <= 0,
+                "sales": i.sales or 0,
                 "coupon_enabled": bool(i.coupon_enabled),
                 "has_specs": bool(i.has_specs),
                 "tags": i.tags.split(",") if i.tags else [],
