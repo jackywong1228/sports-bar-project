@@ -63,6 +63,13 @@ module.exports = {
         <text class="shortcut-text">活动报名</text>
         <text class="shortcut-text-en">ACTIVITY</text>
       </view>
+      <view class="shortcut-item" bindtap="goToFood">
+        <view class="shortcut-icon-wrap">
+          <image class="shortcut-icon-img" src="/assets/icons/svg/food-entry-white.svg" mode="aspectFit"></image>
+        </view>
+        <text class="shortcut-text">餐饮点单</text>
+        <text class="shortcut-text-en">DINING</text>
+      </view>
     </view>
   </view>
 

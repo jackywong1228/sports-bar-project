@@ -312,6 +312,13 @@ Page({
     })
   },
 
+  // 餐饮点单（首页 hero 快捷入口）
+  goToFood() {
+    wx.navigateTo({
+      url: '/pages/food-menu/food-menu'
+    })
+  },
+
   // 查看更多活动
   viewMoreActivities() {
     wx.switchTab({
