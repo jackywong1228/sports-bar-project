@@ -5,7 +5,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 /**
  * 微信付款码扫码组件
  * 两条输入通道：
- *  1. 摄像头扫码（html5-qrcode，Code128 条形码）
+ *  1. 摄像头扫码（html5-qrcode，Code128 条形码 + QR 二维码，付款页两种码均可）
  *  2. 手动/蓝牙扫码枪输入（扫码枪=键盘输入+回车）
  * 识别到合法的 18 位数字付款码（10-15 开头）后 emit('scan', code)
  */
@@ -30,12 +30,12 @@ const startCamera = async () => {
   cameraStarting.value = true
   try {
     scanner = new Html5Qrcode('pay-code-reader', {
-      formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
+      formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.QR_CODE],
       verbose: false
     })
     await scanner.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 320, height: 140 } },
+      { fps: 10, qrbox: { width: 280, height: 280 } },
       onDecode,
       () => { /* 持续解码中，忽略单帧失败 */ }
     )
@@ -169,7 +169,7 @@ defineExpose({ stopCamera })
           <div v-if="cameraError" class="camera-error">{{ cameraError }}</div>
         </div>
       </div>
-      <div v-if="cameraStarted" class="camera-tip">对准付款码条形码（18 位数字），识别后自动收款</div>
+      <div v-if="cameraStarted" class="camera-tip">对准付款码（二维码或条形码均可），识别后自动收款</div>
     </div>
 
     <!-- 手动 / 扫码枪模式 -->
