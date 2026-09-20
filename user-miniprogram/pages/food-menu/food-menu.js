@@ -1,5 +1,6 @@
 const app = getApp()
 const api = require('../../utils/api')
+const tableCodes = require('../../utils/table-codes')
 
 // 购物车与点单上下文（堂食/自取、桌号）本地持久化 key
 const CART_KEY = 'food_cart'
@@ -47,10 +48,24 @@ Page({
     if (!app.checkLogin()) {
       // 未登录：仍可先看菜单，但下单会拦；这里直接返回上一页会打断扫码场景，保持页面加载
     }
-    // 扫桌码进入：?table=5 自动堂食并带桌号
+    // 扫桌码进入：
+    // 1) 旧方式 ?table=5 自动堂食并带桌号
+    // 2) 场地小程序码 scene=PK1 等（wxacode.getUnlimited），scene 经 decodeURIComponent 后映射为桌号
+    let scannedTableNo = ''
+    if (options && options.table) {
+      scannedTableNo = String(options.table)
+    } else if (options && options.scene) {
+      let scene = String(options.scene)
+      try {
+        scene = decodeURIComponent(scene)
+      } catch (e) {
+        // scene 不含转义字符时 decode 失败也不影响，按原值匹配
+      }
+      scannedTableNo = tableCodes.sceneToTableNo(scene)
+    }
     const ctx = wx.getStorageSync(CTX_KEY) || {}
-    const mode = options && options.table ? 'dine_in' : (ctx.mode || 'dine_in')
-    const tableNo = options && options.table ? String(options.table) : (ctx.tableNo || '')
+    const mode = scannedTableNo ? 'dine_in' : (ctx.mode || 'dine_in')
+    const tableNo = scannedTableNo || (ctx.tableNo || '')
     this.setData({ mode, tableNo })
     this.saveCtx()
     this.restoreCart()
