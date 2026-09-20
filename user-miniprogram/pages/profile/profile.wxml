@@ -135,17 +135,29 @@
 
   <!-- 工具菜单 -->
   <view class="menu-card">
-    <view
-      class="menu-item"
-      wx:for="{{tools}}"
-      wx:key="text"
-      bindtap="onToolTap"
-      data-action="{{item.action}}"
-      data-url="{{item.url}}"
-    >
-      <image class="menu-icon" src="{{item.icon}}" mode="aspectFit"></image>
-      <text class="menu-text">{{item.text}}</text>
-      <text class="menu-arrow">></text>
-    </view>
+    <block wx:for="{{tools}}" wx:key="text">
+      <!-- 联系客服：拉起微信客服会话（企业微信客服需在小程序后台绑定后生效） -->
+      <button
+        wx:if="{{item.action === 'contact'}}"
+        class="menu-item menu-item-btn"
+        open-type="contact"
+        hover-class="none"
+      >
+        <image class="menu-icon" src="{{item.icon}}" mode="aspectFit"></image>
+        <text class="menu-text">{{item.text}}</text>
+        <text class="menu-arrow">></text>
+      </button>
+      <view
+        wx:else
+        class="menu-item"
+        bindtap="onToolTap"
+        data-action="{{item.action}}"
+        data-url="{{item.url}}"
+      >
+        <image class="menu-icon" src="{{item.icon}}" mode="aspectFit"></image>
+        <text class="menu-text">{{item.text}}</text>
+        <text class="menu-arrow">></text>
+      </view>
+    </block>
   </view>
 </view>

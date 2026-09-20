@@ -28,7 +28,7 @@ Page({
       { icon: '/assets/icons/member-card.png', text: '会员中心', url: '/pages/member/member' }
     ],
     tools: [
-      { icon: '/assets/icons/feedback.png', text: '意见反馈', action: 'feedback' },
+      { icon: '/assets/icons/feedback.png', text: '联系客服', action: 'contact' },
       { icon: '/assets/icons/settings.png', text: '设置', url: '/pages/settings/settings' },
       { icon: '/assets/icons/about.png', text: '关于我们', action: 'about' }
     ]

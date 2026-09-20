@@ -252,6 +252,24 @@
   background: rgba(26, 93, 58, 0.02);
 }
 
+/* 联系客服按钮：清除 button 默认样式，与 menu-item 视觉一致 */
+.menu-item-btn {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 30rpx;
+  margin: 0;
+  font-size: inherit;
+  line-height: normal;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.menu-item-btn::after {
+  border: none;
+}
+
 .menu-icon {
   width: 44rpx;
   height: 44rpx;
