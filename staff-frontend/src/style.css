@@ -28,3 +28,14 @@ body {
   background-color: var(--staff-bg);
   padding-bottom: 16px;
 }
+
+/*
+ * 修复 Vant 样式分包加载顺序导致的 toast 白底白字（白框无文字）问题。
+ * vant4 的 toast 元素同时带 van-popup / van-toast 两个类；
+ * 分包后的 .van-popup{background:白色} 后加载会覆盖 .van-toast 的深色背景，
+ * 而文字本是白色 → 白底白字不可见。用 !important 锁定。
+ */
+.van-toast {
+  background: rgba(0, 0, 0, 0.7) !important;
+  color: #fff !important;
+}
