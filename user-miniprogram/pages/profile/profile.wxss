@@ -252,21 +252,28 @@
   background: rgba(26, 93, 58, 0.02);
 }
 
-/* 联系客服按钮：清除 button 默认样式，与 menu-item 视觉一致 */
-.menu-item-btn {
+/* 联系客服：透明 button 覆盖整行，可见样式与 menu-item 完全一致 */
+.menu-item-contact {
+  position: relative;
+}
+
+.contact-mask-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 30rpx;
-  margin: 0;
-  font-size: inherit;
+  opacity: 0;
   line-height: normal;
-  text-align: left;
-  width: 100%;
-  box-sizing: border-box;
+  font-size: 0;
 }
 
-.menu-item-btn::after {
+.contact-mask-btn::after {
   border: none;
 }
 
