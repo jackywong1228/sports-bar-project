@@ -135,25 +135,17 @@
 
   <!-- 工具菜单 -->
   <view class="menu-card">
-    <block wx:for="{{tools}}" wx:key="text">
-      <!-- 联系客服：可见结构与普通菜单项一致，透明 button 覆盖整行负责拉起客服会话 -->
-      <view wx:if="{{item.action === 'contact'}}" class="menu-item menu-item-contact">
-        <image class="menu-icon" src="{{item.icon}}" mode="aspectFit"></image>
-        <text class="menu-text">{{item.text}}</text>
-        <text class="menu-arrow">></text>
-        <button class="contact-mask-btn" open-type="contact" hover-class="none"></button>
-      </view>
-      <view
-        wx:else
-        class="menu-item"
-        bindtap="onToolTap"
-        data-action="{{item.action}}"
-        data-url="{{item.url}}"
-      >
-        <image class="menu-icon" src="{{item.icon}}" mode="aspectFit"></image>
-        <text class="menu-text">{{item.text}}</text>
-        <text class="menu-arrow">></text>
-      </view>
-    </block>
+    <view
+      class="menu-item"
+      wx:for="{{tools}}"
+      wx:key="text"
+      bindtap="onToolTap"
+      data-action="{{item.action}}"
+      data-url="{{item.url}}"
+    >
+      <image class="menu-icon" src="{{item.icon}}" mode="aspectFit"></image>
+      <text class="menu-text">{{item.text}}</text>
+      <text class="menu-arrow">></text>
+    </view>
   </view>
 </view>

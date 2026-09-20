@@ -187,6 +187,16 @@ Page({
       case 'feedback':
         wx.navigateTo({ url: '/pages/feedback/feedback' })
         break
+      case 'contact':
+        // 联系客服：打开企业微信「微信客服」会话（需在小程序后台绑定企业ID，客服链接在企业微信后台获取）
+        wx.openCustomerServiceChat({
+          extInfo: { url: 'https://work.weixin.qq.com/kfid/kfc3f52c3f15337a8a7' },
+          corpId: 'wwafc76013f12d9ba1',
+          fail: () => {
+            wx.showToast({ title: '客服打开失败，请稍后重试', icon: 'none' })
+          }
+        })
+        break
       case 'about':
         wx.showModal({
           title: '关于我们',

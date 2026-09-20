@@ -252,31 +252,6 @@
   background: rgba(26, 93, 58, 0.02);
 }
 
-/* 联系客服：透明 button 覆盖整行，可见样式与 menu-item 完全一致 */
-.menu-item-contact {
-  position: relative;
-}
-
-.contact-mask-btn {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  opacity: 0;
-  line-height: normal;
-  font-size: 0;
-}
-
-.contact-mask-btn::after {
-  border: none;
-}
-
 .menu-icon {
   width: 44rpx;
   height: 44rpx;
