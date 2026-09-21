@@ -16,6 +16,7 @@ import threading
 import time
 import unicodedata
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 import requests
@@ -62,7 +63,20 @@ def _row_line(left: str, right: str) -> str:
 
 
 def _fmt_money(value) -> str:
-    return f"¥{float(value or 0):.2f}"
+    # 全角￥：58mm 热敏打印机 GBK 字库不支持半角 ¥（会打成乱码 ",:"），全角 ￥ 可正常打印
+    return f"￥{float(value or 0):.2f}"
+
+
+BEIJING_TZ = timezone(timedelta(hours=8), name="Asia/Shanghai")
+
+
+def _fmt_time(dt) -> str:
+    """数据库 created_at 为 UTC（naive），小票打印需转为北京时间"""
+    if not dt:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(BEIJING_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
 # ==================== 小票内容构建 ====================
@@ -93,7 +107,7 @@ def build_cashier_ops(order: FoodOrder, items: List[FoodOrderItem]) -> Ops:
     if order.member_name or order.member_phone:
         ops.append(("row", "顾客:", f"{order.member_name or ''} {order.member_phone or ''}".strip()))
     ops.append(("divider",))
-    ops.append(("line", _row_line("商品", _row_line("数量", "小计"))))
+    ops.append(("line", _row_line("商品 数量", "小计")))
     for it in items:
         name = it.food_name or ""
         if it.specs_text:
@@ -105,12 +119,13 @@ def build_cashier_ops(order: FoodOrder, items: List[FoodOrderItem]) -> Ops:
     coupon = float(order.coupon_amount or 0)
     if coupon > 0:
         ops.append(("row", "优惠券抵扣:", f"-{_fmt_money(coupon)}"))
-    ops.append(("big", _row_line("实付:", _fmt_money(order.pay_amount))))
+    # 大字行宽度只有普通行一半，不做左右对齐 padding，直接拼接防止折行
+    ops.append(("big", f"实付: {_fmt_money(order.pay_amount)}"))
     pay_text = FOOD_PAY_TYPE_TEXT.get(order.pay_type, order.pay_type or "")
     if order.pay_type == "coin":
         pay_text += f"（{float(order.pay_amount or 0):.0f}金币）"
     ops.append(("row", "支付方式:", pay_text))
-    ops.append(("row", "下单时间:", order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else ""))
+    ops.append(("row", "下单时间:", _fmt_time(order.created_at)))
     if order.remark:
         ops.append(("divider",))
         ops.append(("line", f"备注: {order.remark}"))
@@ -141,7 +156,7 @@ def build_kitchen_ops(order: FoodOrder, items: List[FoodOrderItem]) -> Ops:
     if order.remark:
         ops.append(("big", f"备注: {order.remark}"))
         ops.append(("divider",))
-    ops.append(("row", "下单时间:", order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else ""))
+    ops.append(("row", "下单时间:", _fmt_time(order.created_at)))
     return ops
 
 
