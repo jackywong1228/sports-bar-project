@@ -29,7 +29,7 @@ from app.services.food_service import FOOD_ORDER_TYPE_TEXT, FOOD_PAY_TYPE_TEXT
 
 logger = logging.getLogger(__name__)
 
-STORE_NAME = "云立方运动馆"
+STORE_NAME = "3S Ballhub"
 
 TICKET_CASHIER = "cashier"
 TICKET_KITCHEN = "kitchen"
